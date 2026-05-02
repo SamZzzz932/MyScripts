@@ -1,0 +1,825 @@
+-- ──────────────────────────────────
+--  Z BOUNTY v2  |  Spectral Series
+--  Auto Bounty — Unknown Range + Haki + Z Spam
+--  [EDICIÓN MARINES]
+-- ──────────────────────────────────
+
+local function __run()
+
+-- ──────────────────────────────────
+--  [CONFIG]
+-- ──────────────────────────────────
+local CONFIG = {
+    -- Faccion a elegir al llegar al sitio de bounty (¡CAMBIADO A MARINES!)
+    ["Team"] = "Pirates",       -- Pirates o Marines
+
+    -- Arma para el Z Spam
+    ["Weapon"] = "Sword",       -- Sword o Melee
+
+    -- Nivel minimo de jugadores para considerarlos target
+    ["MinLevel"] = 100,
+
+    -- Segundos sin hacer daño antes de hopear
+    ["NoHitTimeout"] = 5,
+
+    -- Config del Server Hop
+    ["HopMinPlayers"] = 8,
+    ["HopMaxPlayers"] = 11,
+    ["HopRegion"] = nil,        -- ej: Brazil, nil = Brazil
+    ["HopFallbackAny"] = true,
+}
+
+-- ──────────────────────────────────
+--  SERVICIOS
+-- ──────────────────────────────────
+local Players          = game:GetService("Players")
+local ReplicatedStorage   = game:GetService("ReplicatedStorage")
+local RunService          = game:GetService("RunService")
+local HttpService         = game:GetService("HttpService")
+local TweenService        = game:GetService("TweenService")
+local VIM                 = game:GetService("VirtualInputManager")
+
+local player     = Players.LocalPlayer
+local UP_SPEED   = 1e35
+local orbitSpeed = 500
+local angle      = 0
+
+-- ──────────────────────────────────
+--  ESTADO
+-- ──────────────────────────────────
+local State = {
+    active        = false,
+    enabledCielo  = false,
+    autoHaki      = false,
+    respawnAbuse  = false,
+    lastHitTime   = os.clock(),
+    lastHitTicks  = {},         -- {[userId] = lastDamageTick}
+    sessionEarned = 0,
+    startBounty   = 0,
+    currentBounty = 0,
+    kills         = 0,
+    status        = "Esperando fraccion...",
+    factionOK     = false,
+}
+
+-- ──────────────────────────────────
+--  UTILS
+-- ──────────────────────────────────
+local function fmt(n)
+    if not n then return "0" end
+    n = math.floor(n)
+    if n >= 1e9 then return string.format("%.2fB", n/1e9)
+    elseif n >= 1e6 then return string.format("%.2fM", n/1e6)
+    elseif n >= 1e3 then return string.format("%.1fK", n/1e3)
+    end
+    return tostring(n)
+end
+
+local function getBounty()
+    local val = 0
+    pcall(function()
+        local d = player:FindFirstChild("Data")
+        if d then
+            local b = d:FindFirstChild("Bounty") or d:FindFirstChild("Honor") or d:FindFirstChild("Rep")
+            if b and type(b.Value) == "number" then val = b.Value; return end
+        end
+        local ls = player:FindFirstChild("leaderstats")
+        if ls then
+            local b = ls:FindFirstChild("Bounty/Honor") or ls:FindFirstChild("Bounty") or ls:FindFirstChild("Honor")
+            if b and type(b.Value) == "number" then val = b.Value end
+        end
+    end)
+    return val
+end
+
+-- ──────────────────────────────────
+--  SAVE / LOAD
+-- ──────────────────────────────────
+local SAVE_FILE = "zbounty_save.json"
+local function saveData()
+    pcall(function()
+        writefile(SAVE_FILE, HttpService:JSONEncode({
+            sessionEarned = State.sessionEarned,
+            startBounty   = State.startBounty,
+            kills         = State.kills,
+        }))
+    end)
+end
+local function loadData()
+    pcall(function()
+        if isfile and isfile(SAVE_FILE) then
+            local d = HttpService:JSONDecode(readfile(SAVE_FILE))
+            if d then
+                State.sessionEarned = d.sessionEarned or 0
+                State.startBounty   = d.startBounty   or getBounty()
+                State.kills         = d.kills         or 0
+                return
+            end
+        end
+        State.startBounty = getBounty()
+    end)
+end
+
+-- ──────────────────────────────────
+--  UTILS DE GAMEPLAY
+-- ──────────────────────────────────
+local function findChooseTeam()
+    for _, gui in ipairs(player.PlayerGui:GetChildren()) do
+        local ct = gui:FindFirstChild("ChooseTeam", true)
+        if ct then return ct end
+    end
+    return nil
+end
+
+local function hasValidTargets()
+    for _, pl in pairs(Players:GetPlayers()) do
+        if pl ~= player then
+            local level = 0
+            pcall(function()
+                local d = pl:FindFirstChild("Data")
+                if d then
+                    local lv = d:FindFirstChild("Level")
+                    if lv then level = lv.Value end
+                end
+            end)
+            if level >= CONFIG["MinLevel"] then return true end
+        end
+    end
+    return false
+end
+
+local function selectFaction(faction)
+    pcall(function()
+        local remotes  = ReplicatedStorage:FindFirstChild("Remotes")
+        if not remotes then return end
+        local activity = remotes:FindFirstChild("RE/OnEventServiceActivity")
+        local commF    = remotes:FindFirstChild("CommF_")
+        if not activity or not commF then
+            for _, v in pairs(ReplicatedStorage:GetDescendants()) do
+                if v:IsA("RemoteEvent")    and v.Name == "RE/OnEventServiceActivity" then activity = v end
+                if v:IsA("RemoteFunction") and v.Name == "CommF_" then commF = v end
+            end
+        end
+        if activity then activity:FireServer("TeamSelect/Team/" .. faction) end
+        task.wait(0.05)
+        if commF then commF:InvokeServer("SetTeam", faction) end
+    end)
+end
+
+-- ──────────────────────────────────
+--  SERVER HOP
+-- ──────────────────────────────────
+local _place  = game.PlaceId
+local _id     = game.JobId
+local browser = ReplicatedStorage:FindFirstChild("__ServerBrowser")
+
+local function Hop()
+    pcall(function()
+        State.respawnAbuse = false
+        State.enabledCielo = false
+        local char = player.Character
+        if char and char:FindFirstChildOfClass("Humanoid") then
+            char:FindFirstChildOfClass("Humanoid").Health = 0
+            player.CharacterAdded:Wait()
+            task.wait(1)
+        end
+    end)
+
+    if not browser then
+        browser = ReplicatedStorage:FindFirstChild("__ServerBrowser")
+    end
+
+    local allServers = {}
+    local foundData  = false
+    local pending    = 0
+
+    if browser then
+        for page = 1, 100 do
+            if foundData then break end
+            pending += 1
+            task.spawn(function()
+                local ok, res = pcall(function() return browser:InvokeServer(page) end)
+                if ok and type(res) == "table" then
+                    local n = 0
+                    for uuid, info in pairs(res) do
+                        if type(info) == "table" and info.Count then
+                            allServers[uuid] = info; n += 1
+                        end
+                    end
+                    if n > 0 then foundData = true end
+                end
+                pending -= 1
+            end)
+        end
+        local w = 0
+        while pending > 0 and w < 6 do
+            task.wait(0.2); w += 0.2
+            if foundData and w > 1 then break end
+        end
+    end
+
+    local apiServers = {}
+    if not foundData then
+        for _, ord in ipairs({"Desc","Asc"}) do
+            pcall(function()
+                local r = HttpService:JSONDecode(game:HttpGet(
+                    "https://games.roblox.com/v1/games/" .. _place
+                    .. "/servers/Public?sortOrder=" .. ord .. "&limit=100"
+                ))
+                if r and r.data then
+                    for _, sv in ipairs(r.data) do table.insert(apiServers, sv) end
+                end
+            end)
+        end
+    end
+
+    local matched = {}
+    local anyValid = {}
+    local seen = {}
+
+    if foundData then
+        for uuid, info in pairs(allServers) do
+            if uuid ~= _id then
+                local c = info.Count or 0
+                local entry = {uuid=uuid, count=c, region=info.Region or ""}
+                table.insert(anyValid, entry)
+                local ok2 = true
+                if CONFIG["HopMinPlayers"] and c < CONFIG["HopMinPlayers"] then ok2 = false end
+                if CONFIG["HopMaxPlayers"] and c > CONFIG["HopMaxPlayers"] then ok2 = false end
+                if CONFIG["HopRegion"] and CONFIG["HopRegion"] ~= "" then
+                    if not string.find(string.lower(info.Region or ""), string.lower(CONFIG["HopRegion"]), 1, true) then ok2 = false end
+                end
+                if ok2 then table.insert(matched, entry) end
+            end
+        end
+    else
+        for _, sv in ipairs(apiServers) do
+            if sv.id and sv.id ~= _id and not seen[sv.id]
+               and sv.playing and sv.maxPlayers and sv.playing < sv.maxPlayers then
+                seen[sv.id] = true
+                local entry = {uuid=sv.id, count=sv.playing}
+                table.insert(anyValid, entry)
+                local ok2 = true
+                if CONFIG["HopMinPlayers"] and sv.playing < CONFIG["HopMinPlayers"] then ok2 = false end
+                if CONFIG["HopMaxPlayers"] and sv.playing > CONFIG["HopMaxPlayers"] then ok2 = false end
+                if ok2 then table.insert(matched, entry) end
+            end
+        end
+    end
+
+    if #matched == 0 then
+        if not CONFIG["HopFallbackAny"] or #anyValid == 0 then return false end
+        matched = anyValid
+    end
+
+    table.sort(matched, function(a,b) return a.count > b.count end)
+    local chosen = matched[math.random(1, math.min(10, #matched))]
+    print("[ZBounty] Hop → " .. chosen.count .. " jugadores")
+    return pcall(function()
+        if browser then
+            browser:InvokeServer("teleport", chosen.uuid)
+        end
+    end)
+end
+
+-- ──────────────────────────────────
+--  CORE FUNCTIONS
+-- ──────────────────────────────────
+local CommF_ = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("CommF_")
+
+local function down(key)
+    pcall(function()
+        local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+        if not hrp then return end
+        VIM:SendKeyEvent(true, key, false, hrp)
+        task.wait(0.15)
+        VIM:SendKeyEvent(false, key, false, hrp)
+    end)
+end
+
+local function equip(tooltip)
+    if not tooltip then return end
+    pcall(function()
+        local char = player.Character or player.CharacterAdded:Wait()
+        local hum  = char:FindFirstChildOfClass("Humanoid")
+        if not hum then return end
+        for _, tool in pairs(player.Backpack:GetChildren()) do
+            if tool:IsA("Tool") and tool.ToolTip == tooltip then
+                if not hum:IsDescendantOf(tool) then
+                    hum:EquipTool(tool); return
+                end
+            end
+        end
+    end)
+end
+
+local function buso()
+    pcall(function()
+        CommF_:InvokeServer("Buso")
+    end)
+end
+
+local function checkcd(weaponTip, key)
+    local result = true
+    pcall(function()
+        local char   = player.Character or player.CharacterAdded:Wait()
+        local hum    = char:FindFirstChildOfClass("Humanoid")
+        local Skills = player.PlayerGui.Main.Skills
+        if not hum then return end
+        for _, tool in ipairs(char:GetChildren()) do
+            if tool:IsA("Tool") and tool.ToolTip == weaponTip and not hum:IsDescendantOf(tool) then
+                local slot = Skills:FindFirstChild(tool.Name)
+                if slot and slot:FindFirstChild(key) then
+                    local cd    = slot[key]:FindFirstChild("Cooldown")
+                    local title = slot[key]:FindFirstChild("Title")
+                    if cd and title then
+                        if cd.Size.X.Scale == 0 and title.TextColor3 == Color3.new(1,1,1) then
+                            result = false
+                        end
+                    end
+                end
+            end
+        end
+    end)
+    return result
+end
+
+task.spawn(function()
+    while task.wait(0.5) do
+        if State.autoHaki then buso() end
+    end
+end)
+
+task.spawn(function()
+    while task.wait() do
+        if not State.respawnAbuse then continue end
+        local char = player.Character
+        local root = char and char:FindFirstChild("HumanoidRootPart")
+        if root then
+            angle = angle + math.rad(orbitSpeed)
+            root.CFrame = root.CFrame * CFrame.new(
+                math.cos(angle) * 3, 0, math.sin(angle) * 3
+            )
+        end
+        if State.autoHaki then buso() end
+        equip(CONFIG["Weapon"])
+        task.wait(0.15)
+        down("Z")
+        task.wait(0.5)
+        if char and char:FindFirstChild("Humanoid") then
+            char.Humanoid.Health = 0
+        end
+        player.CharacterAdded:Wait()
+        task.wait(0.5)
+    end
+end)
+
+RunService.RenderStepped:Connect(function(dt)
+    if not State.enabledCielo then return end
+    local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    if root then
+        root.CFrame = root.CFrame + Vector3.new(0, UP_SPEED * dt, 0)
+    end
+end)
+
+-- ──────────────────────────────────
+--  DETECTOR DE DAÑO A JUGADORES
+-- ──────────────────────────────────
+local function watchPlayer(p)
+    if p == player then return end
+    local function watchChar(char)
+        pcall(function()
+            local hum  = char:WaitForChild("Humanoid", 5)
+            if not hum then return end
+            local last = hum.Health
+            hum:GetPropertyChangedSignal("Health"):Connect(function()
+                local delta = last - hum.Health
+                last = hum.Health
+                if delta > 0 and State.active then
+                    State.lastHitTime = os.clock()
+                end
+            end)
+        end)
+    end
+    p.CharacterAdded:Connect(watchChar)
+    if p.Character then watchChar(p.Character) end
+end
+
+for _, p in ipairs(Players:GetPlayers()) do watchPlayer(p) end
+Players.PlayerAdded:Connect(watchPlayer)
+
+pcall(function()
+    local CommE = ReplicatedStorage:WaitForChild("Remotes", 5)
+        :WaitForChild("CommE", 5)
+    CommE.OnClientEvent:Connect(function(event, ...)
+        if not State.active then return end
+        if event ~= "Notify" then return end
+        local msg = select(1, ...) or ""
+        if msg:find("Bounty<Color=/> from") or msg:find("Honor<Color=/> from") then
+            local earned = tonumber(string.match(msg, ">(%d+)")) or 0
+            State.sessionEarned += earned
+            State.kills         += 1
+            State.lastHitTime    = os.clock()
+            State.currentBounty  = getBounty()
+            saveData()
+        end
+    end)
+end)
+
+task.spawn(function()
+    while task.wait(1) do
+        if not State.active then continue end
+
+        if not hasValidTargets() then
+            print("[ZBounty] Sin targets validos en el server → Hopeando")
+            State.status = "Sin targets → Hopeando"
+            task.wait(2)
+            Hop(); task.wait(5)
+            State.lastHitTime = os.clock()
+            State.status = "Activo"
+            continue
+        end
+
+        local sinceHit = os.clock() - State.lastHitTime
+        if sinceHit >= CONFIG["NoHitTimeout"] then
+            print("[ZBounty] " .. CONFIG["NoHitTimeout"] .. "s sin daño → Hopeando")
+            State.status = "Hopeando..."
+            saveData()
+            Hop(); task.wait(5)
+            State.lastHitTime = os.clock()
+            State.status = "Activo"
+        end
+    end
+end)
+
+-- ──────────────────────────────────
+--  START
+-- ──────────────────────────────────
+local guiReady = false
+local StatusLbl, EarnedLbl, StartLbl, CurrLbl, KillLbl, TimerBar, TimerLbl, StatBadge
+
+local function startAll()
+    loadData()
+    State.active        = true
+    State.enabledCielo  = true
+    State.autoHaki      = true
+    State.respawnAbuse  = true
+    State.lastHitTime   = os.clock()
+    State.currentBounty = getBounty()
+    State.status        = "Activo"
+    print("[ZBounty] ACTIVO — " .. CONFIG["Team"] .. " / " .. CONFIG["Weapon"])
+end
+
+-- ──────────────────────────────────
+--  GUI PREMIUM
+-- ──────────────────────────────────
+local C = {
+    bg       = Color3.fromRGB(8,  9,  16),
+    panel    = Color3.fromRGB(14, 15, 26),
+    card     = Color3.fromRGB(18, 19, 32),
+    header   = Color3.fromRGB(16, 17, 30),
+    accent   = Color3.fromRGB(100, 160, 255),
+    accentOn = Color3.fromRGB(80,  225, 145),
+    red      = Color3.fromRGB(220, 70,  70),
+    gold     = Color3.fromRGB(255, 200, 80),
+    text     = Color3.fromRGB(225, 228, 245),
+    sub      = Color3.fromRGB(120, 130, 160),
+    div      = Color3.fromRGB(24,  26,  44),
+    pirateC  = Color3.fromRGB(215, 65,  65),
+    marineC  = Color3.fromRGB(55,  125, 215),
+}
+
+for _, parent in ipairs({player.PlayerGui, game:GetService("CoreGui")}) do
+    pcall(function()
+        local old = parent:FindFirstChild("ZBountyUI")
+        if old then old:Destroy() end
+    end)
+end
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "ZBountyUI"; ScreenGui.ResetOnSpawn = false
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling; ScreenGui.DisplayOrder = 999
+local ok2 = pcall(function() ScreenGui.Parent = game:GetService("CoreGui") end)
+if not ok2 then ScreenGui.Parent = player:WaitForChild("PlayerGui") end
+
+local ToggleBtn = Instance.new("TextButton", ScreenGui)
+ToggleBtn.Size = UDim2.new(0,114,0,30); ToggleBtn.Position = UDim2.new(0,12,0,12)
+ToggleBtn.BackgroundColor3 = C.card; ToggleBtn.Text = "⚡  Z BOUNTY"
+ToggleBtn.TextColor3 = C.accent; ToggleBtn.TextSize = 12
+ToggleBtn.Font = Enum.Font.GothamBold; ToggleBtn.BorderSizePixel = 0
+ToggleBtn.AutoButtonColor = false
+Instance.new("UICorner", ToggleBtn).CornerRadius = UDim.new(0,7)
+local tst = Instance.new("UIStroke", ToggleBtn); tst.Color = C.accent; tst.Thickness = 1
+
+local Main = Instance.new("Frame", ScreenGui)
+Main.Name = "ZBountyMain"; Main.Size = UDim2.new(0,280,0,410)
+Main.Position = UDim2.new(0,12,0,50); Main.BackgroundColor3 = C.bg
+Main.BorderSizePixel = 0; Main.Active = true; Main.Draggable = true
+Main.Visible = false
+Instance.new("UICorner", Main).CornerRadius = UDim.new(0,14)
+local mst = Instance.new("UIStroke", Main); mst.Color = C.accent; mst.Thickness = 1; mst.Transparency = 0.6
+
+task.spawn(function()
+    local t = 0
+    while true do
+        task.wait(0.05)
+        t = t + 0.05
+        if mst and mst.Parent then
+            mst.Transparency = 0.4 + 0.4 * math.abs(math.sin(t * 1.2))
+        end
+    end
+end)
+
+local Header = Instance.new("Frame", Main)
+Header.Size = UDim2.new(1,0,0,90); Header.BackgroundColor3 = C.header; Header.BorderSizePixel = 0
+Instance.new("UICorner", Header).CornerRadius = UDim.new(0,14)
+
+local hgrad = Instance.new("UIGradient", Header)
+hgrad.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(18,24,50)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(10,12,22)),
+})
+hgrad.Rotation = 90
+
+local hfix = Instance.new("Frame", Header)
+hfix.Size = UDim2.new(1,0,0,20); hfix.Position = UDim2.new(0,0,1,-20)
+hfix.BackgroundColor3 = C.header; hfix.BorderSizePixel = 0
+
+local AvWrap = Instance.new("Frame", Header)
+AvWrap.Size = UDim2.new(0,58,0,58); AvWrap.Position = UDim2.new(0,14,0.5,-29)
+AvWrap.BackgroundColor3 = Color3.fromRGB(20,22,40); AvWrap.BorderSizePixel = 0
+Instance.new("UICorner", AvWrap).CornerRadius = UDim.new(1,0)
+local avStr = Instance.new("UIStroke", AvWrap); avStr.Color = C.accent; avStr.Thickness = 2
+
+local AvImg = Instance.new("ImageLabel", AvWrap)
+AvImg.Size = UDim2.new(1,-6,1,-6); AvImg.Position = UDim2.new(0,3,0,3)
+AvImg.BackgroundTransparency = 1; AvImg.ScaleType = Enum.ScaleType.Crop
+Instance.new("UICorner", AvImg).CornerRadius = UDim.new(1,0)
+
+task.spawn(function()
+    local ok3, url = pcall(function()
+        return Players:GetUserThumbnailAsync(player.UserId,
+            Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size150x150)
+    end)
+    if ok3 and url then AvImg.Image = url end
+end)
+
+local NameLbl = Instance.new("TextLabel", Header)
+NameLbl.Size = UDim2.new(1,-85,0,22); NameLbl.Position = UDim2.new(0,80,0,12)
+NameLbl.BackgroundTransparency = 1; NameLbl.Text = player.Name
+NameLbl.Font = Enum.Font.GothamBlack; NameLbl.TextSize = 16
+NameLbl.TextColor3 = C.text; NameLbl.TextXAlignment = Enum.TextXAlignment.Left
+
+local FacBadge = Instance.new("TextLabel", Header)
+FacBadge.Size = UDim2.new(0,85,0,20); FacBadge.Position = UDim2.new(0,80,0,37)
+FacBadge.BackgroundColor3 = CONFIG["Team"] == "Pirates" and C.pirateC or C.marineC
+FacBadge.Text = CONFIG["Team"] == "Pirates" and "🏴‍☠️ PIRATA" or "⚓ MARINE"
+FacBadge.Font = Enum.Font.GothamBold; FacBadge.TextSize = 10
+FacBadge.TextColor3 = Color3.new(1,1,1); FacBadge.BorderSizePixel = 0
+Instance.new("UICorner", FacBadge).CornerRadius = UDim.new(0,5)
+
+local WpBadge = Instance.new("TextLabel", Header)
+WpBadge.Size = UDim2.new(0,65,0,20); WpBadge.Position = UDim2.new(0,171,0,37)
+WpBadge.BackgroundColor3 = Color3.fromRGB(50,55,90)
+WpBadge.Text = "⚔️ " .. CONFIG["Weapon"]
+WpBadge.Font = Enum.Font.GothamBold; WpBadge.TextSize = 10
+WpBadge.TextColor3 = Color3.fromRGB(180,190,255); WpBadge.BorderSizePixel = 0
+Instance.new("UICorner", WpBadge).CornerRadius = UDim.new(0,5)
+
+StatBadge = Instance.new("TextLabel", Header)
+StatBadge.Size = UDim2.new(0,85,0,20); StatBadge.Position = UDim2.new(1,-95,0,10)
+StatBadge.BackgroundColor3 = C.red; StatBadge.Text = "● CARGANDO"
+StatBadge.Font = Enum.Font.GothamBold; StatBadge.TextSize = 9
+StatBadge.TextColor3 = Color3.new(1,1,1); StatBadge.BorderSizePixel = 0
+Instance.new("UICorner", StatBadge).CornerRadius = UDim.new(0,5)
+
+local InfoLbl = Instance.new("TextLabel", Header)
+InfoLbl.Size = UDim2.new(1,-80,0,14); InfoLbl.Position = UDim2.new(0,80,0,62)
+InfoLbl.BackgroundTransparency = 1
+InfoLbl.Text = "Hop en " .. CONFIG["NoHitTimeout"] .. "s sin daño  •  Lv." .. CONFIG["MinLevel"] .. "+"
+InfoLbl.Font = Enum.Font.Gotham; InfoLbl.TextSize = 9
+InfoLbl.TextColor3 = C.sub; InfoLbl.TextXAlignment = Enum.TextXAlignment.Left
+
+local function divider(parent, y)
+    local d = Instance.new("Frame", parent)
+    d.Size = UDim2.new(0.86,0,0,1); d.Position = UDim2.new(0.07,0,0,y)
+    d.BackgroundColor3 = C.div; d.BorderSizePixel = 0
+    return d
+end
+divider(Main, 96)
+
+local function card(parent, label, icon, yPos, valueColor)
+    local row = Instance.new("Frame", parent)
+    row.Size = UDim2.new(0.86,0,0,50); row.Position = UDim2.new(0.07,0,0,yPos)
+    row.BackgroundColor3 = C.card; row.BorderSizePixel = 0
+    Instance.new("UICorner", row).CornerRadius = UDim.new(0,10)
+
+    local cg = Instance.new("UIGradient", row)
+    cg.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(20,21,36)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(14,15,26)),
+    })
+    cg.Rotation = 135
+
+    local iconL = Instance.new("TextLabel", row)
+    iconL.Size = UDim2.new(0,30,1,0); iconL.Position = UDim2.new(0,8,0,0)
+    iconL.BackgroundTransparency = 1; iconL.Text = icon
+    iconL.Font = Enum.Font.Gotham; iconL.TextSize = 20
+
+    local lbl = Instance.new("TextLabel", row)
+    lbl.Size = UDim2.new(1,-45,0,16); lbl.Position = UDim2.new(0,40,0,6)
+    lbl.BackgroundTransparency = 1; lbl.Text = label
+    lbl.Font = Enum.Font.Gotham; lbl.TextSize = 9
+    lbl.TextColor3 = C.sub; lbl.TextXAlignment = Enum.TextXAlignment.Left
+
+    local val = Instance.new("TextLabel", row)
+    val.Size = UDim2.new(1,-45,0,24); val.Position = UDim2.new(0,40,0,22)
+    val.BackgroundTransparency = 1; val.Text = "$0"
+    val.Font = Enum.Font.GothamBlack; val.TextSize = 17
+    val.TextColor3 = valueColor or C.text; val.TextXAlignment = Enum.TextXAlignment.Left
+
+    return val
+end
+
+StartLbl  = card(Main, "HONOR INICIAL",   "💰", 104,  C.sub)
+EarnedLbl = card(Main, "GANADO EN SESION", "📈", 162,  C.accentOn)
+CurrLbl   = card(Main, "HONOR ACTUAL",    "⭐", 220,  C.gold)
+
+local krow = Instance.new("Frame", Main)
+krow.Size = UDim2.new(0.86,0,0,38); krow.Position = UDim2.new(0.07,0,0,278)
+krow.BackgroundColor3 = C.card; krow.BorderSizePixel = 0
+Instance.new("UICorner", krow).CornerRadius = UDim.new(0,10)
+
+KillLbl = Instance.new("TextLabel", krow)
+KillLbl.Size = UDim2.new(0.5,0,1,0); KillLbl.Position = UDim2.new(0,10,0,0)
+KillLbl.BackgroundTransparency = 1; KillLbl.Text = "💀  Kills: 0"
+KillLbl.Font = Enum.Font.GothamBold; KillLbl.TextSize = 13
+KillLbl.TextColor3 = C.text; KillLbl.TextXAlignment = Enum.TextXAlignment.Left
+
+TimerLbl = Instance.new("TextLabel", krow)
+TimerLbl.Size = UDim2.new(0.5,-10,1,0); TimerLbl.Position = UDim2.new(0.5,0,0,0)
+TimerLbl.BackgroundTransparency = 1; TimerLbl.Text = ""
+TimerLbl.Font = Enum.Font.Gotham; TimerLbl.TextSize = 12
+TimerLbl.TextColor3 = C.sub; TimerLbl.TextXAlignment = Enum.TextXAlignment.Right
+
+local barBg = Instance.new("Frame", Main)
+barBg.Size = UDim2.new(0.86,0,0,6); barBg.Position = UDim2.new(0.07,0,0,322)
+barBg.BackgroundColor3 = C.div; barBg.BorderSizePixel = 0
+Instance.new("UICorner", barBg).CornerRadius = UDim.new(0,3)
+
+TimerBar = Instance.new("Frame", barBg)
+TimerBar.Size = UDim2.new(1,0,1,0); TimerBar.BackgroundColor3 = C.accentOn
+TimerBar.BorderSizePixel = 0
+Instance.new("UICorner", TimerBar).CornerRadius = UDim.new(0,3)
+local tgrad = Instance.new("UIGradient", TimerBar)
+tgrad.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, C.accentOn),
+    ColorSequenceKeypoint.new(1, C.accent),
+})
+
+StatusLbl = Instance.new("TextLabel", Main)
+StatusLbl.Size = UDim2.new(0.86,0,0,18); StatusLbl.Position = UDim2.new(0.07,0,0,334)
+StatusLbl.BackgroundTransparency = 1; StatusLbl.Text = "Esperando fraccion..."
+StatusLbl.Font = Enum.Font.Gotham; StatusLbl.TextSize = 10
+StatusLbl.TextColor3 = C.sub; StatusLbl.TextXAlignment = Enum.TextXAlignment.Center
+
+divider(Main, 358)
+local footer = Instance.new("TextLabel", Main)
+footer.Size = UDim2.new(1,0,0,18); footer.Position = UDim2.new(0,0,0,364)
+footer.BackgroundTransparency = 1; footer.Text = "Z Bounty v2  •  Spectral Series"
+footer.Font = Enum.Font.Gotham; footer.TextSize = 9
+footer.TextColor3 = C.div; footer.TextXAlignment = Enum.TextXAlignment.Center
+
+ToggleBtn.MouseButton1Click:Connect(function()
+    if Main.Visible then
+        TweenService:Create(Main, TweenInfo.new(0.15), {Position = UDim2.new(0,12,0,50), BackgroundTransparency = 1}):Play()
+        task.wait(0.15); Main.Visible = false; Main.BackgroundTransparency = 0
+    else
+        Main.Visible = true
+    end
+end)
+
+local prefix = CONFIG["Team"] == "Marines" and "" or "$"
+task.spawn(function()
+    while true do
+        task.wait(0.5)
+        pcall(function()
+            if not guiReady then return end
+            State.currentBounty = getBounty()
+            StartLbl.Text  = prefix .. fmt(State.startBounty)
+            EarnedLbl.Text = "+" .. prefix .. fmt(State.sessionEarned)
+            CurrLbl.Text   = prefix .. fmt(State.currentBounty)
+            KillLbl.Text   = "💀  Kills: " .. State.kills
+
+            if State.active then
+                local sinceHit  = os.clock() - State.lastHitTime
+                local remaining = math.max(0, CONFIG["NoHitTimeout"] - sinceHit)
+                local pct       = remaining / CONFIG["NoHitTimeout"]
+
+                TimerBar.Size      = UDim2.new(pct, 0, 1, 0)
+                tgrad.Color = ColorSequence.new({
+                    ColorSequenceKeypoint.new(0, pct > 0.4 and C.accentOn or C.red),
+                    ColorSequenceKeypoint.new(1, pct > 0.4 and C.accent   or C.gold),
+                })
+
+                if remaining > 0 then
+                    TimerLbl.Text      = "⏱ " .. math.ceil(remaining) .. "s"
+                    TimerLbl.TextColor3 = pct > 0.4 and C.sub or C.gold
+                else
+                    TimerLbl.Text = "⏱ Hopeando..."
+                    TimerLbl.TextColor3 = C.red
+                end
+
+                StatusLbl.Text = "⚡ " .. State.status
+                StatusLbl.TextColor3 = State.status == "Activo" and C.accentOn or C.gold
+            end
+        end)
+    end
+end)
+
+Main.Visible = true
+guiReady = true
+
+task.spawn(function()
+    print("[ZBounty] Iniciando — Team=" .. CONFIG["Team"] .. " Weapon=" .. CONFIG["Weapon"])
+
+    local confirmed = false
+    local elapsed   = 0
+
+    if player.Team and player.Team.Name == CONFIG["Team"] then
+        print("[ZBounty] Ya somos " .. CONFIG["Team"])
+        confirmed = true
+    elseif player.Team then
+        print("[ZBounty] Team actual: " .. player.Team.Name .. " (necesito " .. CONFIG["Team"] .. ")")
+    else
+        print("[ZBounty] Sin team — buscando pantalla...")
+    end
+
+    while not confirmed do
+        task.wait(0.3); elapsed += 0.3
+
+        selectFaction(CONFIG["Team"])
+        task.wait(0.5)
+
+        if player.Team and player.Team.Name == CONFIG["Team"] then
+            print("[ZBounty] Faccion confirmada: " .. CONFIG["Team"])
+            confirmed = true
+            break
+        end
+
+        local ct = findChooseTeam()
+        if ct and ct.Visible then
+            print("[ZBounty] Pantalla visible → intentando seleccionar " .. CONFIG["Team"])
+        end
+
+        if elapsed >= 30 then
+            print("[ZBounty] Timeout 30s — arrancando sin confirmar faccion")
+            confirmed = true
+        end
+    end
+
+    if player.Team and player.Team.Name == CONFIG["Team"] then
+        StatBadge.Text = "● ACTIVO"
+        StatBadge.BackgroundColor3 = C.accentOn
+    else
+        StatBadge.Text = "● SIN TEAM"
+        StatBadge.BackgroundColor3 = C.gold
+    end
+
+    startAll()
+
+    task.wait(2)
+    if not hasValidTargets() then
+        print("[ZBounty] Sin targets Lv." .. CONFIG["MinLevel"] .. "+ → Hopeando")
+        State.status = "Sin targets → Hopeando"
+        task.wait(2)
+        Hop(); task.wait(5)
+        State.lastHitTime = os.clock()
+        State.status = "Activo"
+    end
+end)
+
+task.spawn(function()
+    local lastVis = false
+    while true do
+        task.wait(0.5)
+        if not State.active then continue end
+        local ct = findChooseTeam()
+        local vis = ct and ct.Visible or false
+        if vis and not lastVis then
+            print("[ZBounty] Nuevo server → seleccionando " .. CONFIG["Team"])
+            task.wait(0.4)
+            for i = 1, 5 do
+                selectFaction(CONFIG["Team"])
+                task.wait(1.2)
+                if player.Team and player.Team.Name == CONFIG["Team"] then break end
+            end
+        end
+        lastVis = vis
+    end
+end)
+
+print("[ZBounty] Loaded — Team=" .. CONFIG["Team"] .. " Weapon=" .. CONFIG["Weapon"])
+
+end -- __run
+__run()
