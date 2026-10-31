@@ -1,0 +1,10647 @@
+-- Paleta de la interfaz: amarillo platano con texto cafe oscuro.
+-- Cambia estos tres valores si quieres otro tono de amarillo.
+local AbyssAccentRGB = { 255, 210, 40 }    -- amarillo principal (fondos)
+local AbyssInkRGB = { 52, 36, 0 }          -- cafe oscuro (texto)
+local AbyssAmberRGB = { 150, 100, 0 }      -- ambar oscuro (bordes y acentos)
+local AbyssAccent = Color3.fromRGB(AbyssAccentRGB[1], AbyssAccentRGB[2], AbyssAccentRGB[3])
+local AbyssInk = Color3.fromRGB(AbyssInkRGB[1], AbyssInkRGB[2], AbyssInkRGB[3])
+local AbyssAmber = Color3.fromRGB(AbyssAmberRGB[1], AbyssAmberRGB[2], AbyssAmberRGB[3])
+
+local function AbyssFatal(err)
+    local msg = "[Abyss] Error fatal: " .. tostring(err)
+    pcall(function() warn(msg) end)
+    pcall(function()
+        local player = game:GetService("Players").LocalPlayer
+        local parent = (gethui and gethui()) or game:GetService("CoreGui")
+        local old = parent:FindFirstChild("Abyss_Error")
+        if old then old:Destroy() end
+        local oldBoot = parent:FindFirstChild("Abyss_Boot")
+        if oldBoot then oldBoot:Destroy() end
+        local gui = Instance.new("ScreenGui")
+        gui.Name = "Abyss_Error"
+        gui.ResetOnSpawn = false
+        gui.DisplayOrder = 999999
+        local okParent = pcall(function() gui.Parent = parent end)
+        if not okParent or not gui.Parent then
+            if player then
+                gui.Parent = player:WaitForChild("PlayerGui")
+            end
+        end
+        local frame = Instance.new("Frame")
+        frame.AnchorPoint = Vector2.new(0.5, 0.5)
+        frame.Position = UDim2.fromScale(0.5, 0.5)
+        frame.Size = UDim2.fromOffset(560, 190)
+        frame.BackgroundColor3 = AbyssAccent
+        frame.BorderSizePixel = 0
+        frame.Parent = gui
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(0, 12)
+        corner.Parent = frame
+        local stroke = Instance.new("UIStroke")
+        stroke.Color = Color3.fromRGB(176, 24, 24)
+        stroke.Thickness = 2
+        stroke.Parent = frame
+        local title = Instance.new("TextLabel")
+        title.BackgroundTransparency = 1
+        title.Position = UDim2.fromOffset(18, 12)
+        title.Size = UDim2.new(1, -36, 0, 28)
+        title.Font = Enum.Font.GothamBold
+        title.TextSize = 18
+        title.TextColor3 = Color3.fromRGB(150, 20, 20)
+        title.TextXAlignment = Enum.TextXAlignment.Left
+        title.Text = "Abyss | Error de ejecucion"
+        title.Parent = frame
+        local body = Instance.new("TextLabel")
+        body.BackgroundTransparency = 1
+        body.Position = UDim2.fromOffset(18, 46)
+        body.Size = UDim2.new(1, -36, 0, 96)
+        body.Font = Enum.Font.Code
+        body.TextSize = 13
+        body.TextWrapped = true
+        body.TextXAlignment = Enum.TextXAlignment.Left
+        body.TextYAlignment = Enum.TextYAlignment.Top
+        body.TextColor3 = AbyssInk
+        body.Text = msg
+        body.Parent = frame
+        local close = Instance.new("TextButton")
+        close.Position = UDim2.new(1, -100, 1, -42)
+        close.Size = UDim2.fromOffset(82, 28)
+        close.BackgroundColor3 = Color3.fromRGB(176, 24, 24)
+        close.BorderSizePixel = 0
+        close.Font = Enum.Font.GothamBold
+        close.TextSize = 13
+        close.TextColor3 = Color3.new(1, 1, 1)
+        close.Text = "Cerrar"
+        close.Parent = frame
+        local closeCorner = Instance.new("UICorner")
+        closeCorner.CornerRadius = UDim.new(0, 6)
+        closeCorner.Parent = close
+        close.MouseButton1Click:Connect(function() gui:Destroy() end)
+    end)
+    return err
+end
+
+local function AbyssShowLoading()
+    local ok, gui = pcall(function()
+        local parent = (gethui and gethui()) or game:GetService("CoreGui")
+        local old = parent:FindFirstChild("Abyss_Boot")
+        if old then old:Destroy() end
+        local screen = Instance.new("ScreenGui")
+        screen.Name = "Abyss_Boot"
+        screen.ResetOnSpawn = false
+        screen.DisplayOrder = 999998
+        local okParent = pcall(function() screen.Parent = parent end)
+        if not okParent or not screen.Parent then
+            screen.Parent = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui", 5)
+        end
+        local frame = Instance.new("Frame")
+        frame.AnchorPoint = Vector2.new(0.5, 0)
+        frame.Position = UDim2.new(0.5, 0, 0, 18)
+        frame.Size = UDim2.fromOffset(280, 38)
+        frame.BackgroundColor3 = AbyssAccent
+        frame.BorderSizePixel = 0
+        frame.Parent = screen
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(0, 10)
+        corner.Parent = frame
+        local stroke = Instance.new("UIStroke")
+        stroke.Color = AbyssAmber
+        stroke.Thickness = 1.5
+        stroke.Parent = frame
+        local label = Instance.new("TextLabel")
+        label.BackgroundTransparency = 1
+        label.Size = UDim2.fromScale(1, 1)
+        label.Font = Enum.Font.GothamBold
+        label.TextSize = 14
+        label.TextColor3 = AbyssInk
+        label.Text = "Abyss | Cargando interfaz..."
+        label.Parent = frame
+        task.spawn(function()
+            local dots = 0
+            while screen.Parent do
+                dots = (dots % 3) + 1
+                label.Text = "Abyss | Cargando" .. string.rep(".", dots)
+                task.wait(0.4)
+            end
+        end)
+        return screen
+    end)
+    return ok and gui or nil
+end
+
+xpcall(function()
+print("[Abyss] Iniciando script...")
+local __env = (getgenv and getgenv()) or _G
+__env.AbyssAccent = AbyssAccent
+local __oldWindow = __env.AbyssWindow
+local __windowAlive = false
+if __oldWindow then
+    local __okRoot, __root = pcall(function() return __oldWindow.Root end)
+    __windowAlive = __okRoot and __root ~= nil and __root.Parent ~= nil
+end
+if __env.Abyss_Ready and __windowAlive then
+    -- Re-executing the script rebuilds the UI instead of silently doing nothing.
+    print("[Abyss] Recargando interfaz...")
+end
+if __oldWindow then
+    pcall(function() __oldWindow:Destroy() end)
+    pcall(function()
+        if __oldWindow.Root then __oldWindow.Root:Destroy() end
+    end)
+end
+do
+    -- Cleanup the previous Abyss Hunter build so it does not leave a duplicate window.
+    local legacyWindow = __env.AbyssHunterWindow
+    if legacyWindow and legacyWindow ~= __oldWindow then
+        pcall(function() legacyWindow:Destroy() end)
+        pcall(function()
+            if legacyWindow.Root then legacyWindow.Root:Destroy() end
+        end)
+    end
+    __env.AbyssHunter_Ready = nil
+end
+pcall(function()
+    local parent = (gethui and gethui()) or game:GetService("CoreGui")
+    for _, name in ipairs({
+        "Abyss_FloatingBall",
+        "Abyss_Error",
+        "Abyss_Boot",
+        "AbyssHunter_FloatingBall",
+        "AbyssHunter_Error",
+        "AbyssHunter_Boot",
+    }) do
+        local obj = parent:FindFirstChild(name)
+        if obj then obj:Destroy() end
+    end
+end)
+local __bootGui = AbyssShowLoading()
+__env.ForceReload = false
+__env.Abyss_Ready = false
+__env.AutoLeviathanFull_Loaded = true
+repeat task.wait() until game:IsLoaded() and game:GetService("Players").LocalPlayer
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local RS = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+local HttpService = game:GetService("HttpService")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+local LocalPlayer = Players.LocalPlayer
+local Remote = RS:FindFirstChild("Remotes")
+local CommF = Remote and Remote:FindFirstChild("CommF_")
+local T, ModeDisplay
+T, ModeDisplay = (function()
+    local LANGUAGE_LABELS = { "English", "Español" }
+    local LANG_CODE = { ["English"] = "en", ["Español"] = "es" }
+    local function NormalizeLanguage(value)
+        if value == nil then
+            return nil
+        end
+        local v = tostring(value):match("^%s*(.-)%s*$")
+        if v == "" then
+            return nil
+        end
+        if LANG_CODE[v] then
+            return v
+        end
+        local low = v:lower():gsub("ñ", "n"):gsub("[-_].*$", "")
+        if low == "spanish" or low == "es" or low == "espanol" or low == "castellano" then
+            return "Español"
+        end
+        if low == "english" or low == "en" then
+            return "English"
+        end
+        return "English"
+    end
+    local function LanguageCode()
+        return LANG_CODE[_G.Language] or "en"
+    end
+    local LangTable = {
+        ["ann.copied"] = { en = "DC link copied", es = "Enlace de Discord copiado" },
+        ["ann.copy"] = { en = "Copy DC Link", es = "Copiar enlace de Discord" },
+        ["ann.dc"] = { en = "DC Server", es = "Servidor de Discord" },
+        ["auto.buso"] = { en = "Auto Buso (Haki)", es = "Buso automático (Haki)" },
+        ["auto.fast"] = { en = "Auto Fast Mode", es = "Modo rápido automático" },
+        ["auto.fast.desc"] = { en = "Enables Fast Mode and reduces map materials", es = "Activa el modo rápido del juego y reduce los materiales del mapa" },
+        ["auto.full"] = { en = "Auto Leviathan Full", es = "Leviathan automático completo" },
+        ["auto.ken"] = { en = "Auto Ken (Observation)", es = "Ken automático (Observacion)" },
+        ["auto.ken.desc"] = { en = "Quietly requests Observation through the existing game remote, then checks the normal Ken state", es = "Solicita Observación en silencio mediante el remote del juego y comprueba su estado normal" },
+        ["auto.v3"] = { en = "Auto V3", es = "V3 automático" },
+        ["auto.v3.desc"] = { en = "Auto activate race V3", es = "Activa la habilidad V3 de la raza" },
+        ["auto.v4"] = { en = "Auto V4", es = "V4 automático" },
+        ["auto.v4.desc"] = { en = "Auto activate race V4 when full", es = "Activa la V4 cuando la energía esta llena" },
+        ["boat.height"] = { en = "Boat Height", es = "Altura del barco" },
+        ["boat.height.desc"] = { en = "Locked boat Y height while travelling (30–500)", es = "Altura Y fija del barco al navegar (30-500)" },
+        ["boat.speed"] = { en = "Boat Speed", es = "Velocidad del barco" },
+        ["boat.speed.desc"] = { en = "Boat and cruise speed (50–500). Return speed is fixed at 300", es = "Velocidad de navegación y patrulla (50-500). La velocidad de regreso es 300" },
+        ["return.mode"] = { en = "Return Method", es = "Método de regreso" },
+        ["return.home"] = { en = "Home Button / Spawn Point", es = "Botón de inicio / Punto de aparición" },
+        ["return.boat"] = { en = "Return by Boat", es = "Regresar en barco" },
+        ["destination"] = { en = "Leviathan Destination", es = "Destino del Leviathan" },
+        ["destination.tiki"] = { en = "Tiki", es = "Tiki" },
+        ["destination.hydra"] = { en = "Hydra", es = "Hydra" },
+        ["ignite.lantern"] = { en = "Ignite Lantern", es = "Encender la linterna" },
+        ["ignite.lantern.desc"] = { en = "When the Freezing Hydra Island event is active, interact with its lantern", es = "Interactúa con la linterna cuando esté activo el evento de la Isla Hydra Congelada" },
+        ["bribe.cd"] = { en = "On Cooldown", es = "En espera" },
+        ["bribe.done"] = { en = "Complete", es = "Completado" },
+        ["bribe.unknown"] = { en = "Unknown", es = "Desconocido" },
+        ["cruise.return"] = { en = "Return after 10 km", es = "Volver tras 10 km" },
+        ["cruise.return.desc"] = { en = "On: cruises back and forth between points A and B. Off: sails straight ahead without turning around", es = "Activado: va y vuelve entre los puntos A y B. Desactivado: navega en linea recta sin dar la vuelta" },
+        ["craft.auto"] = { en = "Auto Craft", es = "Fabricar automáticamente" },
+        ["craft.auto.desc"] = { en = "Auto craft scrolls of selected quality", es = "Fabrica pergaminos de la calidad elegida" },
+        ["craft.miss.item"] = { en = "Missing {k} ({a}/{b})", es = "Falta {k} ({a}/{b})" },
+        ["craft.miss.progress"] = { en = "Missing progress {k} ({a}/{b})", es = "Falta progreso {k} ({a}/{b})" },
+        ["craft.quality"] = { en = "Scroll Quality", es = "Calidad del pergamino" },
+        ["craft.quality.desc"] = { en = "Auto craft scrolls when materials ready", es = "Fabrica cuando tengas materiales y progreso" },
+        ["webhook.send.fruit"] = { en = "Fruit Obtained (Legendary / Mythical)", es = "Fruta obtenida (Legendaria / Mítica)" },
+        ["craft.roll"] = { en = "Auto Roll Fruit", es = "Girar fruta automáticamente" },
+        ["craft.status"] = { en = "Status", es = "Estado" },
+        ["craft.status.done"] = { en = "{name}: Crafted", es = "{name}: fabricado" },
+        ["craft.status.error"] = { en = "Failed to get craft data", es = "No se pudieron obtener los datos de fabricación" },
+        ["craft.status.miss"] = { en = "{name}: {miss}", es = "{name}: {miss}" },
+        ["craft.status.noRecipe"] = { en = "Recipe not found: {name}", es = "Receta no encontrada: {name}" },
+        ["craft.status.none"] = { en = "Off", es = "Desactivado" },
+        ["craft.store"] = { en = "Auto Store Fruits", es = "Guardar frutas automáticamente" },
+        ["craft.unlock"] = { en = "Auto Unlock Mythical Scroll", es = "Desbloquear y fabricar pergamino mítico" },
+        ["craft.unlock.desc"] = { en = "Builds only missing recipe amounts to unlock Mythical. Also enable Auto Craft for Mythical to keep crafting after the first one", es = "Fabrica solo las cantidades que faltan para desbloquear el mítico. Activa también la fabricación automática de míticos para continuar" },
+        ["craft.unlock.done"] = { en = "Mythical Scroll crafted: auto unlock stopped", es = "Pergamino mítico fabricado: desbloqueo detenido" },
+        ["craft.unlock.retry"] = { en = "Retrying craft", es = "Reintentando fabricación" },
+        ["craft.unlock.unknown"] = { en = "Mythical craft not confirmed: auto unlock stopped", es = "Fabricación mítica sin confirmar: desbloqueo detenido" },
+        ["craft.unlock.wait"] = { en = "Waiting for the craft result", es = "Esperando el resultado de la fabricación" },
+        ["dc.popup.close"] = { en = "Close", es = "Cerrar" },
+        ["dc.popup.copied"] = { en = "Copied!", es = "¡Copiado!" },
+        ["dc.popup.copy"] = { en = "Copy Invite Link", es = "Copiar invitación" },
+        ["dc.popup.desc"] = { en = "Join our Discord server for updates, keys and support.", es = "Únete a nuestro Discord para ver novedades, conseguir claves y recibir ayuda." },
+        ["dc.popup.hint"] = { en = "You can also select the link and copy it manually.", es = "También puedes seleccionar el enlace y copiarlo a mano." },
+        ["dc.popup.title"] = { en = "Join our Discord", es = "Únete a nuestro Discord" },
+        ["detail.bribe"] = { en = "Spy Bribe", es = "Soborno al espía" },
+        ["detail.follow"] = { en = "Following", es = "Siguiendo a" },
+        ["detail.no.boat"] = { en = "No boat", es = "Sin barco" },
+        ["detail.no.captain"] = { en = "No captain selected", es = "Sin capitán seleccionado" },
+        ["detail.not.seated"] = { en = "Not seated", es = "Sin asiento" },
+        ["detail.seat"] = { en = "Current Seat", es = "Asiento actual" },
+        ["detail.teammates"] = { en = "Teammates On Board", es = "Compañeros a bordo" },
+        ["dragon.farm"] = { en = "Dragonstorm for Farming", es = "Usar Dragonstorm al farmear" },
+        ["dragon.farm.desc"] = { en = "Use Dragonstorm for sea events (not Leviathan)", es = "Usa Dragonstorm en los eventos marinos (no en el Leviathan)" },
+        ["dragon.leviathan"] = { en = "Dragonstorm vs Leviathan", es = "Dragonstorm contra el Leviathan" },
+        ["dragon.leviathan.desc"] = { en = "Shoot Leviathan with Dragonstorm", es = "Dispara al Leviathan con Dragonstorm (funciona sin el modo de farmeo)" },
+        ["fast.attack"] = { en = "Fast Attack", es = "Ataque rápido" },
+        ["fast.attack.desc"] = { en = "Fast M1 attacks (not while seated)", es = "Ataques M1 rápidos (no mientras estas sentado)" },
+        ["follow.player"] = { en = "Follow Player", es = "Seguir jugador" },
+        ["fps.boost"] = { en = "FPS Boost", es = "Optimizacion de FPS" },
+        ["fps.boost.desc"] = { en = "Cut water waves, shadows, particles and map materials; also applies to islands streamed in later. Rejoin to restore", es = "Recorta olas, sombras, particulas y materiales del mapa; tambien se aplica a las islas que se cargan despues. Reingresa para restaurar" },
+        ["hunt.events"] = { en = "Fight Sea Events While Hunting", es = "Atacar eventos mientras busca" },
+        ["hunt.events.desc"] = { en = "Fight sea events during hunt", es = "Ataca eventos marinos mientras busca al Leviathan" },
+        ["hunt.select.events"] = { en = "Select Sea Events To Fight", es = "Eventos que debe atacar" },
+        ["hunt.select.events.desc"] = { en = "Only fight selected events, skip others (empty = all)", es = "Solo ataca los eventos marcados; el resto los ignora (vacio = todos)" },
+        ["hunt.skip.unselected"] = { en = "Skipped an unselected sea event", es = "Se omitió un evento marino no seleccionado" },
+        ["info.ui"] = { en = "Info Display UI", es = "Panel de información" },
+        ["info.ui.desc"] = { en = "Show live info overlay at top", es = "Muestra un panel con información en vivo en pantalla" },
+        ["ken.status"] = { en = "Observation (Ken)", es = "Observacion (Ken)" },
+        ["ken.status.fail"] = { en = "Could not enable (blocked or on cooldown)", es = "No se pudo activar (bloqueado o en enfriamiento)" },
+        ["ken.status.locked"] = { en = "Ken is not unlocked on this account", es = "Esta cuenta no tiene el Ken desbloqueado" },
+        ["ken.status.off"] = { en = "Off", es = "Desactivado" },
+        ["ken.status.on"] = { en = "Active", es = "Activo" },
+        ["ken.status.trying"] = { en = "Enabling...", es = "Activando..." },
+        ["language"] = { en = "Language", es = "Idioma" },
+        ["language.desc"] = { en = "Interface language. You can also switch it live from the executor with getgenv().language = \"Español\"", es = "Idioma de la interfaz. También puedes cambiarlo en vivo desde el ejecutor con getgenv().language = \"Español\"" },
+        ["menu.keybind"] = { en = "Menu Keybind", es = "Tecla del menu" },
+        ["mode.captain"] = { en = "Captain", es = "Capitán" },
+        ["mode.follower"] = { en = "Follower", es = "Seguidor" },
+        ["mode.select"] = { en = "Mode Select", es = "Selección de modo" },
+        ["notify.lang.changed"] = { en = "Language changed", es = "Idioma cambiado" },
+        ["notify.locked.hunt"] = { en = "In Follower mode the captain handles the hunt settings.", es = "En modo seguidor los ajustes de caza los lleva el Capitán." },
+        ["notify.locked.player"] = { en = "In Captain mode you do not pick who to follow. Switch to Follower.", es = "En modo Capitán no se elige a quién seguir. Cambia a Seguidor." },
+        ["notify.locked.solo"] = { en = "Solo sea farming controls this switch. Turn solo farming off first.", es = "El modo en solitario controla este interruptor. Apaga antes el farmeo en solitario." },
+        ["notify.locked.title"] = { en = "Option locked", es = "Opción bloqueada" },
+        ["notify.mode.captain"] = { en = "Captain mode: the player list is locked.", es = "Modo Capitán: la lista de jugadores queda bloqueada." },
+        ["notify.mode.follower"] = { en = "Follower mode: pick who to follow. The captain handles the hunt settings.", es = "Modo seguidor: elige a quién seguir. Los ajustes de caza los lleva el Capitán." },
+        ["notify.players.refreshed"] = { en = "Player list updated.", es = "Lista de jugadores actualizada." },
+        ["notify.ready"] = { en = "Abyss ready", es = "Abyss listo" },
+        ["notify.title"] = { en = "Abyss Notify", es = "Abyss | Aviso" },
+        ["notstarted"] = { en = "Off", es = "Desactivado" },
+        ["player.tween.speed"] = { en = "Player Tween Speed", es = "Velocidad de desplazamiento" },
+        ["player.tween.speed.desc"] = { en = "Player travel speed on foot to boats and sea-event targets (50–500). Applies to teleports and the combat hover", es = "Velocidad a pie al ir al barco y a los eventos marinos (50-500). Afecta a los teletransportes y a la suspensión en combate" },
+        ["refresh.btn"] = { en = "Refresh Player List", es = "Actualizar lista de jugadores" },
+        ["remove.fog"] = { en = "Remove Fog", es = "Quitar la niebla" },
+        ["remove.fog.desc"] = { en = "Removes the fog layer (LightingLayers)", es = "Elimina la capa de niebla (LightingLayers) para ver mejor" },
+        ["reset.data"] = { en = "Reset Data", es = "Reiniciar datos" },
+        ["respawn.rebuy"] = { en = "Auto Respawn", es = "Reaparecer automatico" },
+        ["respawn.rebuy.desc"] = { en = "Auto respawn back to Tiki", es = "Reaparece automaticamente en Tiki" },
+        ["sec.combat"] = { en = "Combat Settings", es = "Ajustes de combate" },
+        ["sec.haki"] = { en = "Haki & Race", es = "Haki y raza" },
+        ["sec.hunt"] = { en = "Hunt Settings", es = "Ajustes de caza" },
+        ["sec.main"] = { en = "Main", es = "Principal" },
+        ["sec.mode"] = { en = "Mode", es = "Modo" },
+        ["sec.performance"] = { en = "Performance & Effects", es = "Rendimiento y efectos" },
+        ["sec.team"] = { en = "Teammates", es = "Compañeros" },
+        ["sec.travel"] = { en = "Travel Settings", es = "Ajustes de navegación" },
+        ["sel.weapon"] = { en = "Select Weapon", es = "Seleccionar arma" },
+        ["silent.aim"] = { en = "Silent aim (skills and shots)", es = "Aim assist (skills y disparos)" },
+        ["silent.aim.desc"] = { en = "Skills and gun shots are aimed at the current mob or Leviathan by rewriting the game remotes and the mouse module, without moving the camera", es = "Las habilidades y los disparos apuntan al mob o al Leviathan reescribiendo los remotes y el modulo del raton, sin mover la camara" },
+        ["fruit.m1"] = { en = "Fruit M1", es = "M1 de fruta" },
+        ["fruit.m1.desc"] = { en = "Normal fruit M1 aimed at the current sea-event or Leviathan target", es = "M1 normal de fruta al objetivo marino o Leviathan actual" },
+        ["skill.fruit"] = { en = "Skill Keys Fruit", es = "Teclas de habilidad (fruta)" },
+        ["skill.gun"] = { en = "Skill Keys Gun", es = "Teclas de habilidad (pistola)" },
+        ["skill.melee"] = { en = "Skill Keys Melee", es = "Teclas de habilidad (puños)" },
+        ["skill.sword"] = { en = "Skill Keys Sword", es = "Teclas de habilidad (espada)" },
+        ["solo.seafarm"] = { en = "Solo Sea Event Farming", es = "Farmeo marino en solitario" },
+        ["solo.seafarm.desc"] = { en = "Only attack sea events selected in the dropdown", es = "Ataca solo los eventos elegidos en la lista" },
+        ["solo.boat"] = { en = "Solo Sea Farm Boat", es = "Barco para farmeo marino" },
+        ["solo.no.targets"] = { en = "No sea-event targets selected; solo farming is idle", es = "No hay objetivos marinos seleccionados; el farmeo está inactivo" },
+        ["solo.skip.unselected"] = { en = "Solo sea farm: skipped an unselected sea event", es = "Farmeo en solitario: se omitió un evento no seleccionado" },
+        ["status.current"] = { en = "Current Status", es = "Estado actual" },
+        ["status.detail"] = { en = "Details", es = "Detalles" },
+        ["status.off"] = { en = "Disabled", es = "Desactivado" },
+        ["status.on"] = { en = "Enabled", es = "Activado" },
+        ["status.prefix.follow"] = { en = "Following:", es = "Siguiendo:" },
+        ["status.stopped"] = { en = "Stopped", es = "Detenido" },
+        ["status.target"] = { en = "Target Status", es = "Estado del objetivo" },
+        ["stop.btn"] = { en = "Stop", es = "Detener" },
+        ["tab.announcement"] = { en = "Announcement", es = "Anuncio" },
+        ["tab.combat"] = { en = "Combat", es = "Combate" },
+        ["tab.config"] = { en = "Config", es = "Configuración" },
+        ["tab.craft"] = { en = "Misc", es = "Extras" },
+        ["tab.main"] = { en = "Leviathan", es = "Leviathan" },
+        ["tab.perf"] = { en = "Performance", es = "Rendimiento" },
+        ["tab.status"] = { en = "Leviathan", es = "Leviathan" },
+        ["tab.webhook"] = { en = "Webhook", es = "Webhook" },
+        ["target.gate"] = { en = "Gate Spawned (Ready)", es = "Puerta aparecida (lista)" },
+        ["target.heart"] = { en = "Heart", es = "Corazón" },
+        ["target.hooked"] = { en = "Hooked", es = "Enganchado" },
+        ["target.hp"] = { en = "HP", es = "Vida" },
+        ["target.not.spawned"] = { en = "Not Spawned", es = "No apareció" },
+        ["target.spawned"] = { en = "Spawned", es = "Aparecido" },
+        ["tp.enchant"] = { en = "Teleport to Enchant NPC", es = "Teletransporte al NPC de encantamiento" },
+        ["tab.enchant"] = { en = "Enchant", es = "Encantamiento" },
+        ["enchant.weapon.type"] = { en = "Weapon Type", es = "Tipo de arma" },
+        ["enchant.weapon"] = { en = "Weapon", es = "Arma" },
+        ["enchant.refresh"] = { en = "Refresh Weapon List", es = "Actualizar lista de armas" },
+        ["enchant.wanted"] = { en = "Stop after any selected enchant", es = "Detenerse al obtener cualquier encantamiento seleccionado" },
+        ["enchant.onheart"] = { en = "After 10 Mythical Scrolls, enchant on the next heart", es = "Encantar al obtener el siguiente corazón tras tener 10 pergaminos míticos" },
+        ["enchant.onheart.desc"] = { en = "Waits for the next heart count increase, then pauses navigation and rolls until a selected enchant is hit", es = "Espera al siguiente aumento de corazones, pausa la navegación y repite hasta obtener un encantamiento elegido" },
+        ["enchant.go.spawn"] = { en = "Go to Tiki Spawn NPC and set spawn", es = "Ir al NPC de aparición de Tiki y establecer el punto" },
+        ["enchant.spawn.done"] = { en = "Tiki spawn point confirmed", es = "Punto de aparición de Tiki confirmado" },
+        ["enchant.spawn.failed"] = { en = "Could not confirm the Tiki spawn point", es = "No se pudo confirmar el punto de aparición de Tiki" },
+        ["enchant.spawn.wait"] = { en = "Waiting for navigation control", es = "Esperando el control de navegación" },
+        ["enchant.spawn.busy"] = { en = "Navigation is busy", es = "La navegación está ocupada" },
+        ["enchant.spawn.search"] = { en = "Finding the Tiki SpawnPoint NPC", es = "Buscando al NPC SpawnPoint de Tiki" },
+        ["enchant.spawn.move"] = { en = "Tweening to the Tiki SpawnPoint NPC", es = "Yendo al NPC SpawnPoint de Tiki" },
+        ["enchant.spawn.notfound"] = { en = "Tiki SpawnPoint NPC not found", es = "No se encontró el NPC SpawnPoint de Tiki" },
+        ["enchant.spawn.cancelled"] = { en = "Tiki spawn NPC tween was cancelled or did not reach the target", es = "El desplazamiento al NPC de aparición de Tiki se canceló o no llegó al destino" },
+        ["enchant.status"] = { en = "Auto Enchant Status", es = "Estado de encantamiento automático" },
+        ["ui.bribe"] = { en = "Bribe", es = "Soborno" },
+        ["ui.floatingball"] = { en = "Floating Button", es = "Botón flotante" },
+        ["ui.floatingball.desc"] = { en = "Draggable button to open/close this menu (hotkey G always works)", es = "Botón arrastrable para abrir/cerrar el menú (la tecla G siempre funciona)" },
+        ["ui.details"] = { en = "Details", es = "Detalles" },
+        ["ui.teammates"] = { en = "Teammates", es = "Compañeros" },
+        ["webhook.auto"] = { en = "Auto Send Progress", es = "Enviar progreso automáticamente" },
+        ["webhook.auto.desc"] = { en = "Send current status to webhook every 60s", es = "Envia el estado al webhook cada 60 segundos" },
+        ["webhook.interval"] = { en = "Send Interval (s)", es = "Intervalo (segundos)" },
+        ["webhook.off"] = { en = "Off", es = "Desactivado" },
+        ["webhook.active"] = { en = "Active", es = "Activo" },
+        ["webhook.no.url"] = { en = "Set a webhook URL first", es = "Configura primero la URL del webhook" },
+        ["webhook.send.bribe"] = { en = "Send On Cooldown Ready", es = "Enviar cuando el soborno este listo" },
+        ["webhook.send.bribe.desc"] = { en = "Send once when bribe CD is ready", es = "Envia un aviso cuando termina la espera del soborno" },
+        ["webhook.send.heartgain"] = { en = "Send On Heart Obtained", es = "Enviar al obtener un corazón" },
+        ["webhook.send.heartgot"] = { en = "Send On Heart Grabbed", es = "Enviar cuando se engancha el corazón" },
+        ["webhook.send.heartspawn"] = { en = "Send On Heart Spawn", es = "Enviar cuando aparece el corazón" },
+        ["webhook.send.leviathan"] = { en = "Send On Leviathan Spawn", es = "Enviar cuando aparece el Leviathan" },
+        ["webhook.send.now"] = { en = "Send Now", es = "Enviar progreso ahora" },
+        ["webhook.send.progress"] = { en = "Periodic Sail Progress", es = "Enviar progreso periodicamente" },
+        ["webhook.send.progress.desc"] = { en = "Send status/heart/scale/scroll counts every interval", es = "Envia estado, corazones, escamas y pergaminos cada cierto tiempo" },
+        ["webhook.send.scrollgain"] = { en = "Send On Scroll Obtained", es = "Enviar al obtener un pergamino" },
+        ["webhook.send.enchant"] = { en = "Send Every Enchant Result", es = "Enviar cada resultado de encantamiento" },
+        ["wh.title.enchant"] = { en = "Auto Enchant Result", es = "Resultado de encantamiento automático" },
+        ["wh.enchant.weapon"] = { en = "Weapon", es = "Arma" },
+        ["wh.enchant.scroll"] = { en = "Scroll", es = "Pergamino" },
+        ["wh.enchant.result"] = { en = "Result", es = "Resultado" },
+        ["wh.enchant.hit"] = { en = "Selected target hit", es = "Objetivo seleccionado obtenido" },
+        ["wh.enchant.yes"] = { en = "YES", es = "SÍ" },
+        ["wh.enchant.no"] = { en = "NO", es = "NO" },
+        ["enchant.none"] = { en = "No enchantments read", es = "No se leyó ningún encantamiento" },
+        ["webhook.sending"] = { en = "Sending...", es = "Enviando..." },
+        ["webhook.sent"] = { en = "Sent: ", es = "Enviado: " },
+        ["webhook.status"] = { en = "Send Status", es = "Enviar estado" },
+        ["webhook.url"] = { en = "Webhook URL", es = "Enlace del webhook" },
+        ["webhook.url.desc"] = { en = "Discord webhook URL (auto send progress)", es = "URL de Discord donde recibir el progreso" },
+        ["webhook.username"] = { en = "Sender Name", es = "Nombre del remitente" },
+        ["webhook.username.desc"] = { en = "Discord sender display name (default Leviatan)", es = "Nombre que se muestra en Discord (por defecto Leviatan)" },
+        ["wh.bribe"] = { en = "Spy Bribe", es = "Soborno al espía" },
+        ["wh.crafted"] = { en = "Crafting", es = "Fabricación" },
+        ["wh.field.display"] = { en = "Display Name", es = "Nombre visible" },
+        ["wh.field.uid"] = { en = "User ID", es = "ID de usuario" },
+        ["wh.field.user"] = { en = "Username", es = "Usuario" },
+        ["wh.lowplayers"] = { en = "Low players", es = "Pocos jugadores" },
+        ["wh.lowplayers.desc"] = { en = "@everyone when server players (incl. you) < 5", es = "Avisa con @everyone cuando hay menos de 5 jugadores (contigo)" },
+        ["wh.lowplayers.msg"] = { en = "Current players: ", es = "Jugadores actuales: " },
+        ["wh.material"] = { en = "Materials", es = "Materiales" },
+        ["wh.msg.bribe.ready"] = { en = "[Abyss] Bribe CD ready - progress {n}/5", es = "[Abyss] Soborno disponible - progreso {n}/5" },
+        ["wh.msg.heartgain"] = { en = "[Abyss] Heart obtained!", es = "[Abyss] ¡Corazón obtenido!" },
+        ["wh.msg.heartgot"] = { en = "[Abyss] Heart hooked!", es = "[Abyss] Corazón enganchado" },
+        ["wh.msg.heartspawn"] = { en = "[Abyss] Heart spawned!", es = "[Abyss] El corazón apareció" },
+        ["wh.msg.leviathan"] = { en = "[Abyss] Leviathan spawned!", es = "[Abyss] El Leviathan apareció" },
+        ["wh.msg.scrollgain"] = { en = "[Abyss] Scroll obtained!", es = "[Abyss] ¡Pergamino obtenido!" },
+        ["wh.none"] = { en = "None", es = "Ninguno" },
+        ["wh.scroll"] = { en = "Scrolls", es = "Pergaminos" },
+        ["wh.sendfailed"] = { en = "Send Failed", es = "Error al enviar" },
+        ["wh.title.bribe"] = { en = "Bribe CD Ready", es = "Soborno disponible" },
+        ["wh.title.heartgain"] = { en = "Heart Obtained", es = "Corazón obtenido" },
+        ["wh.title.heartgot"] = { en = "Heart Grabbed", es = "Corazón enganchado" },
+        ["wh.title.heartspawn"] = { en = "Heart Spawned", es = "Corazón aparecido" },
+        ["wh.title.leviathan"] = { en = "Leviathan Spawned", es = "Leviathan apareció" },
+        ["wh.title.lowplayers"] = { en = "Low Players", es = "Pocos jugadores" },
+        ["wh.title.manual"] = { en = "Manual Send", es = "Envio manual" },
+        ["wh.title.progress"] = { en = "Sail Progress", es = "Progreso de navegación" },
+        ["wh.title.scrollgain"] = { en = "Scroll Obtained", es = "Pergamino obtenido" },
+    }
+    local function T(key)
+        local entry = LangTable[key]
+        if not entry then
+            return key
+        end
+        return entry[LanguageCode()] or entry.en or entry.es or key
+    end
+    local function ModeDisplay()
+        return (_G.Mode == "Capitán") and T("mode.captain") or T("mode.follower")
+    end
+    _G.Language = (getgenv and NormalizeLanguage(getgenv().language))
+        or NormalizeLanguage(_G.Language)
+        or "English"
+    if getgenv then
+        getgenv().language = _G.Language
+    end
+    _G.Abyss_LanguageLabels = LANGUAGE_LABELS
+    _G.Abyss_NormalizeLanguage = NormalizeLanguage
+    _G.Abyss_LanguageCode = LanguageCode
+    return T, ModeDisplay
+end)()
+_G.Mode = _G.Mode or "Capitán"
+_G.FollowTarget = _G.FollowTarget or ""
+_G.AutoLeviathanFull = false
+_G.StopTween = false
+if _G.ShowInfoUI == nil then _G.ShowInfoUI = false end
+if _G.SilentAim == nil then _G.SilentAim = true end
+if _G.SelectWeapon == nil then _G.SelectWeapon = "Sword" end
+if _G.SkillMelee == nil then _G.SkillMelee = {"Z", "X", "C"} end
+if _G.SkillSword == nil then _G.SkillSword = {"Z", "X"} end
+if _G.FruitM1 == nil then _G.FruitM1 = false end
+if _G.SkillFruit == nil then _G.SkillFruit = {"X"} end
+if _G.SkillGun == nil then _G.SkillGun = {"Z", "X"} end
+if _G.FastAttack_Mode == nil then _G.FastAttack_Mode = "2" end
+if _G.AutoBuso == nil then _G.AutoBuso = true end
+if _G.AutoKen == nil then _G.AutoKen = false end
+if _G.FastAttack == nil then _G.FastAttack = false end
+if _G.DragonGunFarm == nil then _G.DragonGunFarm = false end
+if _G.DragonGunLeviathan == nil then _G.DragonGunLeviathan = false end
+if _G.RemoveFog == nil then _G.RemoveFog = false end
+if _G.AutoFastMode == nil then _G.AutoFastMode = false end
+if _G.FPSBoost == nil then _G.FPSBoost = false end
+if _G.AutoV3 == nil then _G.AutoV3 = false end
+if _G.AutoV4 == nil then _G.AutoV4 = false end
+if _G.BoatLockY == nil then _G.BoatLockY = 150 end
+if _G.BoatHeight == nil then _G.BoatHeight = _G.BoatLockY end
+if _G.BoatSpeed == nil then _G.BoatSpeed = 250 end
+if _G.PlayerTweenSpeed == nil then _G.PlayerTweenSpeed = 275 end
+if _G.FollowerSeatTrySeconds == nil then _G.FollowerSeatTrySeconds = 2 end
+if _G.ReturnMode == nil then _G.ReturnMode = "Boat" end
+if _G.LeviathanDestination == nil then _G.LeviathanDestination = "Tiki" end
+if _G.IgniteLantern == nil then _G.IgniteLantern = false end
+if _G.TeleportEnchantNPC == nil then _G.TeleportEnchantNPC = false end
+if _G.AutoCraftScrolls == nil then _G.AutoCraftScrolls = false end
+if _G.CraftQuality == nil then _G.CraftQuality = "None" end
+if _G.AutoUnlockMythical == nil then _G.AutoUnlockMythical = false end
+if _G.AutoEnchantOnHeart == nil then _G.AutoEnchantOnHeart = false end
+if _G.EnchantWeaponType == nil then _G.EnchantWeaponType = "Sword" end
+if _G.EnchantWeaponName == nil then _G.EnchantWeaponName = "" end
+if _G.EnchantWanted == nil then _G.EnchantWanted = {} end
+if _G.AutoRandomFruit == nil then _G.AutoRandomFruit = false end
+if _G.WebhookSendFruit == nil then _G.WebhookSendFruit = true end
+if _G.AutoStoreFruits == nil then _G.AutoStoreFruits = false end
+if _G.HuntFightEvents == nil then _G.HuntFightEvents = false end
+if _G.SoloSeaFarm == nil then _G.SoloSeaFarm = false end
+if _G.SoloSeaBoat == nil then _G.SoloSeaBoat = "Beast Hunter" end
+if _G.RespawnRebuy == nil then _G.RespawnRebuy = false end
+if _G.CruiseReturn == nil then _G.CruiseReturn = true end
+if _G.HuntSelectEvents == nil then _G.HuntSelectEvents = {} end
+if _G.WebhookURL == nil then _G.WebhookURL = "" end
+if _G.WebhookUsername == nil then _G.WebhookUsername = "Leviatan" end
+if _G.AutoWebhook == nil then _G.AutoWebhook = false end
+if _G.WebhookInterval == nil then _G.WebhookInterval = 60 end
+if _G.WebhookSendProgress == nil then _G.WebhookSendProgress = false end
+if _G.WebhookSendBribeReady == nil then _G.WebhookSendBribeReady = false end
+if _G.WebhookSendLeviathan == nil then _G.WebhookSendLeviathan = false end
+if _G.WebhookSendHeartSpawn == nil then _G.WebhookSendHeartSpawn = false end
+if _G.WebhookSendHeartGot == nil then _G.WebhookSendHeartGot = false end
+if _G.WebhookSendHeartGain == nil then _G.WebhookSendHeartGain = false end
+if _G.WebhookSendScrollGain == nil then _G.WebhookSendScrollGain = false end
+if _G.WebhookSendEnchantResult == nil then _G.WebhookSendEnchantResult = true end
+if _G.WebhookSendLowPlayers == nil then _G.WebhookSendLowPlayers = false end
+local Character = LocalPlayer.Character
+local HD = Character and Character:FindFirstChild("Humanoid")
+local HRP = Character and Character:FindFirstChild("HumanoidRootPart")
+local CurrentTween = nil
+local NavigationOwner = nil
+local EnchantHandoff = { requested = false, parked = {}, claimed = false }
+function EnchantHandoff.Park(role)
+    if not EnchantHandoff.requested then return false end
+    EnchantHandoff.parked[role] = true
+    while EnchantHandoff.requested and _G.AutoLeviathanFull do
+        task.wait(0.1)
+    end
+    EnchantHandoff.parked[role] = nil
+    return true
+end
+function EnchantHandoff.Release()
+    EnchantHandoff.requested = false
+    EnchantHandoff.claimed = false
+    EnchantHandoff.returning = false
+    EnchantHandoff.boat, EnchantHandoff.seat = nil, nil
+    EnchantHandoff.character = nil
+end
+local LastAttackTime = 0
+local SkillCoolDown = false
+local CombatAPI = {}
+local AttackSeedCache, AttackSeedAt = nil, 0
+local AttackNet, AttackRegisterAttack, AttackRegisterHit, AttackSeedRemote = nil, nil, nil, nil
+local AttackObfuscatedRemote, AttackObfuscatedId = nil, nil
+local FightTarget = nil
+local AttackModel = nil
+local AttackStandFn = nil
+local StatusText = T("notstarted")
+local StatusPrefix = ""
+local TranslateStatus, SetStatus
+TranslateStatus, SetStatus = (function(LanguageCode)
+    local StatusStatic = {
+        ["Barco viejo inservible: espero el reinicio para recomprar"] = { en = "Old boat unusable: waiting for the reset to rebuy" },
+        ["No pude bajarme antes de comprar: voy igual al vendedor"] = { en = "Failed to unseat before buying, still heading to dealer" },
+        ["No llegué al vendedor de barcos: reintentando"] = { en = "Did not reach boat dealer, retrying" },
+        ["El barco desapareció: vuelo a comprar otro"] = { en = "Boat gone, flying to buy new boat" },
+        ["Barco nuevo comprado: esperando a los compañeros"] = { en = "New boat bought, waiting for teammates" },
+        ["Barco hundido (Y<0): lo abandono y compro otro"] = { en = "Boat Y below 0, abandoning and rebuying" },
+        ["Crucero atascado: bajo y vuelvo a subir para reiniciar"] = { en = "Cruise stalled, reseating and restarting" },
+        ["El capitán volvió al barco: dejo de pelear y vuelvo"] = { en = "Captain back on boat, returning to boat" },
+        ["Farmeo marino: comprobando salir del asiento"] = { en = "Farming event, repeatedly checking seat" },
+        ["Pelea a pie: comprobando salir del asiento"] = { en = "Unseating to fight, checking repeatedly" },
+        ["No consigo bajarme: salgo de este combate"] = { en = "Failed to unseat, exiting this combat" },
+        ["Leviathan no encontrado por ahora: sigo esperando"] = { en = "Leviathan not found yet, still waiting" },
+        ["Vida recuperada: sigo atacando"] = { en = "HP restored, resuming attack" },
+        ["Sigo sentado antes de atacar: me bajo a la fuerza"] = { en = "Still seated, forcing unseat" },
+        ["Enganche fallido: no hay corazón"] = { en = "Hook failed, no heart" },
+        ["Enganche fallido: el barco no tiene asiento de arpón"] = { en = "Hook failed, no harpoon seat on boat" },
+        ["Enganche: no estoy en el timón, salto esta ronda"] = { en = "Hook: not on helm, skipping round" },
+        ["Enganche: me caí del asiento, dejo de girar"] = { en = "Hook: fell off seat, stopping aim" },
+        ["Enganche fallido: no pude bajarme, salto la ronda"] = { en = "Hook failed, unseat failed, skipping round" },
+        ["Enganche fallido: no pude subir al asiento del arpón"] = { en = "Hook failed, could not board harpoon seat" },
+        ["Enganche: el corazón desapareció"] = { en = "Hook: heart gone" },
+        ["Enganche fallido: bajo del arpón para reintentar"] = { en = "Hook missed, unseating for next round" },
+        ["Enganche: la proa no apunta al corazón, no disparo esta ronda"] = { en = "Bow is not aimed at the heart, skipping this shot" },
+        ["Enganche: la proa se movió, vuelvo a alinearla"] = { en = "Bow moved, aligning it again before firing" },
+        ["No pude bajar del arpón: intento la siguiente ronda"] = { en = "Hook: unseat failed, retrying next round" },
+        ["¡Corazón enganchado!"] = { en = "Heart hooked" },
+        ["Fallo: el corazón no quedó enganchado"] = { en = "Hook failed, heart not hooked" },
+        ["En la puerta del Leviathan: esperando a que aparezca"] = { en = "At the Leviathan gate, waiting for it to appear" },
+        ["Leviathan apareció: empiezo el combate"] = { en = "Leviathan spawned, starting combat" },
+        ["Menos de 200 en 30 s: bajo y vuelvo a subir para reiniciar"] = { en = "Moved <200 in 30s, reseating and restarting" },
+        ["Atascado y no pude bajarme: sigo esperando"] = { en = "Stuck and unseat failed, waiting" },
+        ["Volviendo a Tiki"] = { en = "Returning to Tiki" },
+        ["Volviendo a Tiki: el corazón desapareció, cancelo"] = { en = "Returning to Tiki, heart gone, aborting" },
+        ["El corazón desapareció: dejo de volver a Tiki"] = { en = "Heart gone, stopping return to Tiki" },
+        ["Debajo del corazón: espero 1.5 s"] = { en = "Under heart, waiting 1.5s" },
+        ["De vuelta en Tiki: espero a que el corazón desaparezca"] = { en = "Back at Tiki, waiting for heart" },
+        ["Se agotó la espera de compañeros"] = { en = "Timed out waiting for teammates" },
+        ["Esperando compañeros: el capitán sube al timón primero"] = { en = "Waiting for team, captain helms first" },
+        ["El barco desapareció: vuelvo a comprarlo"] = { en = "Boat gone, rebuying" },
+        ["El barco nuevo no tiene timón: vuelvo a comprar"] = { en = "New boat has no helm, rebuying" },
+        ["El barco desapareció mientras esperaba: vuelvo a comprar"] = { en = "Boat gone while waiting, rebuying" },
+        ["El compañero más cercano está a más de 10000: vuelvo a comprar barco"] = { en = "Nearest teammate >10000, rebuying boat" },
+        ["Compañeros demasiado lejos: vuelvo al muelle a comprar"] = { en = "Teammate too far, returning to dock to rebuy" },
+        ["No pude bajarme: sigo intentando pelear"] = { en = "Unseat failed, retrying combat" },
+        ["No pude subir al timón: vuelvo al bucle principal"] = { en = "Failed to helm, back to main loop" },
+        ["Farmeo en solitario: no espero compañeros"] = { en = "Solo farm: skipping teammate wait" },
+        ["Esperando a 4 compañeros a bordo"] = { en = "Waiting for 4 teammates" },
+        ["4 compañeros a bordo: navego en 0.5 s"] = { en = "4 teammates aboard, sailing in 0.5s" },
+        ["4 compañeros a bordo: listos para farmear"] = { en = "4 teammates aboard, ready to farm" },
+        ["Leviathan apareció: dejo el farmeo y voy a cazarlo"] = { en = "Leviathan spawned, switching to hunt" },
+        ["Farmeo marino: peleando a pie"] = { en = "Farming event, fighting" },
+        ["Corazón enganchado: subo al barco en 5 s"] = { en = "Heart hooked, boarding in 5s" },
+        ["Corazón enganchado: subo al timón"] = { en = "Heart hooked, boarding helm" },
+        ["En el timón: vuelvo a Tiki en 10 s"] = { en = "On helm, returning to Tiki in 10s" },
+        ["El corazón desapareció: voy al muelle a comprar barco"] = { en = "Heart gone, going to buy new boat" },
+        ["El barco desapareció: compro uno nuevo sin esperar el corazón"] = { en = "Boat gone, buying new boat now" },
+        ["El corazón desapareció y no pude bajarme: voy igual a comprar"] = { en = "Heart gone, unseat failed, heading to buy" },
+        ["El barco desapareció durante la caza: vuelvo al bucle principal"] = { en = "Boat gone during hunt, back to main loop" },
+        ["Me caí del asiento: vuelvo al timón"] = { en = "Fell off seat, re-helming" },
+        ["No pude volver al barco: vuelvo al bucle principal"] = { en = "Re-board failed, back to main loop" },
+        ["La puerta del Leviathan apareció: detengo el barco"] = { en = "Leviathan gate spawned, stopping boat" },
+        ["El barco desapareció mientras esperaba: dejo la caza"] = { en = "Boat gone while waiting, stopping hunt" },
+        ["Buscando al Leviathan: sigo navegando"] = { en = "Hunting Leviathan, continue sailing" },
+        ["La caza terminó con error: reinicio"] = { en = "Hunt error, restarting" },
+        ["No pude bajarme: reintento"] = { en = "Unseat failed, retrying" },
+        ["Leviathan no derrotado: reinicio"] = { en = "Leviathan not defeated, restarting" },
+        ["Leviathan derrotado"] = { en = "Leviathan defeated" },
+        ["El corazón apareció: engancho en 5 s"] = { en = "Heart spawned, hooking in 5s" },
+        ["Corazón detectado: continúo con el enganche"] = { en = "Heart detected, continuing hook" },
+        ["Esperando el estado del soborno (no disponible)"] = { en = "Could not get bribe status" },
+        ["Leviathan detectado: voy a cazarlo"] = { en = "Leviathan detected, hunting" },
+        ["Soborno completado: empiezo la caza del Leviathan"] = { en = "Bribe done, hunting Leviathan" },
+        ["Soborno incompleto: farmeo eventos mientras espero"] = { en = "Bribe incomplete, farming events" },
+        ["Farmeo en solitario: empiezo a patrullar"] = { en = "Solo farm: starting patrol" },
+        ["Siguiendo: el barco está lejos, me acerco volando"] = { en = "Following, boat far, flying closer" },
+        ["Siguiendo: no hay asientos libres (¿4/4?)"] = { en = "Following, no free seat (4/4?)" },
+        ["El corazón desapareció: subo al barco a seguir"] = { en = "Heart gone, boarding to follow" },
+        ["Corazón enganchado: subo al cañón"] = { en = "Heart hooked, boarding cannon" },
+        ["En espera en el barco (corazón enganchado)"] = { en = "On standby on boat (heart hooked)" },
+        ["Corazón enganchado: sigo al capitán"] = { en = "Heart hooked, following captain" },
+        ["Leviathan apareció: cancelo el viaje a la puerta"] = { en = "Leviathan spawned, canceling gate teleport" },
+        ["Leviathan apareció y no pude bajarme: reintentando"] = { en = "Leviathan spawned, unseat failed, retrying" },
+        ["Leviathan apareció: me bajo a pelear"] = { en = "Leviathan spawned, unseating to fight" },
+        ["El capitán bajó y yo no puedo: reintentando"] = { en = "Captain off, unseat failed, retrying" },
+        ["El capitán bajó: bajo también"] = { en = "Captain off, following off" },
+        ["Barco del capitán perdido: peleo mientras compra otro"] = { en = "Captain boat gone, fighting while he rebuys" },
+        ["Leviathan apareció: fuerzo salir del viaje a la puerta"] = { en = "Leviathan spawned, exiting gate teleport" },
+        ["La puerta del Leviathan apareció: me teletransporto"] = { en = "Leviathan gate spawned, teleporting to gate" },
+        ["Me teletransporto al corazón"] = { en = "Teleporting to heart" },
+        ["Siguiendo al capitán (esperando el corazón)"] = { en = "Following captain (waiting heart)" },
+        ["El capitán está a pie, sin objetivo: en espera"] = { en = "Captain off, no target, standby" },
+        ["Barco hundido (Y<0)"] = { en = "Boat Y below 0" },
+        ["Barco destruido (vida 0)"] = { en = "Boat destroyed (0 HP)" },
+        ["Barco del capitán inservible"] = { en = "Captain's boat unusable" },
+        ["Barco del capitán desaparecido"] = { en = "Captain's boat gone" },
+        ["Barco desaparecido"] = { en = "Boat gone" },
+        ["Faltan compañeros en el barco"] = { en = "Teammates missing on board" },
+        ["Capitán muerto"] = { en = "Captain died" },
+        ["Esperando compañeros: bajo del asiento y vuelvo a subir (anti-atasco)"] = { en = "Waiting for teammates: unseating and reboarding (anti-stuck)" },
+        ["Cerca del vendedor de barcos: compro barco sin reiniciar"] = { en = "Near the boat dealer: buying a boat instead of resetting" },
+        ["Leviathan, puerta o corazón presentes: no reinicio"] = { en = "Leviathan, gate or heart present: not resetting" },
+        ["Sigo bloqueado, pero hay Leviathan/puerta/corazón: no reinicio"] = { en = "Still stuck but Leviathan/gate/heart present: not resetting" },
+        ["Asiento fantasma: lo suelto y vuelvo a subir"] = { en = "Phantom seat: releasing it and boarding again" },
+        ["Sigo bloqueado: reinicio el personaje en Tiki"] = { en = "Still stuck, resetting the character at Tiki" },
+        ["Corazón presente y sin barco: voy a comprar uno"] = { en = "Heart present but no boat: going to buy one" },
+        ["Reinicio en curso: espero para comprar barco"] = { en = "Character reset in progress, waiting before buying a boat" },
+        ["El reinicio en Tiki falló: reintentando"] = { en = "Reset at Tiki failed, retrying" },
+        ["El reinicio se quedó colgado: lo libero y sigo"] = { en = "Reset got stuck: releasing it and continuing" },
+        ["Navegación reservada: espero antes de comprar barco"] = { en = "Navigation reserved: waiting before buying a boat" },
+        ["Navegando la ruta fija de Hydra"] = { en = "Sailing the fixed Hydra route" },
+        ["De vuelta en Tiki: navegación bloqueada"] = { en = "Returned to Tiki; navigation locked" },
+        ["Corazón asegurado: me detengo y vuelvo a Tiki con el botón Home"] = { en = "Heart secured: stopping movement and returning to Tiki with Home Button" },
+        ["Fase del corazón terminada: espero el barco en Tiki"] = { en = "Heart phase ended: waiting at Tiki for the boat" },
+        ["Barco de vuelta en Tiki: reanudo el flujo principal"] = { en = "Boat returned to Tiki; resuming the main flow" },
+        ["El barco no volvió a Tiki a tiempo: recompro para reanudar"] = { en = "Boat did not return to Tiki in time: rebuying to resume the main flow" },
+        ["Corazón asegurado: me quedo a bordo para el regreso en barco"] = { en = "Heart secured: staying aboard for the boat return" },
+        ["Llegué al destino de Hydra"] = { en = "Reached Hydra destination" },
+        ["Los remotes del botón Home no están disponibles; la navegación sigue detenida"] = { en = "Home Button remotes unavailable; navigation remains stopped" },
+        ["El evento del botón Home falló; la navegación sigue detenida"] = { en = "Home Button event failed; navigation remains stopped" },
+        ["La solicitud TeleportToSpawn falló; la navegación sigue detenida"] = { en = "TeleportToSpawn request failed; navigation remains stopped" },
+        ["Botón Home y TeleportToSpawn enviados: confirmando el spawn en Tiki"] = { en = "Home Button and TeleportToSpawn sent: confirming Tiki spawn" },
+        ["TeleportToSpawn enviado, pero no se confirmó la llegada a Tiki; la navegación sigue bloqueada"] = { en = "TeleportToSpawn sent, but Tiki arrival was not confirmed; navigation remains locked" },
+        ["En Tiki: esperando el corazón y el regreso del barco"] = { en = "At Tiki: waiting for the heart and boat return" },
+        ["Esperando el regreso del botón Home a Tiki"] = { en = "Waiting for Home Button return to Tiki" },
+    }
+    local StatusPatterns = {
+        { es = "Personaje bloqueado en el sitio ({1}): lo libero", en = "Character stuck in place ({1}): freeing it", nested = false },
+        { es = "Personaje bloqueado en el sitio ({1}): teletransporte forzado", en = "Character stuck in place ({1}): forcing a teleport", nested = false },
+        { es = "Siguiendo: el barco del capitán está a más de {1} — no lo persigo", en = "Following: captain's boat is over {1} away - not chasing it", nested = false },
+        { es = "Volviendo a Tiki: corazón a {1} — voy justo debajo del corazón", en = "Returning, heart {1} away, moving under heart", nested = false },
+        { es = "Enganche: espero el resultado (disparo {1}, esperando {2} s)", en = "Hook: waiting after shot ({1} fired, {2}s)", nested = false },
+        { es = "Abriendo la puerta del Leviathan (intento {1}, cada 10 s)", en = "Opening Leviathan gate (attempt {1}, every 10s)", nested = false },
+        { es = "Esperando el corazón: me teletransporto (llevo {1} s)", en = "Waiting on heart, TPing to its position ({1}s)", nested = false },
+        { es = "Compañero lejos, recompra en espera: aguardo ({1} s)", en = "Teammate far, rebuy on cooldown, waiting ({1}s)", nested = false },
+        { es = "Esperando a que el corazón desaparezca (llevo {1} s)", en = "Waiting for heart to vanish ({1}s)", nested = false },
+        { es = "[Abyss] Soborno disponible - progreso {1}/5", en = "[Abyss] Bribe ready - progress {1}/5", nested = false },
+        { es = "Error al configurar el spawn en Tiki: {1}", en = "Tiki spawn setup error: {1}", nested = false },
+        { es = "El corazón apareció: engancho en 5 s (llevo {1} s)", en = "Heart spawned, hooking in 5s ({1}s)", nested = false },
+        { es = "Enganche: navego a X+300 del corazón (intento {1})", en = "Hook: sailing to heart X+300 (attempt {1})", nested = false },
+        { es = "Enganche: navegando a X+300 del corazón (dist {1})", en = "Hook: sailing to heart X+300 (dist {1})", nested = false },
+        { es = "Volviendo a Tiki: corazón a {1} del barco, cancelo", en = "Returning, heart {1} from boat, aborting", nested = false },
+        { es = "Siguiendo: pruebo el asiento {1} (cambio cada {2} s)", en = "Following, trying seat {1} (rotating every {2}s)", nested = false },
+        { es = "Siguiendo: asiento {1} ocupado por otro jugador, pruebo otro", en = "Following: seat {1} taken by another player, trying the next one", nested = false },
+        { es = "Enganche: apunto la proa al corazón (intento {1})", en = "Hook: aiming bow at heart (attempt {1})", nested = false },
+        { es = "Enganche: bajo al asiento del arpón (intento {1})", en = "Hook: unseating to harpoon seat (attempt {1})", nested = false },
+        { es = "Esperando a que aparezca el corazón (llevo {1} s)", en = "Waiting for heart ({1}s)", nested = false },
+        { es = "Buscando al Leviathan: navegando (llevo {1} s)", en = "Hunting Leviathan, sailing ({1}s)", nested = false },
+        { es = "Barco a más de {1}, lo abandono y compro otro", en = "Boat is over {1} away, abandoning it and buying another", nested = false },
+        { es = "Enganche: disparo el arpón nº {1} (ángulo {2}°)", en = "Hook: firing harpoon {1} (angle {2}°)", nested = false },
+        { es = "En espera en el barco (capitán {1} al timón)", en = "On standby (captain {1} at helm)", nested = false },
+        { es = "{1}: reiniciando en Tiki para comprar barco", en = "{1}: resetting to Tiki to buy a boat", nested = true },
+        { es = "{1}: esperando a terminar el evento marino", en = "{1}: waiting to finish the sea event", nested = true },
+        { es = "Volviendo a Tiki (dist {1}, navegando {2} s)", en = "Returning to Tiki (dist {1}, {2}s sailed)", nested = false },
+        { es = "Soborno incompleto ({1}/5): soborno ahora", en = "Bribe incomplete ({1}/5), bribing now", nested = false },
+        { es = "Farmeo marino: patrullando (llevo {1} s)", en = "Farming event, cruising ({1}s)", nested = false },
+        { es = "El Leviathan apareció: ataco en {1} s", en = "Leviathan spawned, attacking in {1}s", nested = false },
+        { es = "Enganche: subo al timón (intento {1})", en = "Hook: boarding helm (attempt {1})", nested = false },
+        { es = "Esperando compañeros a bordo ({1}/4)", en = "Waiting for teammates ({1}/4)", nested = false },
+        { es = "Sobornando al espía (intento {1}/4)", en = "Bribing spy ({1}/4)", nested = false },
+        { es = "Atacando al Leviathan: {1} - vida {2}", en = "Attacking the Leviathan: {1} - HP {2}", nested = false },
+        { es = "Vida baja: subo a evadir ({1})", en = "Low HP, flying to dodge ({1})", nested = false },
+        { es = "Farmeo marino: {1} (llevo {2} s)", en = "Farming sea event: {1} ({2}s)", nested = false },
+        { es = "Evento marino derrotado: {1}", en = "Sea event defeated: {1}", nested = false },
+        { es = "Mientras espero, farmeo: {1}", en = "Farming event while waiting: {1}", nested = false },
+        { es = "Corazón enganchado (Y={1})", en = "Heart hooked (Y={1})", nested = false },
+        { es = "Atacando al Leviathan: {1}", en = "Attacking the Leviathan: {1}", nested = false },
+        { es = "Receta no encontrada: {1}", en = "Recipe not found: {1}", nested = false },
+        { es = "Falta progreso {1} ({2}/{3})", en = "Missing progress {1} ({2}/{3})", nested = false },
+        { es = "De caza: farmeo {1}", en = "Farming event while hunting: {1}", nested = false },
+        { es = "{1}: fabricado", en = "{1}: crafted", nested = false },
+        { es = "Falta {1} ({2}/{3})", en = "Missing {1} ({2}/{3})", nested = false },
+    }
+    local function EscapePattern(text)
+        return (text:gsub("([%^%$%(%)%%%.%[%]%*%+%-%?])", "%%%1"))
+    end
+    local function CompileStatusPattern(template)
+        local parts, i = {}, 1
+        while true do
+            local a, b = template:find("{%d+}", i)
+            if not a then
+                parts[#parts + 1] = template:sub(i)
+                break
+            end
+            parts[#parts + 1] = template:sub(i, a - 1)
+            i = b + 1
+        end
+        local pattern = "^" .. EscapePattern(parts[1])
+        for k = 2, #parts do
+            pattern = pattern .. "(.-)" .. EscapePattern(parts[k])
+        end
+        return pattern .. "$", #parts - 1
+    end
+    for _, item in ipairs(StatusPatterns) do
+        item.pattern, item.slots = CompileStatusPattern(item.es)
+    end
+    local function TranslateStatic(text, code)
+        local entry = StatusStatic[text]
+        if entry then
+            return entry[code] or entry.en or text
+        end
+        return text
+    end
+    local function FillTemplate(template, caps, code, nested)
+        local out = template
+        for k = 1, #caps do
+            local value = caps[k] or ""
+            if nested then
+                value = TranslateStatic(value, code)
+            end
+            out = out:gsub("{%d+}", function()
+                return value
+            end, 1)
+        end
+        return out
+    end
+    local StatusCache, StatusCacheCount = {}, 0
+    local STATUS_CACHE_MAX = 400
+    local function CurrentCode()
+        if LanguageCode then
+            return LanguageCode()
+        end
+        return "en"
+    end
+    local function TranslateStatus(text)
+        if text == nil or text == "" then
+            return text
+        end
+        local code = CurrentCode()
+        if code == "es" then
+            return text
+        end
+        local cached = StatusCache[text]
+        if cached then
+            return cached
+        end
+        local result = TranslateStatic(text, code)
+        if result == text then
+            for _, item in ipairs(StatusPatterns) do
+                local caps = { text:match(item.pattern) }
+                if caps[1] ~= nil then
+                    result = FillTemplate(item[code] or item.en, caps, code, item.nested)
+                    break
+                end
+            end
+        end
+        if StatusCacheCount >= STATUS_CACHE_MAX then
+            StatusCache, StatusCacheCount = {}, 0
+        end
+        StatusCache[text] = result
+        StatusCacheCount = StatusCacheCount + 1
+        return result
+    end
+    local LastStatusRaw = nil
+    local function SetStatus(s)
+        LastStatusRaw = s
+        local prefix = ""
+        if StatusPrefix ~= "" then
+            prefix = T("status.prefix.follow") .. " "
+        end
+        StatusText = prefix .. TranslateStatus(s)
+    end
+    _G.Abyss_RefreshStatus = function()
+        if LastStatusRaw then
+            SetStatus(LastStatusRaw)
+        end
+    end
+    return TranslateStatus, SetStatus
+end)(_G.Abyss_LanguageCode)
+local ConfigFolder = "Abyss"
+local LegacyConfigFolders = { "AbyssHunter", "MangoJuiceHub" }
+local ConfigUser = tostring(LocalPlayer and LocalPlayer.Name or "default"):gsub("[^%w_%-]", "_")
+local ConfigFile = ConfigFolder .. "/" .. ConfigUser .. "_leviathan_config.json"
+local ConfigLegacyFile = ConfigFolder .. "/leviathan_config.json"
+local ConfigKeys = {
+    "Mode",
+    "SilentAim",
+    "Language",
+    "FollowTarget",
+    "SelectWeapon",
+    "SkillMelee",
+    "SkillSword",
+    "SkillFruit",
+    "FruitM1",
+    "SkillGun",
+    "FastAttack",
+    "DragonGunFarm",
+    "DragonGunLeviathan",
+    "RemoveFog",
+    "AutoFastMode",
+    "FPSBoost",
+    "AutoBuso",
+    "AutoKen",
+    "AutoV3",
+    "AutoV4",
+    "BoatSpeed",
+    "BoatHeight",
+    "PlayerTweenSpeed",
+    "ReturnMode",
+    "LeviathanDestination",
+    "IgniteLantern",
+    "CruiseReturn",
+    "AutoCraftScrolls",
+    "CraftQuality",
+    "AutoUnlockMythical",
+    "AutoEnchantOnHeart",
+    "EnchantWeaponType",
+    "EnchantWeaponName",
+    "EnchantWanted",
+    "AutoRandomFruit",
+    "AutoStoreFruits",
+    "WebhookSendFruit",
+    "HuntFightEvents",
+    "SoloSeaFarm",
+    "SoloSeaBoat",
+    "RespawnRebuy",
+    "HuntSelectEvents",
+    "WebhookURL",
+    "WebhookUsername",
+    "AutoWebhook",
+    "WebhookInterval",
+    "WebhookSendProgress",
+    "WebhookSendBribeReady",
+    "WebhookSendLeviathan",
+    "WebhookSendHeartSpawn",
+    "WebhookSendHeartGot",
+    "WebhookSendLowPlayers",
+    "WebhookSendHeartGain",
+    "WebhookSendScrollGain",
+    "WebhookSendEnchantResult",
+    "ShowInfoUI",
+    "Abyss_FloatingBall",
+    "Abyss_BallPos",
+}
+local function EnsureConfigFolder()
+    if typeof(isfolder) == "function" and typeof(makefolder) == "function" then
+        if not isfolder(ConfigFolder) then
+            makefolder(ConfigFolder)
+        end
+        return true
+    end
+    return false
+end
+local function DeepCopy(value)
+    if type(value) ~= "table" then
+        return value
+    end
+    local copy = {}
+    for k, v in pairs(value) do
+        copy[k] = DeepCopy(v)
+    end
+    return copy
+end
+local function SaveConfig()
+    if not EnsureConfigFolder() then
+        return
+    end
+    if typeof(writefile) ~= "function" then
+        return
+    end
+    local data = {}
+    for _, key in ipairs(ConfigKeys) do
+        if _G[key] ~= nil then
+            data[key] = DeepCopy(_G[key])
+        end
+    end
+    local ok, encoded = pcall(function()
+        return HttpService:JSONEncode(data)
+    end)
+    if ok then
+        pcall(function()
+            writefile(ConfigFile, encoded)
+        end)
+    end
+end
+local function ReadConfigFile(path)
+    if typeof(isfile) ~= "function" or typeof(readfile) ~= "function" then
+        return false
+    end
+    if not isfile(path) then
+        return false
+    end
+    local ok, raw = pcall(readfile, path)
+    if not (ok and type(raw) == "string" and raw ~= "") then
+        return false
+    end
+    local okDecode, data = pcall(function()
+        return HttpService:JSONDecode(raw)
+    end)
+    if not (okDecode and type(data) == "table") then
+        return false
+    end
+    for _, key in ipairs(ConfigKeys) do
+        if data[key] ~= nil then
+            _G[key] = data[key]
+        end
+    end
+    return true
+end
+local function LoadConfig()
+    if ReadConfigFile(ConfigFile) then
+        return
+    end
+    if ReadConfigFile(ConfigLegacyFile) then
+        SaveConfig()
+        pcall(function()
+            if typeof(isfile) == "function" and typeof(delfile) == "function"
+                and isfile(ConfigFile) and isfile(ConfigLegacyFile) then
+                delfile(ConfigLegacyFile)
+            end
+        end)
+        return
+    end
+    -- Migrate configs saved under the previous hub names.
+    for _, folder in ipairs(LegacyConfigFolders) do
+        local userFile = folder .. "/" .. ConfigUser .. "_leviathan_config.json"
+        local sharedFile = folder .. "/leviathan_config.json"
+        if ReadConfigFile(userFile) or ReadConfigFile(sharedFile) then
+            SaveConfig()
+            break
+        end
+    end
+end
+LoadConfig()
+-- Previous builds saved the old default name; keep custom names but migrate that default.
+if type(_G.WebhookUsername) ~= "string" or _G.WebhookUsername == "" or _G.WebhookUsername == "Abyss" then
+    _G.WebhookUsername = "Leviatan"
+end
+pcall(function()
+    if collectgarbage then
+        collectgarbage("setpause", 100)
+        collectgarbage("setstepmul", 300)
+    end
+end)
+task.spawn(function()
+    while true do
+        pcall(collectgarbage, "step", 2)
+        task.wait(1)
+    end
+end)
+do
+    local function TravelNumber(value, fallback, minimum, maximum)
+        return math.clamp(tonumber(value) or fallback, minimum, maximum)
+    end
+    _G.BoatSpeed = TravelNumber(_G.BoatSpeed, 250, 50, 500)
+    _G.BoatHeight = TravelNumber(_G.BoatHeight, _G.BoatLockY or 150, 30, 500)
+    _G.PlayerTweenSpeed = TravelNumber(_G.PlayerTweenSpeed, 275, 50, 500)
+    _G.BoatLockY = _G.BoatHeight
+end
+do
+    local vu = game:GetService("VirtualUser")
+    local _AntiAFKConn = LocalPlayer.Idled:Connect(function()
+        vu:Button2Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+        task.wait(1)
+        vu:Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+    end)
+end
+do
+    local function ApplySimulationRadius()
+        local ok = pcall(function()
+            if type(sethiddenproperty) == "function" then
+                sethiddenproperty(LocalPlayer, "SimulationRadius", math.huge)
+            else
+                LocalPlayer.SimulationRadius = math.huge
+            end
+        end)
+        if not ok then
+            pcall(function()
+                LocalPlayer.SimulationRadius = math.huge
+            end)
+        end
+    end
+    ApplySimulationRadius()
+    task.spawn(function()
+        while task.wait(1) do
+            ApplySimulationRadius()
+        end
+    end)
+end
+task.spawn(function()
+    local function ClearRocks()
+        local rocks = workspace:FindFirstChild("Rocks")
+        if rocks then
+            pcall(function()
+                rocks:Destroy()
+            end)
+            print("[Abyss] workspace.Rocks eliminado")
+        end
+    end
+    ClearRocks()
+    workspace.ChildAdded:Connect(function(child)
+        if child.Name == "Rocks" then
+            task.defer(function()
+                pcall(function()
+                    child:Destroy()
+                end)
+            end)
+        end
+    end)
+end)
+if Character == nil then
+    Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    HD = Character:FindFirstChild("Humanoid") or Character:WaitForChild("Humanoid")
+    HRP = Character:FindFirstChild("HumanoidRootPart") or Character:WaitForChild("HumanoidRootPart")
+end
+local function GetCharacterParts()
+    local char = LocalPlayer.Character
+    if not char then
+        return nil, nil, nil
+    end
+    return char, char:FindFirstChild("HumanoidRootPart"), char:FindFirstChildOfClass("Humanoid")
+end
+local NoclipOn = false
+local LastNoclipApply = 0
+local function NoClip(v)
+    if not Character or not HRP or not HD or HD.Health <= 0 then
+        return
+    end
+    if v then
+        if NoclipOn and os.clock() - LastNoclipApply < 0.5 then
+            return
+        end
+        NoclipOn = true
+        LastNoclipApply = os.clock()
+        for _, part in pairs(Character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = false
+            end
+        end
+    else
+        NoclipOn = false
+        for _, part in pairs(Character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = true
+            end
+        end
+    end
+end
+local Tweening = false
+local TWEEN_PART_NAME = "OptimizedTweenPart"
+local HoldCFrame = nil
+local LiveHoldFn = nil
+local TpActive = false
+function GetTweenPart()
+    local part = workspace:FindFirstChild(TWEEN_PART_NAME)
+    if part and part:IsA("BasePart") then
+        return part
+    end
+    part = Instance.new("Part")
+    part.Name = TWEEN_PART_NAME
+    part.Size = Vector3.new(1, 1, 1)
+    part.Anchored = true
+    part.CanCollide = false
+    part.CanTouch = false
+    part.CanQuery = false
+    part.CastShadow = false
+    part.Massless = true
+    part.Transparency = 1
+    part.Parent = workspace
+    return part
+end
+local function StandUpFromSeat(seat, hum, hrp)
+    local char = LocalPlayer.Character
+    if not hum then
+        return false
+    end
+    if seat then
+        pcall(function()
+            local Weld = seat:FindFirstChild("SeatWeld")
+            local p1 = Weld and Weld.Part1
+            if Weld and ((not p1) or (p1:IsA("BasePart") and char and p1:IsDescendantOf(char))) then
+                Weld:Destroy()
+            end
+        end)
+        pcall(function()
+            for _, d in ipairs(seat:GetDescendants()) do
+                if d:IsA("Weld") or d:IsA("WeldConstraint") then
+                    local p0, p1 = d.Part0, d.Part1
+                    if char and ((p0 and p0:IsDescendantOf(char)) or (p1 and p1:IsDescendantOf(char))) then
+                        d:Destroy()
+                    end
+                end
+            end
+        end)
+        local SeatRoot = seat.Parent
+        if SeatRoot and SeatRoot ~= workspace then
+            pcall(function()
+                for _, d in ipairs(SeatRoot:GetDescendants()) do
+                    if d:IsA("Weld") or d:IsA("WeldConstraint") then
+                        local p0, p1 = d.Part0, d.Part1
+                        if char and ((p0 and p0:IsDescendantOf(char)) or (p1 and p1:IsDescendantOf(char))) then
+                            d:Destroy()
+                        end
+                    end
+                end
+            end)
+        end
+    end
+    if char then
+        for _, d in ipairs(char:GetDescendants()) do
+            if d:IsA("Weld") or d:IsA("WeldConstraint") then
+                local p0, p1 = d.Part0, d.Part1
+                local IsSeatWeld = d.Name == "SeatWeld"
+                    or (p0 ~= nil and p0:IsA("Seat"))
+                    or (p1 ~= nil and p1:IsA("Seat"))
+                if IsSeatWeld then
+                    pcall(function()
+                        d:Destroy()
+                    end)
+                end
+            end
+        end
+    end
+    pcall(function()
+        hum.Sit = false
+        hum.PlatformStand = false
+        hum.Jump = true
+        hum:ChangeState(Enum.HumanoidStateType.GettingUp)
+    end)
+    if hrp then
+        pcall(function()
+            hrp.Anchored = false
+            hrp.AssemblyLinearVelocity = Vector3.zero
+            hrp.AssemblyAngularVelocity = Vector3.zero
+            hrp.CFrame = hrp.CFrame + Vector3.new(0, 25, 0)
+        end)
+    end
+    return true
+end
+local function _tp(targetPos, abortCheck, allowNavigationOwner)
+    if NavigationOwner and not allowNavigationOwner then
+        return false
+    end
+    local startChar = LocalPlayer.Character
+    local myHRP = select(2, GetCharacterParts())
+    if not myHRP then
+        return false
+    end
+    if _G.StopTween then
+        return false
+    end
+    local targetCFrame, liveTarget
+    if typeof(targetPos) == "function" then
+        targetCFrame = targetPos()
+        if not targetCFrame then
+            return false
+        end
+        liveTarget = targetPos
+    elseif typeof(targetPos) == "Vector3" then
+        targetCFrame = CFrame.new(targetPos)
+    elseif typeof(targetPos) == "CFrame" then
+        targetCFrame = targetPos
+    elseif typeof(targetPos) == "Instance" and targetPos:IsA("BasePart") then
+        targetCFrame = targetPos.CFrame
+    else
+        return false
+    end
+    if targetCFrame.Position.Y < 0 then
+        return false
+    end
+    HoldCFrame = nil
+    LiveHoldFn = nil
+    if not liveTarget then
+        local h2 = select(2, GetCharacterParts())
+        if not h2 then
+            return false
+        end
+        myHRP = h2
+    end
+    local SeatNearTarget = function(seat)
+        if not seat or not seat.Parent then
+            return false
+        end
+        local tgt
+        if liveTarget then
+            local ok, cf = pcall(liveTarget)
+            tgt = ok and cf or nil
+        else
+            tgt = targetCFrame
+        end
+        if not tgt then
+            return false
+        end
+        return (seat.Position - tgt.Position).Magnitude <= 40
+    end
+    local _, _, humPre = GetCharacterParts()
+    if humPre and humPre.SeatPart and SeatNearTarget(humPre.SeatPart) then
+        return true
+    end
+    local _, _, humS = GetCharacterParts()
+    if humS and (humS.Sit or humS.SeatPart ~= nil) then
+        StandUpFromSeat(humS.SeatPart, humS, myHRP)
+        task.wait(0.2)
+    end
+    local part = GetTweenPart()
+    part.CFrame = myHRP.CFrame
+    NoClip(true)
+    local tweenSpeed = _G.PlayerTweenSpeed or 140
+    if CurrentTween then
+        pcall(function()
+            CurrentTween:Cancel()
+        end)
+        CurrentTween = nil
+    end
+    local tween = nil
+    if not liveTarget then
+        local distance = (targetCFrame.Position - myHRP.Position).Magnitude
+        local duration = math.max(distance / tweenSpeed, 0.05)
+        tween = TweenService:Create(part,
+            TweenInfo.new(duration, Enum.EasingStyle.Linear, Enum.EasingDirection.Out),
+            { CFrame = targetCFrame })
+        CurrentTween = tween
+    end
+    Tweening = true
+    TpActive = true
+    local aborted = false
+    local arrived = false
+    local seatedStop = false
+    local nextAbortAt = 0
+    local connection
+    connection = RunService.Stepped:Connect(function(_, deltaTime)
+        local dt = deltaTime or (1 / 60)
+        if NavigationOwner and not allowNavigationOwner then
+            aborted = true
+            if tween then tween:Cancel() end
+        end
+        local curChar = LocalPlayer.Character
+        local curHum = curChar and curChar:FindFirstChildOfClass("Humanoid")
+        local curHRP = select(2, GetCharacterParts())
+        if not curHRP or curChar ~= startChar or not curHum or curHum.Health <= 0 then
+            aborted = true
+            if tween then
+                tween:Cancel()
+            end
+        else
+            if not seatedStop and curHum.SeatPart ~= nil then
+                seatedStop = true
+                arrived = true
+                if tween then
+                    tween:Cancel()
+                end
+            end
+            if not seatedStop then
+                if liveTarget then
+                    local tgt = liveTarget()
+                    if tgt and tgt.Position.Y < 0 then
+                        aborted = true
+                        if tween then
+                            tween:Cancel()
+                        end
+                    elseif tgt then
+                        local cur = part.Position
+                        local delta = tgt.Position - cur
+                        local dist = delta.Magnitude
+                        if dist <= 5 then
+                            arrived = true
+                        else
+                            part.CFrame = CFrame.new(cur + delta.Unit * math.min(dist, tweenSpeed * dt))
+                                * (part.CFrame - part.CFrame.Position)
+                        end
+                    end
+                end
+                if not aborted then
+                    curHRP.CFrame = part.CFrame
+                    curHRP.AssemblyLinearVelocity = Vector3.zero
+                    for _, p in ipairs(curChar:GetDescendants()) do
+                        if p:IsA("BasePart") then
+                            p.CanCollide = false
+                        end
+                    end
+                end
+            end
+        end
+        if abortCheck and not aborted then
+            local now = os.clock()
+            if now >= nextAbortAt then
+                nextAbortAt = now + 0.1
+                local ok, stop = pcall(abortCheck)
+                if ok and stop then
+                    aborted = true
+                    if tween then
+                        tween:Cancel()
+                    end
+                end
+            end
+        end
+    end)
+    pcall(function()
+        if liveTarget then
+            local timeout = os.clock()
+                + math.max(8, (targetCFrame.Position - myHRP.Position).Magnitude / tweenSpeed + 8)
+            repeat
+                task.wait()
+            until arrived or aborted or os.clock() > timeout
+        elseif tween then
+            tween:Play()
+            repeat
+                task.wait()
+                if seatedStop or aborted then
+                    break
+                end
+            until tween.PlaybackState ~= Enum.PlaybackState.Playing
+        end
+    end)
+    pcall(function()
+        connection:Disconnect()
+    end)
+    if tween and CurrentTween == tween then
+        CurrentTween = nil
+    end
+    Tweening = false
+    TpActive = false
+    if not aborted and not seatedStop then
+        if liveTarget then
+            LiveHoldFn = liveTarget
+            HoldCFrame = nil
+        else
+            LiveHoldFn = nil
+            HoldCFrame = targetCFrame
+        end
+    end
+    return not aborted
+end
+function HoverSpeedNow()
+    return _G.PlayerTweenSpeed or 140
+end
+local function ClearHover()
+    HoldCFrame = nil
+    LiveHoldFn = nil
+end
+RunService.Heartbeat:Connect(function(dt)
+    if _G.StopTween or NavigationOwner == "set-spawn" or NavigationOwner == "home-return" then
+        return
+    end
+    local _, hrp, hum = GetCharacterParts()
+    if not hrp then
+        return
+    end
+    if hum and hum.SeatPart ~= nil then
+        return
+    end
+    if TpActive then
+        return
+    end
+    if CurrentTween and CurrentTween.PlaybackState == Enum.PlaybackState.Playing then
+        return
+    end
+    local goal = nil
+    if AttackModel then
+        if not AttackModel.Parent then
+            AttackModel, AttackStandFn = nil, nil
+        else
+            local ok, cf = pcall(AttackStandFn)
+            if ok and cf and cf.Position.Y < 0 then
+                cf = nil
+                AttackModel, AttackStandFn = nil, nil
+            end
+            if ok and cf then
+                goal = cf
+                if FightTarget then
+                    FightTarget.CF = cf
+                    FightTarget.At = os.clock()
+                end
+            end
+        end
+    end
+    if not goal and LiveHoldFn then
+        local ok, cf = pcall(LiveHoldFn)
+        if ok and cf then
+            if cf.Position.Y < 0 then
+                ClearHover()
+                return
+            end
+            goal = cf
+        end
+    end
+    if not goal then
+        goal = HoldCFrame
+        if goal and goal.Position.Y < 0 then
+            ClearHover()
+            return
+        end
+    end
+    if not goal then
+        return
+    end
+    if not LiveHoldFn then
+        HoldCFrame = goal
+    end
+    hrp.AssemblyLinearVelocity = Vector3.zero
+    hrp.AssemblyAngularVelocity = Vector3.zero
+    local char = LocalPlayer.Character
+    if char then
+        for _, p in ipairs(char:GetDescendants()) do
+            if p:IsA("BasePart") then
+                p.CanCollide = false
+            end
+        end
+    end
+    local dist = (goal.Position - hrp.Position).Magnitude
+    if dist <= 3 then
+        hrp.CFrame = goal
+    else
+        local step = math.min(dist, HoverSpeedNow() * (dt or (1 / 60)))
+        hrp.CFrame = hrp.CFrame:Lerp(goal, step / dist)
+    end
+end)
+local function StopTweenAll()
+    _G.StopTween = true
+    if CurrentTween then
+        pcall(function()
+            CurrentTween:Cancel()
+        end)
+        CurrentTween = nil
+    end
+    Tweening = false
+    TpActive = false
+    NoClip(false)
+    ClearHover()
+    task.defer(function()
+        task.wait(0.1)
+        _G.StopTween = false
+    end)
+end
+do
+local SeatPhantomState = {
+    since = setmetatable({}, { __mode = "k" }),
+    grace = 2,
+}
+local function SeatTakenByOther(seat, hum)
+    local Occupant = seat.Occupant
+    if Occupant ~= nil and Occupant ~= hum then
+        return true
+    end
+    local Weld = seat:FindFirstChild("SeatWeld")
+    if Weld then
+        local p1 = Weld.Part1
+        if p1 and p1:IsA("BasePart") then
+            local owner = p1:FindFirstAncestorWhichIsA("Model")
+            local otherHum = owner and owner:FindFirstChildOfClass("Humanoid")
+            if otherHum and otherHum ~= hum then
+                return true
+            end
+        end
+    end
+    return false
+end
+_G.Abyss_SeatTakenByOther = SeatTakenByOther
+local SEAT_DRIFT = 60
+local BODY_STILL = 30
+_G.Abyss_SeatConfirmed = function(seat)
+    local _, hrp, hum = GetCharacterParts()
+    if not hum or not seat or not seat.Parent then
+        return false
+    end
+    if hum.SeatPart ~= seat then
+        return false
+    end
+    if SeatTakenByOther(seat, hum) then
+        return false
+    end
+    if not hrp then
+        return true
+    end
+    local st = SeatPhantomState.since[seat]
+    if not st then
+        SeatPhantomState.since[seat] = { seatPos = seat.Position, bodyPos = hrp.Position, at = os.clock() }
+        return true
+    end
+    local seatMoved = (seat.Position - st.seatPos).Magnitude
+    local bodyMoved = (hrp.Position - st.bodyPos).Magnitude
+    if seatMoved > SEAT_DRIFT and bodyMoved < BODY_STILL then
+        if os.clock() - st.at >= SeatPhantomState.grace then
+            return false
+        end
+    elseif os.clock() - st.at >= SeatPhantomState.grace then
+        st.seatPos, st.bodyPos, st.at = seat.Position, hrp.Position, os.clock()
+    end
+    return true
+end
+_G.Abyss_BreakPhantomSeat = function(seat)
+    local _, hrp, hum = GetCharacterParts()
+    if not hum then
+        return false
+    end
+    local Target = seat or hum.SeatPart
+    StandUpFromSeat(Target, hum, hrp)
+    ClearHover()
+    if Target then
+        SeatPhantomState.since[Target] = nil
+    end
+    task.wait(0.15)
+    local _, _, hum2 = GetCharacterParts()
+    return hum2 == nil or (not hum2.Sit and hum2.SeatPart == nil)
+end
+end
+local function CheckItem(Item, Mode)
+    if not Character or not HRP or not HD then
+        return nil
+    end
+    if Mode == "Find" then
+        for _, v in ipairs(Character:GetChildren()) do
+            if string.find(v.Name, Item, 1, true) then
+                return v
+            end
+        end
+        for _, v in ipairs(LocalPlayer.Backpack:GetChildren()) do
+            if string.find(v.Name, Item, 1, true) then
+                return v
+            end
+        end
+    else
+        return Character:FindFirstChild(Item) or LocalPlayer.Backpack:FindFirstChild(Item)
+    end
+end
+function CheckSkill(Weapon, Key)
+    local ok, result = pcall(function()
+        local Item = CheckItem(Weapon)
+        if not Item then
+            return false
+        end
+        local Weapon2 = Item.ToolTip
+        local Skills = nil
+        if Weapon2 == "Melee" then
+            Skills = _G.SkillMelee
+        elseif Weapon2 == "Sword" then
+            Skills = _G.SkillSword
+        elseif Weapon2 == "Blox Fruit" then
+            Skills = _G.SkillFruit
+        elseif Weapon2 == "Gun" then
+            Skills = _G.SkillGun
+        end
+        if not Skills then
+            return false
+        end
+        for _, v in ipairs(Skills) do
+            if v == Key then
+                return true
+            end
+        end
+        return false
+    end)
+    return ok and result
+end
+local function Equip_Auto(Tool)
+    if not Character or not HRP or not HD then
+        return
+    end
+    if HD.Health > 0 and LocalPlayer:FindFirstChild("Backpack") then
+        if Tool == "Melee" or Tool == "Sword" or Tool == "Gun" or Tool == "Blox Fruit" then
+            for i, v in pairs(LocalPlayer.Backpack:GetChildren()) do
+                if v.ToolTip == Tool then
+                    HD:EquipTool(v)
+                    break
+                end
+            end
+        else
+            for i, v in pairs(LocalPlayer.Backpack:GetChildren()) do
+                if v.Name == Tool then
+                    HD:EquipTool(v)
+                    break
+                end
+            end
+        end
+    end
+end
+function HasDragonstormEquipped()
+    local char = LocalPlayer.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    local tool = hum and hum:FindFirstChildOfClass("Tool")
+    return tool ~= nil and tool.Name == "Dragonstorm"
+end
+local Abyss_AimBegin, Abyss_AimEndSoon
+function Skill_Auto(Key)
+    local code = Enum.KeyCode[tostring(Key):upper()]
+    if not code then return end
+    if Abyss_AimBegin then Abyss_AimBegin(AttackModel) end
+    local ok, err = pcall(function()
+        VirtualInputManager:SendKeyEvent(true, code, false, game)
+        task.wait(0.3)
+    end)
+    pcall(function() VirtualInputManager:SendKeyEvent(false, code, false, game) end)
+    if Abyss_AimEndSoon then Abyss_AimEndSoon(0.6) end
+    if not ok then error(err) end
+end
+do
+    local SkillOrder = {"Melee", "Sword", "Blox Fruit", "Gun"}
+    local SkillVars = {Melee="SkillMelee", Sword="SkillSword", ["Blox Fruit"]="SkillFruit", Gun="SkillGun"}
+    local lastFruitAt = 0
+    local function ToolOf(tip)
+        local function scan(container)
+            if not container then return nil end
+            for _, tool in ipairs(container:GetChildren()) do
+                if tool:IsA("Tool") and tool.ToolTip == tip then return tool end
+            end
+        end
+        return scan(LocalPlayer.Character) or scan(LocalPlayer:FindFirstChild("Backpack"))
+    end
+    local function Allowed(tip, key)
+        local list = _G[SkillVars[tip] or ""]
+        if type(list) ~= "table" then return false end
+        local hasMap = false
+        for name, flag in pairs(list) do
+            if type(name) == "string" and type(flag) == "boolean" then hasMap = true; break end
+        end
+        if hasMap then return list[key] == true end
+        return table.find(list, key) ~= nil
+    end
+    local function HasSkills(tip)
+        for _, key in ipairs({"Z", "X", "C", "V", "F"}) do
+            if Allowed(tip, key) then return true end
+        end
+        return false
+    end
+    local function SkillFrameReady(frame)
+        local title = frame:FindFirstChild("Title")
+        local cd = frame:FindFirstChild("Cooldown")
+        if not title or not cd then return false end
+        local white = title.TextColor3 == Color3.new(1, 1, 1)
+        local empty = cd.Size == UDim2.new(0, 0, 1, -1) or cd.Size == UDim2.new(1, 0, 1, -1)
+        return white and empty
+    end
+    local function FindReadySkill(tip)
+        local tool = ToolOf(tip)
+        if not tool then return nil end
+        local pg = LocalPlayer:FindFirstChild("PlayerGui")
+        local main = pg and pg:FindFirstChild("Main")
+        local ui = main and main:FindFirstChild("Skills")
+        if not ui then return nil end
+        local holder = ui:FindFirstChild(tool.Name)
+        if not holder then
+            local _, _, hum = GetCharacterParts()
+            if hum and not hum.Sit then hum:EquipTool(tool); return "prep", tool end
+            return nil
+        end
+        for _, frame in ipairs(holder:GetChildren()) do
+            if frame:IsA("Frame") and frame.Name ~= "Template" then
+                local title = frame:FindFirstChild("Title")
+                local transformed = title and string.find(title.Text, "Transformation")
+                if not transformed and not string.find(frame.Name, "Transformation")
+                    and Allowed(tip, frame.Name) and SkillFrameReady(frame) then
+                    return frame.Name, tool
+                end
+            end
+        end
+    end
+    CombatAPI.TargetPart = function(model, root)
+        if not model or not model.Parent then return nil end
+        for _, name in ipairs({"Leviathan Segment", "Hitbox", "Engine"}) do
+            local part = model:FindFirstChild(name)
+            if part and part:IsA("BasePart") then return part end
+        end
+        return root or model:FindFirstChild("HumanoidRootPart") or model:FindFirstChild("RootPart")
+            or model.PrimaryPart or model:FindFirstChild("Head")
+    end
+    CombatAPI.Skills = function()
+        if SkillCoolDown or NavigationOwner or not _G.AutoLeviathanFull then return end
+        local target = AttackModel
+        if not target or not target.Parent then return end
+        SkillCoolDown = true
+        local ok, err = pcall(function()
+            for _, tip in ipairs(SkillOrder) do
+                if HasSkills(tip) then
+                    local key, tool = FindReadySkill(tip)
+                    if key == "prep" then return end
+                    if key then
+                        local char, _, hum = GetCharacterParts()
+                        if tool and hum and not hum.Sit then
+                            if tool.Parent ~= char then hum:EquipTool(tool); task.wait(0.05) end
+                            if not _G.AutoLeviathanFull or NavigationOwner or AttackModel ~= target or not target.Parent then return end
+                            char = LocalPlayer.Character
+                            if char and char:FindFirstChildOfClass("Tool") == tool and Allowed(tip, key) then
+                                Skill_Auto(key)
+                                return
+                            end
+                        end
+                    end
+                end
+            end
+        end)
+        SkillCoolDown = false
+        if not ok then error(err) end
+    end
+    CombatAPI.FruitM1 = function()
+        if not _G.FruitM1 or not _G.AutoLeviathanFull or NavigationOwner or SkillCoolDown then return end
+        local now = os.clock()
+        if now - lastFruitAt < 0.05 then return end
+        local model = AttackModel
+        local _, root, hum = GetCharacterParts()
+        if not model or not model.Parent or not root or not hum or hum.Health <= 0 or hum.Sit or hum.SeatPart then return end
+        local target = CombatAPI.TargetPart(model)
+        if not target or not target.Parent then return end
+        local delta = target.Position - root.Position
+        if delta.Magnitude < 0.001 or delta.Magnitude > 450 then return end
+        local tool = ToolOf("Blox Fruit")
+        if not tool then return end
+        lastFruitAt = now
+        local remote = tool:FindFirstChild("LeftClickRemote")
+        if not remote then
+            local event = tool:FindFirstChild("RemoteEvent")
+            if event and event:IsA("RemoteEvent") then event:FireServer(target.Position); return end
+            local fn = tool:FindFirstChild("RemoteFunction")
+            if fn and fn:IsA("RemoteFunction") then fn:InvokeServer("TAP") end
+            return
+        end
+        if tool.Name == "Mammoth-Mammoth" then remote:FireServer(target.Position); return end
+        local dir = delta.Unit
+        remote:FireServer(Vector3.new(dir.X, dir.Y, dir.Z), 1, true)
+    end
+end
+local function CoolDown_Auto()
+    return CombatAPI.Skills()
+end
+local function Haki_Auto()
+    if not _G.AutoBuso then
+        return
+    end
+    if Character and HRP then
+        if not Character:FindFirstChild("HasBuso") then
+            pcall(function()
+                CommF:InvokeServer("Buso")
+            end)
+        end
+    end
+end
+local function CheckSkillTable(value, fromDropdown)
+    local out, seen = {}, {}
+    local function add(name)
+        if type(name) == "string" and name ~= "" and not seen[name] then
+            seen[name] = true
+            out[#out + 1] = name
+        end
+    end
+    if type(value) == "table" then
+        local useMap = fromDropdown == true
+        for key, flag in pairs(value) do
+            if type(key) == "string" and type(flag) == "boolean" then useMap = true; break end
+        end
+        if useMap then
+            for key, flag in pairs(value) do
+                if type(key) == "string" and flag == true then add(key) end
+            end
+        else
+            for _, name in ipairs(value) do add(name) end
+        end
+    elseif type(value) == "string" then
+        add(value)
+    end
+    return out
+end
+function Attack_Clone(inst)
+    if typeof(cloneref) == "function" then
+        return cloneref(inst)
+    end
+    return inst
+end
+local function Attack_CaptureRemote(R)
+    if R and R:IsA("RemoteEvent") and R:GetAttribute("Id") then
+        AttackObfuscatedRemote = R
+        AttackObfuscatedId = R:GetAttribute("Id")
+    end
+end
+do
+    local folders = {"Util", "Common", "Remotes", "Assets", "FX"}
+    for _, name in ipairs(folders) do
+        local folder = RS:FindFirstChild(name)
+        if folder then
+            for _, child in ipairs(folder:GetChildren()) do
+                Attack_CaptureRemote(child)
+            end
+            folder.ChildAdded:Connect(function(child)
+                Attack_CaptureRemote(child)
+            end)
+        end
+    end
+end
+function Attack_EnsureRemotes()
+    if not AttackNet then
+        local modules = RS:FindFirstChild("Modules")
+        AttackNet = modules and modules:FindFirstChild("Net")
+    end
+    if not AttackNet then
+        return false
+    end
+    if not AttackRegisterAttack then
+        AttackRegisterAttack = AttackNet:FindFirstChild("RE/RegisterAttack") or AttackNet:FindFirstChild("RegisterAttack")
+    end
+    if not AttackRegisterHit then
+        AttackRegisterHit = AttackNet:FindFirstChild("RE/RegisterHit") or AttackNet:FindFirstChild("RegisterHit")
+    end
+    if not AttackSeedRemote then
+        AttackSeedRemote = AttackNet:FindFirstChild("seed")
+    end
+    return AttackRegisterAttack ~= nil and AttackRegisterHit ~= nil
+end
+local AttackHitCache, AttackHitOrigin, AttackHitAt
+function Attack_BuildHitList(character, origin)
+    local now = os.clock()
+    if AttackHitCache and AttackHitOrigin
+        and (now - AttackHitAt) < 0.1
+        and (origin - AttackHitOrigin).Magnitude < 40 then
+        return AttackHitCache
+    end
+    local hitList = AttackHitCache or {}
+    table.clear(hitList)
+    local folders = {workspace:FindFirstChild("Enemies"), workspace:FindFirstChild("Characters")}
+    for _, folder in ipairs(folders) do
+        if folder then
+            for _, model in ipairs(folder:GetChildren()) do
+                if model ~= character then
+                    local root = model:FindFirstChild("HumanoidRootPart")
+                    local hum = model:FindFirstChild("Humanoid")
+                    if root and hum and hum.Health > 0 and (root.Position - origin).Magnitude <= 60 then
+                        for _, part in ipairs(model:GetChildren()) do
+                            if part:IsA("BasePart") then
+                                hitList[#hitList + 1] = {model, part}
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+    AttackHitCache, AttackHitOrigin, AttackHitAt = hitList, origin, now
+    return hitList
+end
+function Attack_GetSeed()
+    local now = os.clock()
+    if AttackSeedCache and (now - AttackSeedAt) < 1 then
+        return AttackSeedCache
+    end
+    if AttackSeedRemote then
+        local ok, seed = pcall(function()
+            return AttackSeedRemote:InvokeServer()
+        end)
+        if ok and seed then
+            AttackSeedCache = seed
+            AttackSeedAt = now
+            return seed
+        end
+    end
+    return AttackSeedCache or 1
+end
+function Attack_Auto()
+    if not Character or not HRP or not HD then
+        return
+    end
+    local tool = Character:FindFirstChildOfClass("Tool")
+    if not tool then
+        return
+    end
+    local WT = tool:GetAttribute("WeaponType")
+    if WT ~= "Melee" and WT ~= "Sword" then
+        return
+    end
+    if not Attack_EnsureRemotes() then
+        return
+    end
+    local hitList = Attack_BuildHitList(Character, HRP.Position)
+    if #hitList == 0 then
+        return
+    end
+    pcall(function()
+        local okNet, netApi = pcall(function()
+            return require(AttackNet)
+        end)
+        if okNet and netApi and netApi.RemoteEvent then
+            pcall(netApi.RemoteEvent, netApi, "RegisterHit", true)
+        end
+        AttackRegisterAttack:FireServer()
+        local primaryModel = hitList[1][1]
+        local head = primaryModel and primaryModel:FindFirstChild("Head")
+        if not head then
+            return
+        end
+        if _G.FastAttack_Mode == "1" then
+            AttackRegisterHit:FireServer(head, hitList)
+        else
+            AttackRegisterHit:FireServer(head, hitList, {}, tostring(LocalPlayer.UserId):sub(2, 4) ..
+                tostring(coroutine.running()):sub(11, 15))
+        end
+        if AttackObfuscatedRemote and AttackObfuscatedId then
+            local key = math.floor(workspace:GetServerTimeNow() / 10 % 10) + 1
+            local encName = string.gsub("RE/RegisterHit", ".", function(c)
+                return string.char(bit32.bxor(string.byte(c), key))
+            end)
+            local encId = bit32.bxor(AttackObfuscatedId + 909090, Attack_GetSeed() * 2)
+            Attack_Clone(AttackObfuscatedRemote):FireServer(encName, encId, head, hitList)
+        end
+    end)
+end
+local function TargetPos(inst)
+    if not inst then
+        return nil
+    end
+    if inst:IsA("BasePart") then
+        return inst.Position
+    end
+    if inst:IsA("Model") then
+        local primary = inst.PrimaryPart
+        if primary then
+            return primary.Position
+        end
+        local part = inst:FindFirstChildWhichIsA("BasePart")
+        if part then
+            return part.Position
+        end
+    end
+    local ok, center = pcall(function()
+        return inst:GetBoundingBox()
+    end)
+    if ok and center then
+        return center.Position
+    end
+    return nil
+end
+local HeartPosCache = { inst = nil, part = nil }
+local function GetHeartPos(Heart)
+    if not Heart then
+        return nil
+    end
+    if HeartPosCache.inst ~= Heart then
+        HeartPosCache.inst = Heart
+        HeartPosCache.part = nil
+    end
+    local part = HeartPosCache.part
+    if not part or not part.Parent then
+        if Heart:IsA("BasePart") then
+            part = Heart
+        elseif Heart:IsA("Model") then
+            part = Heart.PrimaryPart
+                or Heart:FindFirstChildWhichIsA("BasePart")
+                or Heart:FindFirstChildWhichIsA("BasePart", true)
+        end
+        HeartPosCache.part = part
+    end
+    if part and part.Parent then
+        return part.Position
+    end
+    return nil
+end
+local function IsFrozenHeartHarpooned()
+    local mapFolder = game:GetService("Workspace"):FindFirstChild("Map")
+    if mapFolder then
+        local frozenHeart = mapFolder:FindFirstChild("FrozenHeart")
+        if frozenHeart then
+            local inside = frozenHeart:FindFirstChild("Inside")
+            if inside then
+                return inside:GetAttribute("Harpooned") or false
+            end
+        end
+    end
+    return false
+end
+function HarpoonBallWelded()
+    local roots = { workspace }
+    local worldOrigin = workspace:FindFirstChild("_WorldOrigin")
+    if worldOrigin then
+        roots[#roots + 1] = worldOrigin
+    end
+    for _, root in ipairs(roots) do
+        local ball = root:FindFirstChild("CannonBall", true)
+        if ball and ball:IsA("BasePart") and ball:FindFirstChild("Harpoon") then
+            if ball:GetAttribute("Welded") then
+                return true
+            end
+        end
+    end
+    return false
+end
+local function HeartHookDetected(BaselineY)
+    if IsFrozenHeartHarpooned() then
+        return true
+    end
+    local mapFolder = workspace:FindFirstChild("Map")
+    local heart = mapFolder and mapFolder:FindFirstChild("FrozenHeart")
+    if not heart then
+        return false
+    end
+    local pos = GetHeartPos(heart)
+    if pos and BaselineY and BaselineY > 110 then
+        if pos.Y <= 110 then
+            return true
+        end
+        if (BaselineY - pos.Y) >= 60 then
+            return true
+        end
+    end
+    return HarpoonBallWelded()
+end
+local function Leviathan_CommF()
+    local CommF2 = CommF
+    if not CommF2 then
+        local remotes = RS:FindFirstChild("Remotes")
+        CommF2 = remotes and remotes:FindFirstChild("CommF_")
+    end
+    return CommF2
+end
+local BribeCache = nil
+local BribeCacheAt = 0
+local function GetBribeStatus()
+    if BribeCache and os.clock() - BribeCacheAt < 2 then
+        return BribeCache
+    end
+    local CommF2 = Leviathan_CommF()
+    if not CommF2 then
+        return nil
+    end
+    local ok, result = pcall(function()
+        return CommF2:InvokeServer("InfoLeviathan", "1")
+    end)
+    if ok then
+        local n = tonumber(result)
+        if n then
+            BribeCache = n
+            BribeCacheAt = os.clock()
+            return n
+        end
+        BribeCache = 5
+        BribeCacheAt = os.clock()
+        return 5
+    end
+    return nil
+end
+function DoBribe()
+    local CommF2 = Leviathan_CommF()
+    if not CommF2 then
+        return nil
+    end
+    local ok, result = pcall(function()
+        return CommF2:InvokeServer("InfoLeviathan", "2")
+    end)
+    if ok then
+        return result
+    end
+    return nil
+end
+function BribeUntilDone()
+    local S0 = GetBribeStatus()
+    if S0 == 5 or S0 == -1 or S0 == nil then
+        return
+    end
+    for i = 1, 4 do
+        SetStatus("Sobornando al espía (intento " .. i .. "/4)")
+        DoBribe()
+        task.wait(0.5)
+        local S = GetBribeStatus()
+        if S == 5 or S == -1 or S == nil then
+            break
+        end
+    end
+end
+local BoatDealerCF = CFrame.new(-16917.1523, 8.59936905, 511.799042)
+local BoatFindRange = 5000
+local CruiseWP_A = CFrame.new(-44541.7617, 30.0003204, -1244.8584)
+local CruiseWP_B = CFrame.new(-90000, 30.0003204, -1244.8584)
+local CruiseWP_Far = CFrame.new(-9000000000, 30.0003204, -1244.8584)
+local SailArriveDist = 40
+local function IsBeastHunterBoat(boat)
+    if not boat then
+        return false
+    end
+    if _G.SoloSeaFarm then return boat.Name == _G.SoloSeaBoat end
+    return boat.Name == "Beast Hunter"
+end
+local function BoatOwnerMatch(boat, player)
+    local Owner = boat and boat:FindFirstChild("Owner")
+    if not Owner or not player then
+        return false
+    end
+    if Owner.Value == player then
+        return true
+    end
+    if typeof(Owner.Value) == "string" and Owner.Value == player.Name then
+        return true
+    end
+    if tostring(Owner.Value) == player.Name then
+        return true
+    end
+    return false
+end
+function BoatOf(seat)
+    local node = seat
+    while node do
+        if node.Parent and node.Parent.Name == "Boats" then
+            return node
+        end
+        node = node.Parent
+    end
+    return nil
+end
+local function AbandonIfTooFar(seat)
+    if not seat or not seat.Parent then
+        return false
+    end
+    local boat = BoatOf(seat)
+    if not boat or not IsBeastHunterBoat(boat) then
+        return false
+    end
+    if not BoatOwnerMatch(boat, LocalPlayer) then
+        return false
+    end
+    local _, hrp = GetCharacterParts()
+    if not hrp then
+        return false
+    end
+    if (hrp.Position - seat.Position).Magnitude > BoatFindRange then
+        _G.Abyss_AbandonedBoats[boat] = true
+        SetStatus("Barco a más de " .. BoatFindRange .. ", lo abandono y compro otro")
+        print("[Abyss] Barco fuera de rango, abandonado: " .. boat.Name)
+        return true
+    end
+    return false
+end
+local function IsBoatDead(boat)
+    if not boat then
+        return false
+    end
+    local Humanoid = boat:FindFirstChild("Humanoid")
+    if Humanoid then
+        if Humanoid:IsA("ValueBase") then
+            local ok, v = pcall(function()
+                return Humanoid.Value
+            end)
+            if ok and v ~= nil then
+                return v <= 0
+            end
+        elseif Humanoid:IsA("Humanoid") then
+            return Humanoid.Health <= 0
+        end
+    end
+    local Health = boat:FindFirstChild("Health")
+    if Health and Health:IsA("ValueBase") then
+        local ok2, v2 = pcall(function()
+            return Health.Value
+        end)
+        if ok2 and v2 ~= nil then
+            return v2 <= 0
+        end
+    end
+    local HRPValue = boat:FindFirstChild("HumanoidRootPart")
+    if HRPValue and HRPValue:IsA("ValueBase") then
+        local ok3, v3 = pcall(function()
+            return HRPValue.Value
+        end)
+        if ok3 and v3 ~= nil then
+            return v3 <= 0
+        end
+    end
+    return false
+end
+_G.Abyss_AbandonedBoats = _G.Abyss_AbandonedBoats or setmetatable({}, { __mode = "k" })
+local function OwnedBoatsOf(player)
+    local result = {}
+    local boats = workspace:FindFirstChild("Boats")
+    if not boats or not player then
+        return result
+    end
+    for _, boat in ipairs(boats:GetChildren()) do
+        if IsBeastHunterBoat(boat) and BoatOwnerMatch(boat, player)
+        and not _G.Abyss_AbandonedBoats[boat] then
+            table.insert(result, boat)
+        end
+    end
+    return result
+end
+local function OwnBoatUnusable(player, isCrew)
+    if _G.Abyss_Resetting then
+        return true
+    end
+    local boats = OwnedBoatsOf(player)
+    if #boats == 0 then
+        return false
+    end
+    local _, hrp = GetCharacterParts()
+    if not hrp and not isCrew then
+        return false
+    end
+    for _, boat in ipairs(boats) do
+        if not IsBoatDead(boat) then
+            if isCrew then
+                return false
+            end
+            local seat = boat:FindFirstChild("VehicleSeat") or boat:FindFirstChildWhichIsA("BasePart", true)
+            if hrp and seat and (seat.Position - hrp.Position).Magnitude <= BoatFindRange then
+                return false
+            end
+        end
+    end
+    return true
+end
+local function GetOwnBoat(includeDead)
+    local boats = workspace:FindFirstChild("Boats")
+    if not boats then
+        return nil
+    end
+    local _, hrp = GetCharacterParts()
+    local myPos = hrp and hrp.Position
+    if not myPos then
+        return nil
+    end
+    for _, boat in ipairs(boats:GetChildren()) do
+        local owner = boat:FindFirstChild("Owner")
+        if owner and (owner.Value == LocalPlayer or tostring(owner.Value) == LocalPlayer.Name)
+            and (not _G.SoloSeaFarm or boat.Name == _G.SoloSeaBoat) then
+            if (includeDead or not IsBoatDead(boat)) and not _G.Abyss_AbandonedBoats[boat] then
+                local seat = boat:FindFirstChild("VehicleSeat") or boat.PrimaryPart
+                    or boat:FindFirstChildWhichIsA("BasePart", true)
+                if seat and (seat.Position - myPos).Magnitude <= BoatFindRange then
+                    return boat
+                end
+                _G.Abyss_AbandonedBoats[boat] = true
+                print("[Abyss] Barco fuera de rango, abandonado: " .. boat.Name)
+            end
+        end
+    end
+    return nil
+end
+local function GetCaptainBoat()
+    local boats = workspace:FindFirstChild("Boats")
+    if not boats then
+        return nil
+    end
+    local captain = Players:FindFirstChild(_G.FollowTarget)
+    if not captain then
+        return nil
+    end
+    local _, hrp = GetCharacterParts()
+    local myPos = hrp and hrp.Position
+    if not myPos then
+        return nil
+    end
+    for _, boat in ipairs(boats:GetChildren()) do
+        local owner = boat:FindFirstChild("Owner")
+        if owner and (owner.Value == captain or tostring(owner.Value) == captain.Name)
+        and not _G.Abyss_AbandonedBoats[boat] then
+            if not IsBoatDead(boat) then
+                local seat = boat:FindFirstChild("VehicleSeat") or boat.PrimaryPart
+                    or boat:FindFirstChildWhichIsA("BasePart", true)
+                if seat and (seat.Position - myPos).Magnitude <= BoatFindRange then
+                    return boat
+                end
+            end
+        end
+    end
+    return nil
+end
+local function GetCaptainHRP()
+    local captain = Players:FindFirstChild(_G.FollowTarget)
+    local char = captain and captain.Character
+    return char and char:FindFirstChild("HumanoidRootPart")
+end
+local function KeepFacing()
+    local _, hrpNow = GetCharacterParts()
+    if hrpNow then
+        return hrpNow.CFrame - hrpNow.CFrame.Position
+    end
+    return CFrame.new()
+end
+function LiveSeatCF(seat)
+    return function()
+        if not seat or not seat.Parent then
+            return nil
+        end
+        return seat.CFrame
+    end
+end
+local function LiveCaptainTopCF(height)
+    return function()
+        local capHrp = GetCaptainHRP()
+        if not capHrp then
+            return nil
+        end
+        return CFrame.new(capHrp.Position + Vector3.new(0, height or 35, 0)) * KeepFacing()
+    end
+end
+local function LiveHeartCF(height)
+    return function()
+        local Map = workspace:FindFirstChild("Map")
+        local Heart = Map and Map:FindFirstChild("FrozenHeart")
+        local hp = Heart and GetHeartPos(Heart)
+        if not hp then
+            return nil
+        end
+        return (CFrame.new(hp) * CFrame.new(0, height or 35, 0)) * KeepFacing()
+    end
+end
+local function LiveGateCF(height)
+    return function()
+        local Map = workspace:FindFirstChild("Map")
+        local Gate = Map and Map:FindFirstChild("LeviathanGate")
+        local Watcher = Gate and Gate:FindFirstChild("FrozenWatcherPart")
+        local wp = Watcher and TargetPos(Watcher)
+        if not wp then
+            return nil
+        end
+        return (CFrame.new(wp) * CFrame.new(0, height or 5, 0)) * KeepFacing()
+    end
+end
+local function LiveSelfCF(minY)
+    return function()
+        local _, hrp = GetCharacterParts()
+        if not hrp then
+            return nil
+        end
+        return CFrame.new(hrp.Position.X, math.max(hrp.Position.Y, minY or 50), hrp.Position.Z) * KeepFacing()
+    end
+end
+function LiveFixedCF(cf)
+    return function()
+        return cf
+    end
+end
+do
+    local KenStatusKey, KenDetail = "ken.status.off", ""
+    _G.Abyss_KenStatus = function()
+        return KenStatusKey, KenDetail
+    end
+    local function KenChar()
+        local char = LocalPlayer.Character
+        if not char or not char.Parent then
+            return nil
+        end
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if not hum or hum.Health <= 0 then
+            return nil
+        end
+        return char
+    end
+    local function KenUnlocked(char)
+        local okTag, tagged = pcall(function()
+            return game:GetService("CollectionService"):HasTag(char, "Ken")
+        end)
+        return (okTag and tagged) and true or false
+    end
+    local function KenOn()
+        local blur = game:GetService("Lighting"):FindFirstChild("Blur")
+        return (blur and blur.Enabled) and true or false
+    end
+    local function KenDodgesText()
+        local ok, text = pcall(function()
+            local gui = LocalPlayer:FindFirstChild("PlayerGui")
+            local main = gui and gui:FindFirstChild("Main")
+            local list = main and main:FindFirstChild("BottomHUDList")
+            local buttons = list and list:FindFirstChild("UniversalContextButtons")
+            local button = buttons and buttons:FindFirstChild("BoundActionKen")
+            local label = button and button:FindFirstChild("DodgesLeftLabel")
+            local value = label and label.Text
+            if type(value) == "string" and value ~= "" then
+                return " (" .. value .. ")"
+            end
+            return ""
+        end)
+        return (ok and text) or ""
+    end
+    local function KenPressKey()
+        local remotes = RS:FindFirstChild("Remotes")
+        local commE = remotes and remotes:FindFirstChild("CommE")
+        if commE and commE:IsA("RemoteEvent") then
+            pcall(function() commE:FireServer("Ken", true) end)
+        end
+    end
+    local KenNextAt, KenFailCount = 0, 0
+    _G.Abyss_KenLoopGen = 0
+    _G.Abyss_StartKenLoop = function()
+        _G.Abyss_KenLoopGen = _G.Abyss_KenLoopGen + 1
+        local myGen = _G.Abyss_KenLoopGen
+        task.spawn(function()
+            while _G.Abyss_KenLoopGen == myGen do
+                task.wait(0.5)
+                if not _G.AutoKen then
+                    KenNextAt, KenFailCount = 0, 0
+                    KenStatusKey, KenDetail = "ken.status.off", ""
+                else
+                    local char = KenChar()
+                    if not char then
+                        KenNextAt, KenFailCount = 0, 0
+                    elseif not KenUnlocked(char) then
+                        KenStatusKey, KenDetail = "ken.status.locked", ""
+                    elseif KenOn() then
+                        KenNextAt, KenFailCount = 0, 0
+                        KenDetail = KenDodgesText()
+                        KenStatusKey = "ken.status.on"
+                    elseif os.clock() >= KenNextAt then
+                        if KenFailCount >= 2 then
+                            KenStatusKey, KenDetail = "ken.status.fail", ""
+                            KenFailCount = 0
+                            KenNextAt = os.clock() + 30
+                        else
+                            KenStatusKey, KenDetail = "ken.status.trying", ""
+                            KenPressKey()
+                            KenFailCount = KenFailCount + 1
+                            KenNextAt = os.clock() + 2.5
+                        end
+                    end
+                end
+            end
+        end)
+    end
+    _G.Abyss_StartKenLoop()
+end
+local function GetCannons(boat)
+    local cannons = {}
+    if boat then
+        for _, child in ipairs(boat:GetChildren()) do
+            if child.Name == "Cannon" then
+                table.insert(cannons, child)
+            end
+        end
+    end
+    return cannons
+end
+local function IsSeatOccupied(seat)
+    if not seat then
+        return false
+    end
+    local Weld = seat:FindFirstChild("SeatWeld")
+    if Weld then
+        local p1 = Weld.Part1
+        if p1 and p1:IsA("BasePart") and p1:IsDescendantOf(workspace) then
+            local ownerChar = p1:FindFirstAncestorWhichIsA("Model")
+            local hum = ownerChar and ownerChar:FindFirstChildOfClass("Humanoid")
+            if hum and hum.Health > 0 then
+                return true
+            end
+        end
+        pcall(function()
+            Weld:Destroy()
+        end)
+    end
+    for _, p in ipairs(Players:GetPlayers()) do
+        local char = p.Character
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        if hum and hum.SeatPart == seat and hum.Sit then
+            return true
+        end
+    end
+    return false
+end
+local function SeatHeldByOtherPlayer(seat, hum)
+    if not seat or not seat.Parent then
+        return false
+    end
+    local function IsOtherPlayerHumanoid(otherHum)
+        if not otherHum or otherHum == hum or otherHum.Health <= 0 then
+            return false
+        end
+        local model = otherHum.Parent
+        local owner = model and Players:GetPlayerFromCharacter(model)
+        return owner ~= nil and owner ~= LocalPlayer
+    end
+    local Occupant = seat.Occupant
+    if Occupant and Occupant:IsA("Humanoid") and IsOtherPlayerHumanoid(Occupant) then
+        return true
+    end
+    local Weld = seat:FindFirstChild("SeatWeld")
+    if Weld then
+        local p1 = Weld.Part1
+        if p1 and p1:IsA("BasePart") and p1:IsDescendantOf(workspace) then
+            local model = p1:FindFirstAncestorWhichIsA("Model")
+            if IsOtherPlayerHumanoid(model and model:FindFirstChildOfClass("Humanoid")) then
+                return true
+            end
+        end
+    end
+    return false
+end
+local function CountTeammatesOnBoat(boat)
+    if not boat or not boat.Parent then
+        return 0
+    end
+    local Count = 0
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer then
+            local char = p.Character
+            local hum = char and char:FindFirstChildOfClass("Humanoid")
+            local seat = hum and hum.SeatPart
+            if seat and seat.Parent and seat:IsDescendantOf(boat) and hum.Sit then
+                Count = Count + 1
+            end
+        end
+    end
+    if Count == 0 then
+        for _, cannon in ipairs(GetCannons(boat)) do
+            local seat = cannon:FindFirstChild("Seat")
+            if IsSeatOccupied(seat) then
+                Count = Count + 1
+            end
+        end
+    end
+    return Count
+end
+function CountPlayersNear(pos, range)
+    if not pos then
+        return 0
+    end
+    local Count = 0
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer then
+            local char = p.Character
+            local hum = char and char:FindFirstChildOfClass("Humanoid")
+            local root = char and char:FindFirstChild("HumanoidRootPart")
+            if root and hum and hum.Health > 0 and (root.Position - pos).Magnitude <= range then
+                Count = Count + 1
+            end
+        end
+    end
+    return Count
+end
+local function IsSittingOn(seat)
+    local _, _, hum = GetCharacterParts()
+    if not hum or not seat or not seat.Parent then
+        return false
+    end
+    return hum.SeatPart == seat
+end
+local function IsOnBoat()
+    local _, _, hum = GetCharacterParts()
+    return hum ~= nil and (hum.SeatPart ~= nil or hum.Sit)
+end
+local RestoreWallClip = nil
+local function Unseat()
+    if RestoreWallClip then
+        pcall(RestoreWallClip)
+    end
+    ClearHover()
+    AttackModel = nil
+    AttackStandFn = nil
+    FightTarget = nil
+    for _ = 1, 3 do
+        local _, hrp, hum = GetCharacterParts()
+        if not hum or (not hum.Sit and hum.SeatPart == nil) then
+            return true
+        end
+        StandUpFromSeat(hum.SeatPart, hum, hrp)
+        local UnseatStart = os.clock()
+        while os.clock() - UnseatStart < 2 do
+            local _, _, hum2 = GetCharacterParts()
+            if hum2 and (hum2.Sit or hum2.SeatPart ~= nil) then
+                pcall(function()
+                    hum2.Sit = false
+                    hum2.PlatformStand = false
+                    hum2.Jump = true
+                    hum2:ChangeState(Enum.HumanoidStateType.GettingUp)
+                end)
+                task.wait(0.2)
+            else
+                return true
+            end
+        end
+    end
+    return false
+end
+local function BoardSeat(seat, timeout)
+    timeout = timeout or 15
+    if not seat or not seat.Parent then
+        return false
+    end
+    if AbandonIfTooFar(seat) then
+        return false
+    end
+    local start = os.clock()
+    local Deadline = start + timeout
+    while _G.AutoLeviathanFull and os.clock() < Deadline do
+        if not seat or not seat.Parent then
+            return false
+        end
+        if AbandonIfTooFar(seat) then
+            return false
+        end
+        local _, hrp, hum = GetCharacterParts()
+        if hum and hum.SeatPart == seat then
+            ClearHover()
+            _G.Abyss_BoardStall = nil
+            return true
+        end
+        if SeatHeldByOtherPlayer(seat, hum) then
+            ClearHover()
+            _G.Abyss_BoardStall = nil
+            return false, true
+        end
+        if hum and (hum.Sit or hum.SeatPart ~= nil) then
+            Unseat()
+            task.wait(0.3)
+        end
+        if hrp then
+            if (hrp.Position - seat.Position).Magnitude <= BoatFindRange then
+                local Stall = _G.Abyss_BoardStall
+                local DSeat = (hrp.Position - seat.Position).Magnitude
+                if DSeat > 15 and not TpActive and not Tweening then
+                    if not Stall then
+                        _G.Abyss_BoardStall = { pos = hrp.Position, at = os.clock() }
+                    elseif (hrp.Position - Stall.pos).Magnitude > 3 then
+                        Stall.pos, Stall.at = hrp.Position, os.clock()
+                    elseif os.clock() - Stall.at > 4 then
+                        _G.Abyss_BoardStall = nil
+                        if _G.Abyss_RecoverLock then
+                            _G.Abyss_RecoverLock("no avanzo al subir al asiento")
+                        end
+                        return false
+                    end
+                else
+                    _G.Abyss_BoardStall = nil
+                end
+                _tp(LiveSeatCF(seat), function()
+                    if (not _G.AutoLeviathanFull) or (not seat or not seat.Parent) then
+                        return true
+                    end
+                    local _, _, humNow = GetCharacterParts()
+                    if humNow ~= nil and humNow.SeatPart ~= nil then
+                        return true
+                    end
+                    return SeatHeldByOtherPlayer(seat, humNow)
+                end)
+                local _, _, humAfter = GetCharacterParts()
+                if SeatHeldByOtherPlayer(seat, humAfter) then
+                    ClearHover()
+                    _G.Abyss_BoardStall = nil
+                    return false, true
+                end
+            else
+                AbandonIfTooFar(seat)
+                return false
+            end
+        end
+        task.wait(0.2)
+    end
+    return IsSittingOn(seat)
+end
+local function ForceUnseat(Seconds)
+    local Deadline = os.clock() + (Seconds or 10)
+    while _G.AutoLeviathanFull and os.clock() < Deadline do
+        local _, _, hum = GetCharacterParts()
+        if not hum or (not hum.Sit and hum.SeatPart == nil) then
+            return true
+        end
+        Unseat()
+        task.wait(0.3)
+    end
+    local _, _, hum = GetCharacterParts()
+    return hum == nil or (not hum.Sit and hum.SeatPart == nil)
+end
+local function BoardSeatRetry(seat, timeout, attempts)
+    attempts = attempts or 3
+    for _ = 1, attempts do
+        if not seat or not seat.Parent then
+            return false
+        end
+        local Ok, Taken = BoardSeat(seat, timeout)
+        if Ok then
+            return true
+        end
+        if Taken then
+            return false
+        end
+        Unseat()
+        task.wait(0.5)
+    end
+    return false
+end
+local function DebugDumpBoats()
+    local boats = workspace:FindFirstChild("Boats")
+    print("=== [DEBUG] workspace.Boats al comprar ===")
+    if not boats then
+        print("[DEBUG] workspace.Boats no existe")
+        return
+    end
+    local hrp = select(2, GetCharacterParts())
+    for _, b in ipairs(boats:GetChildren()) do
+        local Owner = b:FindFirstChild("Owner")
+        local vs = b:FindFirstChild("VehicleSeat")
+        local dist = (hrp and vs and (vs.Position - hrp.Position).Magnitude) or -1
+        print(string.format("[DEBUG] barco=%s | claseOwner=%s | owner=%s | VehicleSeat=%s | dist=%.0f | esBeastHunter=%s",
+            tostring(b.Name),
+            Owner and Owner.ClassName or "nil",
+            Owner and tostring(Owner.Value) or "-",
+            tostring(vs ~= nil),
+            dist,
+            tostring(IsBeastHunterBoat(b))))
+    end
+end
+local function BuyOwnBoat(Message)
+    if NavigationOwner then
+        SetStatus("Navegación reservada: espero antes de comprar barco")
+        return false
+    end
+    if _G.Abyss_Resetting then
+        SetStatus("Reinicio en curso: espero para comprar barco")
+        return false
+    end
+    if OwnBoatUnusable(LocalPlayer, false) then
+        SetStatus("Barco viejo inservible: espero el reinicio para recomprar")
+        return false
+    end
+    SetStatus(Message or "El barco desapareció: vuelo a comprar otro")
+    local _, _, humB = GetCharacterParts()
+    if humB and (humB.Sit or humB.SeatPart ~= nil) then
+        if not Unseat() then
+            SetStatus("No pude bajarme antes de comprar: voy igual al vendedor")
+        end
+    end
+    local start = os.clock()
+    local Arrived = false
+    while _G.AutoLeviathanFull and os.clock() - start < 90 do
+        local _, hrp = GetCharacterParts()
+        if hrp and (hrp.Position - BoatDealerCF.Position).Magnitude <= 20 then
+            Arrived = true
+            break
+        end
+        _tp(LiveFixedCF(BoatDealerCF), function()
+            return (not _G.AutoLeviathanFull) or OwnBoatUnusable(LocalPlayer, false)
+        end)
+        task.wait(0.5)
+    end
+    if not Arrived then
+        DebugDumpBoats()
+        print("[DEBUG] BuyOwnBoat no llegó al vendedor de barcos", tostring(select(2, GetCharacterParts()) and select(2, GetCharacterParts()).Position or nil))
+        SetStatus("No llegué al vendedor de barcos: reintentando")
+        return false
+    end
+    local CommF2 = Leviathan_CommF()
+    if CommF2 then
+        pcall(function()
+            local boatName = (_G.SoloSeaFarm and _G.SoloSeaBoat) or "Beast Hunter"
+            CommF2:InvokeServer("BuyBoat", boatName)
+        end)
+    end
+    task.wait(1)
+    DebugDumpBoats()
+    print("[DEBUG] BuyOwnBoat llamó a BuyBoat, esperando el barco nuevo")
+    return true
+end
+function NearestPlayerDistance(boat)
+    local _, hrp = GetCharacterParts()
+    if not hrp then
+        return math.huge
+    end
+    local Min = math.huge
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer then
+            local char = p.Character
+            local root = char and char:FindFirstChild("HumanoidRootPart")
+            if root then
+                local hum = char:FindFirstChildOfClass("Humanoid")
+                local OnThisBoat = hum and hum.SeatPart ~= nil and boat ~= nil and hum.SeatPart:IsDescendantOf(boat)
+                if not OnThisBoat then
+                    local d = (root.Position - hrp.Position).Magnitude
+                    if d < Min then
+                        Min = d
+                    end
+                end
+            end
+        end
+    end
+    return Min
+end
+local LastRebuyAt = 0
+local function RebuyBoatAndBoard()
+    LastRebuyAt = os.clock()
+    if _G.Abyss_Resetting then
+        SetStatus("Reinicio en curso: espero para comprar barco")
+        return nil, nil
+    end
+    if OwnBoatUnusable(LocalPlayer, false) then
+        SetStatus("Barco viejo inservible: espero el reinicio para recomprar")
+        return nil, nil
+    end
+    SetStatus("El barco desapareció: vuelo a comprar otro")
+    BuyOwnBoat()
+    local SpawnStart = os.clock()
+    while _G.AutoLeviathanFull and os.clock() - SpawnStart < 30 do
+        local b3 = GetOwnBoat()
+        local s3 = b3 and b3:FindFirstChild("VehicleSeat")
+        if b3 and s3 then
+            if BoardSeatRetry(s3) then
+                SetStatus("Barco nuevo comprado: esperando a los compañeros")
+                return b3, s3
+            end
+        end
+        task.wait(0.5)
+    end
+    DebugDumpBoats()
+    print("[DEBUG] RebuyBoatAndBoard: no apareció barco nuevo en 30 s")
+    return nil, nil
+end
+local LastSailAt = 0
+local CruiseCheckPos = nil
+local CruiseCheckAt = 0
+local CruiseStalls = 0
+local CruiseToB = true
+local function SailBoatStream(seat, speed)
+    speed = speed or _G.BoatSpeed or 150
+    if not seat or not seat.Parent then
+        return false
+    end
+    if NavigationOwner then
+        pcall(function() seat.Throttle, seat.ThrottleFloat = 0, 0 end)
+        return true
+    end
+    LastSailAt = os.clock()
+    local _, hrp = GetCharacterParts()
+    if not hrp then
+        return false
+    end
+    local dt = RunService.Heartbeat:Wait() or (1 / 60)
+    if seat.Position.Y < 0 then
+        SetStatus("Barco hundido (Y<0): lo abandono y compro otro")
+        pcall(function()
+            if seat.Parent then
+                _G.Abyss_AbandonedBoats[seat.Parent] = true
+                print("[Abyss] Barco con Y<0 abandonado: " .. seat.Parent.Name)
+            end
+        end)
+        Unseat()
+        CruiseCheckPos = nil
+        if _G.RespawnRebuy and _G.Abyss_ResetCharacterAtTiki then
+            task.spawn(_G.Abyss_ResetCharacterAtTiki, "Barco hundido (Y<0)")
+        end
+        return false
+    end
+    local pos = hrp.Position
+    local target = _G.CruiseReturn and (CruiseToB and CruiseWP_B or CruiseWP_A) or CruiseWP_Far
+    local zone = target.Position
+    local flat = Vector3.new(zone.X - pos.X, 0, zone.Z - pos.Z)
+    local dist = flat.Magnitude
+    if _G.CruiseReturn and dist <= SailArriveDist then
+        CruiseToB = not CruiseToB
+        target = CruiseToB and CruiseWP_B or CruiseWP_A
+        zone = target.Position
+        flat = Vector3.new(zone.X - pos.X, 0, zone.Z - pos.Z)
+        dist = flat.Magnitude
+    end
+    if os.clock() - CruiseCheckAt >= 15 then
+        if CruiseCheckPos
+            and Vector3.new(pos.X - CruiseCheckPos.X, 0, pos.Z - CruiseCheckPos.Z).Magnitude < 200 then
+            CruiseStalls = CruiseStalls + 1
+            if CruiseStalls >= 2 then
+                CruiseStalls = 0
+                CruiseCheckPos = nil
+                CruiseCheckAt = os.clock()
+                if _G.Abyss_RecoverLock then
+                    _G.Abyss_RecoverLock("el barco no avanza")
+                end
+            else
+                SetStatus("Crucero atascado: bajo y vuelvo a subir para reiniciar")
+                Unseat()
+                task.wait(0.3)
+                if seat.Parent then
+                    BoardSeatRetry(seat, 10)
+                end
+                CruiseCheckPos = nil
+            end
+        else
+            CruiseStalls = 0
+            CruiseCheckPos = pos
+        end
+        CruiseCheckAt = os.clock()
+    end
+    local dir = flat.Unit
+    local step = math.min(dist, speed * dt)
+    local np = pos + dir * step
+    local lockY = _G.BoatHeight or 150
+    pcall(function()
+        hrp.CFrame = CFrame.lookAt(Vector3.new(np.X, lockY, np.Z),
+            Vector3.new(np.X, lockY, np.Z - 1), Vector3.new(0, 1, 0))
+        hrp.AssemblyLinearVelocity = Vector3.zero
+    end)
+    return true
+end
+function SailBoatTurn(seat, targetPos, speed, FixedY)
+    if NavigationOwner then
+        pcall(function() seat.Throttle, seat.ThrottleFloat = 0, 0 end)
+        return
+    end
+    speed = speed or _G.BoatSpeed or 250
+    local pos = seat.Position
+    local flat = Vector3.new(targetPos.X - pos.X, 0, targetPos.Z - pos.Z)
+    if flat.Magnitude < 0.5 then
+        return
+    end
+    LastSailAt = os.clock()
+    local dt = RunService.Heartbeat:Wait() or 1 / 60
+    local yaw = math.atan2(flat.X, flat.Z) + math.pi
+    local move = flat.Unit * speed * dt
+    local newPos = seat.Position + move
+    seat.CFrame = CFrame.new(newPos.X, FixedY or seat.Position.Y, newPos.Z) * CFrame.Angles(0, yaw, 0)
+end
+local SeaAPI = { SearchRange = 4000 }
+do
+local Sea_MobStillAlive
+local SEA_EVENT_OPTIONS = {
+    "Shark",
+    "Piranha",
+    "Fish Crew Member",
+    "Terrorshark",
+    "Sea Beast",
+    "Ghost Ship",
+    "Pirate Brigade Ship",
+    "Pirate Grand Brigade Ship",
+    "Pirate Basic Ship",
+}
+local SEA_EVENT_OPTIONS_BY_MOB = {
+    ["Shark"] = "Shark",
+    ["Piranha"] = "Piranha",
+    ["Fish Crew Member"] = "Fish Crew Member",
+    ["Terrorshark"] = "Terrorshark",
+    ["SeaBeast1"] = "Sea Beast",
+    ["FishBoat"] = "Ghost Ship",
+    ["PirateBrigade"] = "Pirate Brigade Ship",
+    ["PirateGrandBrigade"] = "Pirate Grand Brigade Ship",
+    ["PirateBasic"] = "Pirate Basic Ship",
+}
+local function Sea_NormalizeSelection(Value, FromDropdown)
+    local Raw = {}
+    if type(Value) == "table" then
+        local HasBooleanMap = FromDropdown == true
+        for Key, Flag in pairs(Value) do
+            if type(Key) == "string" and type(Flag) == "boolean" then
+                HasBooleanMap = true
+                break
+            end
+        end
+        if HasBooleanMap then
+            for Key, Flag in pairs(Value) do
+                if Flag == true and type(Key) == "string" then
+                    Raw[#Raw + 1] = Key
+                end
+            end
+        else
+            for _, Name in ipairs(Value) do
+                if type(Name) == "string" and Name ~= "" then
+                    Raw[#Raw + 1] = Name
+                end
+            end
+            for _, Flag in pairs(Value) do
+                if type(Flag) == "string" and Flag ~= "" then
+                    Raw[#Raw + 1] = Flag
+                end
+            end
+        end
+    elseif type(Value) == "string" and Value ~= "" then
+        Raw[1] = Value
+    end
+    local Seen, Out = {}, {}
+    for _, Name in ipairs(Raw) do
+        if not Seen[Name] and table.find(SEA_EVENT_OPTIONS, Name) then
+            Seen[Name] = true
+            Out[#Out + 1] = Name
+        end
+    end
+    return Out
+end
+local function Sea_HasRawSelection(Value, FromDropdown)
+    if type(Value) == "string" then
+        return Value ~= ""
+    end
+    if type(Value) == "table" then
+        local HasBooleanMap = FromDropdown == true
+        for Key, Flag in pairs(Value) do
+            if type(Key) == "string" and type(Flag) == "boolean" then
+                HasBooleanMap = true
+                break
+            end
+        end
+        for Key, Flag in pairs(Value) do
+            if HasBooleanMap then
+                if type(Key) == "string" and Flag == true then return true end
+            elseif (type(Key) == "number" and ((type(Flag) == "string" and Flag ~= "") or Flag == true))
+                or (type(Key) == "string" and (Flag == true or (type(Flag) == "string" and Flag ~= ""))) then
+                return true
+            end
+        end
+    end
+    return false
+end
+local SeaSelectionInvalid = #Sea_NormalizeSelection(_G.HuntSelectEvents) == 0
+    and Sea_HasRawSelection(_G.HuntSelectEvents)
+SeaAPI.SetSelection = function(Value)
+    local Clean = Sea_NormalizeSelection(Value, true)
+    SeaSelectionInvalid = #Clean == 0 and Sea_HasRawSelection(Value, true)
+    _G.HuntSelectEvents = Clean
+end
+local function Sea_SelectionSet()
+    if SeaSelectionInvalid then
+        return {}
+    end
+    local RawSelection = _G.HuntSelectEvents
+    local Clean = Sea_NormalizeSelection(RawSelection)
+    if #Clean == 0 then
+        if type(RawSelection) == "string" and RawSelection ~= "" then
+            return {}
+        end
+        if type(RawSelection) == "table" then
+            for Key, Flag in pairs(RawSelection) do
+                if (type(Key) == "number" and type(Flag) == "string" and Flag ~= "")
+                    or (type(Key) == "string" and (Flag == true or (type(Flag) == "string" and Flag ~= ""))) then
+                    return {}
+                end
+            end
+        end
+        return nil
+    end
+    local Set = {}
+    for _, Name in ipairs(Clean) do
+        Set[Name] = true
+    end
+    return Set
+end
+local function Sea_SelectionAllows(MobName)
+    local Option = SEA_EVENT_OPTIONS_BY_MOB[MobName]
+    local Set = Sea_SelectionSet()
+    if Set == nil then
+        return true
+    end
+    return Option ~= nil and Set[Option] == true
+end
+local function Sea_Mob(MaxDistance, Exclude, Origin)
+    MaxDistance = MaxDistance or SeaAPI.SearchRange
+    local Ref = Origin or HRP
+    if not Origin and not _G.SoloSeaFarm then
+        local boat = (_G.Mode == "Capitán") and GetOwnBoat() or GetCaptainBoat()
+        local seat = boat and boat:FindFirstChild("VehicleSeat")
+        Ref = seat or Ref
+    end
+    local Enemies = workspace:FindFirstChild("Enemies")
+    local SeaBeasts = workspace:FindFirstChild("SeaBeasts")
+    local MobList = {
+        {Name = "Terrorshark", ConfigName = "Terrorshark", Folder = Enemies, Skill = false},
+        {Name = "Piranha", ConfigName = "Piranha", Folder = Enemies, Skill = false},
+        {Name = "Shark", ConfigName = "Shark", Folder = Enemies, Skill = false},
+        {Name = "Fish Crew Member", ConfigName = "Fish Crew Member", Folder = Enemies, Skill = false},
+        {Name = "FishBoat", ConfigName = "Ghost Ship", Folder = Enemies, Skill = true},
+        {Name = "PirateBrigade", ConfigName = "Pirate Brigade Ship", Folder = Enemies, Skill = true},
+        {Name = "PirateGrandBrigade", ConfigName = "Pirate Grand Brigade Ship", Folder = Enemies, Skill = true},
+        {Name = "PirateBasic", ConfigName = "Pirate Basic Ship", Folder = Enemies, Skill = true},
+        {Name = "SeaBeast1", ConfigName = "Sea Beast", Folder = SeaBeasts, Skill = true},
+    }
+    local SelectedSet = Sea_SelectionSet()
+    local Best, BestRoot, BestSkill, BestDist = nil, nil, false, MaxDistance
+    for _, Data in ipairs(MobList) do
+        local IsSelected = SelectedSet and SelectedSet[Data.ConfigName] == true
+        local AllowTarget = IsSelected or SelectedSet == nil
+        if AllowTarget and Data.Folder then
+            for _, Mob in ipairs(Data.Folder:GetChildren()) do
+                if Mob.Name == Data.Name and not (Exclude and Exclude[Mob]) then
+                    local Alive = Sea_MobStillAlive(Mob)
+                    local Root = Mob:FindFirstChild("HumanoidRootPart")
+                        or Mob:FindFirstChild("RootPart")
+                        or Mob.PrimaryPart
+                        or Mob:FindFirstChild("Head")
+                        or Mob:FindFirstChildWhichIsA("BasePart", true)
+                    if Alive and Root and Root.Position and Ref then
+                        local Dist = (Root.Position - Ref.Position).Magnitude
+                        if Dist < BestDist then
+                            Best, BestRoot, BestSkill, BestDist = Mob, Root, Data.Skill == true, Dist
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return Best, BestRoot, BestSkill
+end
+Sea_MobStillAlive = function(Mob)
+    if not Mob or not Mob.Parent then
+        return false
+    end
+    local Health = Mob:FindFirstChild("Health")
+    if Health and Health:IsA("ValueBase") and Health.Value <= 0 then
+        return false
+    end
+    local Humanoid = Mob:FindFirstChildOfClass("Humanoid")
+    if Humanoid and Humanoid.Health <= 0 then
+        return false
+    end
+    return (Health ~= nil and Health:IsA("ValueBase")) or (Humanoid ~= nil)
+end
+local FaceTargetCF = (function()
+    local Cached = { model = nil, part = nil, at = 0 }
+    return function(standPos, model)
+        if not model or not model.Parent or model:IsA("BasePart") then
+            return nil
+        end
+        local now = os.clock()
+        if Cached.model ~= model or now - Cached.at > 2 then
+            Cached.model, Cached.at, Cached.part = model, now, nil
+            local best, bestDist = nil, nil
+            local stack, visited = { model }, 0
+            while #stack > 0 and visited < 150 do
+                local node = table.remove(stack)
+                for _, child in ipairs(node:GetChildren()) do
+                    visited = visited + 1
+                    if child:IsA("BasePart") then
+                        local flat = Vector3.new(child.Position.X - standPos.X, 0, child.Position.Z - standPos.Z)
+                        local d = flat.Magnitude
+                        if d > 1 and (bestDist == nil or d < bestDist) then
+                            best, bestDist = child, d
+                        end
+                    elseif child:IsA("Model") then
+                        stack[#stack + 1] = child
+                    end
+                end
+            end
+            Cached.part = best
+        end
+        local part = Cached.part
+        if not part or not part.Parent then
+            return nil
+        end
+        local flat = Vector3.new(part.Position.X - standPos.X, 0, part.Position.Z - standPos.Z)
+        if flat.Magnitude < 1 then
+            return nil
+        end
+        return CFrame.lookAt(standPos, standPos + flat.Unit)
+    end
+end)()
+local function Sea_Stand(Mob, Root)
+    if not Root then
+        return nil
+    end
+    local standPos
+    if Mob.Parent and Mob.Parent.Name == "SeaBeasts" then
+        standPos = Vector3.new(Root.Position.X, 120, Root.Position.Z)
+    else
+        standPos = Root.Position + Vector3.new(0, _G.FruitM1 and 10 or 40, 0)
+    end
+    return FaceTargetCF(standPos, Mob) or CFrame.new(standPos)
+end
+local function Sea_EventRoot(Mob)
+    if not Mob then
+        return nil
+    end
+    return Mob:FindFirstChild("HumanoidRootPart")
+        or Mob:FindFirstChild("RootPart")
+        or Mob.PrimaryPart
+        or Mob:FindFirstChild("Head")
+        or Mob:FindFirstChildWhichIsA("BasePart", true)
+end
+local ShootGunEvent = nil
+local Validator2 = nil
+local shootFunc, idx, dragonReady = nil, {}, false
+local LIMB_PARTS = {
+    "Head", "UpperTorso", "LowerTorso",
+    "LeftUpperArm", "RightUpperArm", "LeftLowerArm", "RightLowerArm",
+    "LeftUpperLeg", "RightUpperLeg", "LeftLowerLeg", "RightLowerLeg",
+    "HumanoidRootPart"
+}
+local VALID_SEA_ENEMIES = {
+    "Terrorshark", "Shark", "Piranha",
+    "Fish Crew Member", "Haunted Crew Member",
+    "FishBoat", "PirateBrigade", "PirateGrandBrigade"
+}
+local function getRandomLimb(character)
+    if not character then
+        return nil
+    end
+    local available = {}
+    for _, name in ipairs(LIMB_PARTS) do
+        local part = character:FindFirstChild(name)
+        if part and part:IsA("BasePart") then
+            available[#available + 1] = part
+        end
+    end
+    if #available == 0 then
+        return character:FindFirstChild("HumanoidRootPart")
+    end
+    return available[math.random(1, #available)]
+end
+local function initDragon()
+    if dragonReady then
+        return
+    end
+    local success = pcall(function()
+        local cc = require(RS:WaitForChild("Controllers"):WaitForChild("CombatController"))
+        for _, v in ipairs(debug.getupvalues(cc.Attack)) do
+            if type(v) == "function" then
+                for i, uv in ipairs(debug.getupvalues(v)) do
+                    if uv == 727595 then
+                        shootFunc = v
+                        idx = { u25 = i - 3, u21 = i - 2, u24 = i - 1, u20 = i, u22 = i + 1, u23 = i + 2, u26 = i + 3 }
+                        break
+                    end
+                end
+                if shootFunc then
+                    break
+                end
+            end
+        end
+    end)
+    if success and shootFunc then
+        dragonReady = true
+    end
+end
+local function fireShot(pos, hit)
+    if not shootFunc or not Validator2 or not ShootGunEvent then
+        return
+    end
+    local u20 = debug.getupvalue(shootFunc, idx.u20)
+    local u21 = debug.getupvalue(shootFunc, idx.u21)
+    local u22 = debug.getupvalue(shootFunc, idx.u22)
+    local u23 = debug.getupvalue(shootFunc, idx.u23)
+    local u24 = debug.getupvalue(shootFunc, idx.u24)
+    local u25 = debug.getupvalue(shootFunc, idx.u25)
+    local u26 = debug.getupvalue(shootFunc, idx.u26)
+    local u79 = u25 * u21
+    local u80 = (u24 * u21 + u25 * u20) % u22
+    u80 = (u80 * u22 + u79) % u23
+    u24 = math.floor(u80 / u22)
+    u25 = u80 - u24 * u22
+    u26 = u26 + 1
+    debug.setupvalue(shootFunc, idx.u24, u24)
+    debug.setupvalue(shootFunc, idx.u25, u25)
+    debug.setupvalue(shootFunc, idx.u26, u26)
+    if Abyss_AimBegin then
+        Abyss_AimBegin(hit)
+    end
+    Validator2:FireServer(math.floor(u80 / u23 * 16777215), u26)
+    ShootGunEvent:FireServer(pos, { hit })
+    if Abyss_AimEndSoon then
+        Abyss_AimEndSoon(0.3)
+    end
+end
+local SeaBoatModelsCache, SeaBoatModelsAt
+local function getAllPlayerBoatModels()
+    local now = os.clock()
+    if SeaBoatModelsCache and (now - SeaBoatModelsAt) < 0.5 then
+        return SeaBoatModelsCache
+    end
+    local models = {}
+    local boats = workspace:FindFirstChild("Boats")
+    if boats then
+        for _, v in ipairs(boats:GetChildren()) do
+            local owner = v:FindFirstChild("Owner")
+            if owner and owner.Value and tostring(owner.Value) ~= "" then
+                models[v.Name] = true
+            end
+        end
+    end
+    SeaBoatModelsCache, SeaBoatModelsAt = models, now
+    return models
+end
+local AttackRange = 450
+local SeaTargetCache, SeaTargetAt
+local function getClosestSeaTarget()
+    local now = os.clock()
+    if SeaTargetCache and (now - SeaTargetAt) < 0.2 then
+        return SeaTargetCache
+    end
+    local char = LocalPlayer.Character
+    if not char then
+        return nil
+    end
+    local myHRP = char:FindFirstChild("HumanoidRootPart")
+    if not myHRP then
+        return nil
+    end
+    local best, bestDist = nil, AttackRange
+    local playerBoats = getAllPlayerBoatModels()
+    local seaBeasts = workspace:FindFirstChild("SeaBeasts")
+    if seaBeasts then
+        for _, e in ipairs(seaBeasts:GetChildren()) do
+            local hrp = e:FindFirstChild("HumanoidRootPart")
+            local hp = e:FindFirstChild("Health")
+            if hrp and hp and hp:IsA("ValueBase") and hp.Value > 0 then
+                local segment = e:FindFirstChild("Leviathan Segment")
+                if segment then
+                    local dist = (segment.Position - myHRP.Position).Magnitude
+                    if dist < bestDist then
+                        bestDist = dist
+                        best = segment
+                    end
+                end
+                local dist = (hrp.Position - myHRP.Position).Magnitude
+                if dist < bestDist then
+                    bestDist = dist
+                    best = getRandomLimb(e) or hrp
+                end
+            end
+        end
+    end
+    local enemies = workspace:FindFirstChild("Enemies")
+    if enemies then
+        for _, e in ipairs(enemies:GetChildren()) do
+            if table.find(VALID_SEA_ENEMIES, e.Name) and not playerBoats[e.Name]
+            and Sea_SelectionAllows(e.Name) then
+                local engine = e:FindFirstChild("Engine")
+                local isBoat = engine and e:FindFirstChild("VehicleSeat")
+                if isBoat then
+                    local hp = e:FindFirstChild("Health")
+                    if hp and hp:IsA("ValueBase") and hp.Value > 0 then
+                        local dist = (engine.Position - myHRP.Position).Magnitude
+                        if dist < bestDist then
+                            bestDist = dist
+                            best = engine
+                        end
+                    end
+                else
+                    local hrp = e:FindFirstChild("HumanoidRootPart")
+                    local hum = e:FindFirstChildOfClass("Humanoid")
+                    if hrp and hum and hum.Health > 0 then
+                        local dist = (hrp.Position - myHRP.Position).Magnitude
+                        if dist < bestDist then
+                            bestDist = dist
+                            best = getRandomLimb(e) or hrp
+                        end
+                    end
+                end
+            end
+        end
+    end
+    SeaTargetCache, SeaTargetAt = best, now
+    return best
+end
+local function StartDragonAttack()
+    task.spawn(function()
+        while not dragonReady do
+            initDragon()
+            task.wait(1)
+        end
+        print("[Dragonstorm] listo")
+        while _G.DragonGunFarm do
+            pcall(function()
+                if not ShootGunEvent then
+                    local modules = RS:FindFirstChild("Modules")
+                    local net = modules and modules:FindFirstChild("Net")
+                    ShootGunEvent = net and net:FindFirstChild("RE/ShootGunEvent")
+                end
+                if not Validator2 then
+                    local remotes = RS:FindFirstChild("Remotes")
+                    Validator2 = remotes and remotes:FindFirstChild("Validator2")
+                end
+                if not ShootGunEvent or not Validator2 then
+                    return
+                end
+                local target = getClosestSeaTarget()
+                if not target then
+                    return
+                end
+                local char = LocalPlayer.Character
+                if not char then
+                    return
+                end
+                local tool = char:FindFirstChildOfClass("Tool")
+                if not tool or tool.Name ~= "Dragonstorm" then
+                    if not IsOnBoat() then
+                        Equip_Auto("Dragonstorm")
+                    end
+                    return
+                end
+                fireShot(target.Position, target)
+            end)
+            task.wait()
+        end
+    end)
+end
+local function FightSeaEvent(Mob, Root, Skill, ShouldBreak)
+    local start = os.clock()
+    local function CurrentStand()
+        local r = Sea_EventRoot(Mob)
+        if not r then
+            return nil
+        end
+        return Sea_Stand(Mob, r)
+    end
+    while _G.AutoLeviathanFull and NavigationOwner ~= "set-spawn" and os.clock() - start < 600 do
+        if ShouldBreak and ShouldBreak() then
+            SetStatus("El capitán volvió al barco: dejo de pelear y vuelvo")
+            break
+        end
+        if not Sea_SelectionAllows(Mob and Mob.Name) then
+            SetStatus(T("hunt.skip.unselected"))
+            break
+        end
+        if not Character or not HRP or not HD or HD.Health <= 0 then
+            break
+        end
+        if not Mob or not Mob.Parent or not Sea_MobStillAlive(Mob) then
+            if Mob then
+                SetStatus("Evento marino derrotado: " .. Mob.Name)
+            end
+            break
+        end
+        SetStatus("Farmeo marino: " .. Mob.Name .. " (llevo " .. math.floor(os.clock() - start) .. " s)")
+        AttackModel = Mob
+        AttackStandFn = CurrentStand
+        local _, _, humSE = GetCharacterParts()
+        if humSE and (humSE.Sit or humSE.SeatPart ~= nil) then
+            SetStatus("Farmeo marino: comprobando salir del asiento")
+            ForceUnseat(5)
+        end
+        local Stand = CurrentStand()
+        if Stand then
+            local _, hrpNow = GetCharacterParts()
+            if hrpNow and (Stand.Position - hrpNow.Position).Magnitude > 10 then
+                _tp(CurrentStand, function()
+                    return (not _G.AutoLeviathanFull) or (not Mob or not Mob.Parent)
+                        or (not Sea_MobStillAlive(Mob)) or (ShouldBreak and ShouldBreak())
+                end)
+            end
+            if not Sea_MobStillAlive(Mob) then
+                SetStatus("Evento marino derrotado: " .. Mob.Name)
+                break
+            end
+            FightTarget = { CF = Stand, At = os.clock() }
+        end
+        if not IsOnBoat() then
+            if _G.DragonGunFarm then
+                Equip_Auto("Dragonstorm")
+            elseif Stand and HRP then
+                local Distance = (Stand.Position - HRP.Position).Magnitude
+                local RootNow = Sea_EventRoot(Mob)
+                local MobUp = (RootNow and RootNow.Position and RootNow.Position.Y or 0) >= -600
+                if Skill and Distance <= 80 and MobUp then
+                    pcall(CoolDown_Auto)
+                else
+                    Equip_Auto(_G.SelectWeapon or "Sword")
+                end
+            end
+        end
+        Haki_Auto()
+        task.wait(0.05)
+    end
+    AttackModel = nil
+    AttackStandFn = nil
+    FightTarget = nil
+    task.wait(0.3)
+end
+local function Leviathan_IsDead(model)
+    local Hum = model:FindFirstChildOfClass("Humanoid")
+    if Hum and Hum.Health <= 0 then
+        return true
+    end
+    local Health = model:FindFirstChild("Health")
+    if Health and (Health:IsA("NumberValue") or Health:IsA("IntValue")) and Health.Value <= 0 then
+        return true
+    end
+    return false
+end
+local function Leviathan_GetHP(model)
+    if not model then
+        return nil
+    end
+    local Hum = model:FindFirstChildOfClass("Humanoid")
+    if Hum then
+        return Hum.Health
+    end
+    local Health = model:FindFirstChild("Health")
+    if Health and (Health:IsA("NumberValue") or Health:IsA("IntValue")) then
+        return Health.Value
+    end
+    return nil
+end
+local function Leviathan_RootPart(model)
+    if not model then
+        return nil
+    end
+    return model:FindFirstChild("HumanoidRootPart")
+        or model:FindFirstChild("RootPart")
+        or model.PrimaryPart
+        or model:FindFirstChildWhichIsA("BasePart")
+end
+local LeviathanFindCache
+local LeviathanFindCacheAt = 0
+local function Leviathan_Find()
+    local now = os.clock()
+    if LeviathanFindCache and (now - LeviathanFindCacheAt) < 0.25 then
+        return LeviathanFindCache[1], LeviathanFindCache[2]
+    end
+    local SeaBeasts = workspace:FindFirstChild("SeaBeasts")
+    if not SeaBeasts then
+        LeviathanFindCache, LeviathanFindCacheAt = nil, now
+        return nil, nil
+    end
+    local foundModel, foundPart = nil, nil
+    for _, model in ipairs(SeaBeasts:GetChildren()) do
+        if model.Name == "Leviathan Segment" and not Leviathan_IsDead(model) then
+            local part = Leviathan_RootPart(model)
+            if part then
+                foundModel, foundPart = model, part
+                break
+            end
+        end
+    end
+    if not foundModel then
+        local leviathan = SeaBeasts:FindFirstChild("Leviathan")
+        if leviathan then
+            local part = Leviathan_RootPart(leviathan)
+            if part and not Leviathan_IsDead(leviathan) then
+                foundModel, foundPart = leviathan, part
+            end
+        end
+    end
+    LeviathanFindCache, LeviathanFindCacheAt = {foundModel, foundPart}, now
+    return foundModel, foundPart
+end
+local function Leviathan_SegmentsExist()
+    return Leviathan_Find() ~= nil
+end
+local function Leviathan_Stand(model, part)
+    local Root = model:FindFirstChild("HumanoidRootPart")
+        or model:FindFirstChild("RootPart")
+        or model.PrimaryPart
+        or model:FindFirstChild("Head")
+        or part
+    if not Root then
+        return nil
+    end
+    local standPos = Vector3.new(Root.Position.X, Root.Position.Y + 75, Root.Position.Z)
+    return FaceTargetCF(standPos, model) or CFrame.new(standPos)
+end
+local LeviathanWaitDone = false
+local LeviathanPartsAt = nil
+task.spawn(function()
+    local LastSeenAt = os.clock()
+    while true do
+        task.wait(0.5)
+        if Leviathan_Find() then
+            LastSeenAt = os.clock()
+            if not LeviathanPartsAt then
+                LeviathanPartsAt = LastSeenAt
+            end
+        elseif os.clock() - LastSeenAt > 15 then
+            LeviathanWaitDone = false
+            LeviathanPartsAt = nil
+        end
+    end
+end)
+local function FightLeviathan(ShouldBreak, WaitSec)
+    local model, part = Leviathan_Find()
+    if not model then
+        return false
+    end
+    if not LeviathanWaitDone then
+        WaitSec = WaitSec or 10
+        local Since = LeviathanPartsAt or os.clock()
+        local Aborted = false
+        while _G.AutoLeviathanFull and os.clock() - Since < WaitSec do
+            if ShouldBreak and ShouldBreak() then
+                Aborted = true
+                break
+            end
+            SetStatus("El Leviathan apareció: ataco en " .. string.format("%.1f", WaitSec - (os.clock() - Since)) .. " s")
+            task.wait(0.2)
+        end
+        LeviathanWaitDone = not Aborted
+    end
+    local Killed = false
+    local start = os.clock()
+    local LastFind = 0
+    local MissingSince = nil
+    local MissingGrace = 15
+    while _G.AutoLeviathanFull and NavigationOwner ~= "set-spawn" and os.clock() - start < 900 do
+        if ShouldBreak and ShouldBreak() then
+            break
+        end
+        if not Character or not HRP or not HD or HD.Health <= 0 then
+            break
+        end
+        local HeartMap = workspace:FindFirstChild("Map")
+        if HeartMap and HeartMap:FindFirstChild("FrozenHeart") then
+            Killed = true
+            SetStatus("Corazón detectado: continúo con el enganche")
+            break
+        end
+        local _, _, humNow = GetCharacterParts()
+        if humNow and (humNow.Sit or humNow.SeatPart ~= nil) then
+            SetStatus("Pelea a pie: comprobando salir del asiento")
+            if not ForceUnseat(20) then
+                SetStatus("No consigo bajarme: salgo de este combate")
+                break
+            end
+        end
+        if os.clock() - LastFind >= 0.4 then
+            LastFind = os.clock()
+            model, part = Leviathan_Find()
+            if model then
+                MissingSince = nil
+                if Leviathan_IsDead(model) then
+                    Killed = true
+                    break
+                end
+            else
+                MissingSince = MissingSince or os.clock()
+                if os.clock() - MissingSince >= MissingGrace then
+                    Killed = true
+                    break
+                end
+            end
+        end
+        if not model then
+            SetStatus("Leviathan no encontrado por ahora: sigo esperando")
+            AttackModel = nil
+            AttackStandFn = nil
+            FightTarget = nil
+            task.wait(0.2)
+        else
+            local MyHP = HD and HD.Health
+            if MyHP and MyHP < 3000 then
+                SetStatus("Vida baja: subo a evadir (" .. string.format("%.0f", MyHP) .. ")")
+                local _, hrp = GetCharacterParts()
+                local FleeY = hrp and (hrp.Position.Y + 1050) or nil
+                local EscStart = os.clock()
+                while _G.AutoLeviathanFull and NavigationOwner ~= "set-spawn" and os.clock() - EscStart < 600 do
+                    if ShouldBreak and ShouldBreak() then
+                        break
+                    end
+                    if not Character or not HRP or not HD or HD.Health <= 0 then
+                        break
+                    end
+                    model, part = Leviathan_Find()
+                    if not model then
+                        break
+                    end
+                    local H = HD and HD.Health
+                    if H and H >= 5000 then
+                        SetStatus("Vida recuperada: sigo atacando")
+                        break
+                    end
+                    local _, hrp2 = GetCharacterParts()
+                    local _, _, hum2 = GetCharacterParts()
+                    if hum2 and (hum2.Sit or hum2.SeatPart ~= nil) then
+                        StandUpFromSeat(hum2.SeatPart, hum2, hrp2)
+                    end
+                    if hrp2 and FleeY then
+                        hrp2.CFrame = CFrame.new(hrp2.Position.X, FleeY, hrp2.Position.Z)
+                    end
+                    task.wait(0.2)
+                end
+                task.wait(0.5)
+            end
+            if model then
+                local _, _, humPre = GetCharacterParts()
+                if humPre and (humPre.Sit or humPre.SeatPart ~= nil) then
+                    SetStatus("Sigo sentado antes de atacar: me bajo a la fuerza")
+                    ForceUnseat(5)
+                end
+                local HPNow = Leviathan_GetHP(model)
+                SetStatus("Atacando al Leviathan: " .. model.Name .. (HPNow and (" - vida " .. string.format("%.0f", HPNow)) or ""))
+                local function CurrentStand()
+                    if not model.Parent or Leviathan_IsDead(model) then
+                        return nil
+                    end
+                    local _, p = Leviathan_Find()
+                    return Leviathan_Stand(model, p or part)
+                end
+                AttackModel = model
+                AttackStandFn = CurrentStand
+                local Stand = CurrentStand()
+                if Stand then
+                    local _, hrpNow = GetCharacterParts()
+                    if not hrpNow or (Stand.Position - hrpNow.Position).Magnitude > 10 then
+                        _tp(CurrentStand, function()
+                            return (not _G.AutoLeviathanFull) or (not model or not model.Parent)
+                                or (ShouldBreak and ShouldBreak())
+                        end)
+                    end
+                    FightTarget = { CF = Stand, At = os.clock() }
+                end
+                if _G.DragonGunLeviathan and CheckItem("Dragonstorm") then
+                    initDragon()
+                    if not HasDragonstormEquipped() then
+                        Equip_Auto("Dragonstorm")
+                    end
+                    local target = getClosestSeaTarget()
+                    if target then
+                        fireShot(target.Position, target)
+                    end
+                else
+                    local Distance = Stand and (Stand.Position - HRP.Position).Magnitude or 0
+                    if Distance <= 80 then
+                        pcall(CoolDown_Auto)
+                    else
+                        Equip_Auto(_G.SelectWeapon or "Sword")
+                    end
+                end
+                Haki_Auto()
+            end
+        end
+        task.wait(0.05)
+    end
+    AttackModel = nil
+    AttackStandFn = nil
+    FightTarget = nil
+    return Killed
+end
+SeaAPI.Sea_Mob = Sea_Mob
+SeaAPI.Sea_MobStillAlive = Sea_MobStillAlive
+SeaAPI.Sea_Stand = Sea_Stand
+SeaAPI.StartDragonAttack = StartDragonAttack
+SeaAPI.InitDragon = initDragon
+SeaAPI.FightSeaEvent = FightSeaEvent
+SeaAPI.Leviathan_IsDead = Leviathan_IsDead
+SeaAPI.Leviathan_GetHP = Leviathan_GetHP
+SeaAPI.Leviathan_Find = Leviathan_Find
+SeaAPI.Leviathan_SegmentsExist = Leviathan_SegmentsExist
+SeaAPI.Leviathan_Stand = Leviathan_Stand
+SeaAPI.FightLeviathan = FightLeviathan
+SeaAPI.SeaEventOptions = SEA_EVENT_OPTIONS
+SeaAPI.NormalizeSelection = Sea_NormalizeSelection
+do
+    local RawSelection = _G.HuntSelectEvents
+    local CleanSelection = Sea_NormalizeSelection(RawSelection)
+    local Dirty = type(RawSelection) ~= "table" or #RawSelection ~= #CleanSelection
+    if not Dirty then
+        for Index, Name in ipairs(CleanSelection) do
+            if RawSelection[Index] ~= Name then
+                Dirty = true
+                break
+            end
+        end
+    end
+    if Dirty then
+        _G.HuntSelectEvents = CleanSelection
+        SaveConfig()
+    end
+end
+end
+_G.Abyss_BoatDeadArmed = true
+_G.Abyss_BoatDeadMonitorRunning = false
+_G.Abyss_Resetting = false
+_G.Abyss_LeviathanPresent = function()
+    local MapL = workspace:FindFirstChild("Map")
+    if not MapL then
+        return SeaAPI.Leviathan_SegmentsExist()
+    end
+    if MapL:FindFirstChild("LeviathanGate") or MapL:FindFirstChild("FrozenHeart") then
+        return true
+    end
+    return SeaAPI.Leviathan_SegmentsExist()
+end
+_G.Abyss_NEAR_DEALER_RANGE = 5000
+_G.Abyss_NearBoatDealer = function(range)
+    local _, hrp = GetCharacterParts()
+    if not hrp then
+        return false
+    end
+    local Limit = range or _G.Abyss_NEAR_DEALER_RANGE
+    return (hrp.Position - BoatDealerCF.Position).Magnitude <= Limit
+end
+_G.Abyss_ResetCharacterAtTiki = function(reason, force)
+    if _G.Abyss_Resetting then
+        return
+    end
+    if _G.Abyss_LeviathanPresent() then
+        SetStatus("Leviathan, puerta o corazón presentes: no reinicio")
+        return
+    end
+    if not force and _G.Abyss_NearBoatDealer() then
+        SetStatus("Cerca del vendedor de barcos: compro barco sin reiniciar")
+        return
+    end
+    _G.Abyss_Resetting = true
+    _G.Abyss_ResetStartedAt = os.clock()
+    local ok, err = pcall(function()
+        local WaitStart = os.clock()
+        while _G.AutoLeviathanFull and os.clock() - WaitStart < 120 do
+            if _G.Abyss_LeviathanPresent() then
+                break
+            end
+            local _, hrpNow, humNow = GetCharacterParts()
+            if not humNow or humNow.Health <= 0 then
+                break
+            end
+            local M = select(1, SeaAPI.Sea_Mob(1200, nil, hrpNow))
+            if not M then
+                break
+            end
+            SetStatus(reason .. ": esperando a terminar el evento marino")
+            task.wait(1)
+        end
+        if _G.Abyss_LeviathanPresent() then
+            SetStatus("Leviathan, puerta o corazón presentes: no reinicio")
+            return
+        end
+        SetStatus(reason .. ": reiniciando en Tiki para comprar barco")
+        pcall(Unseat)
+        local CommF2 = Leviathan_CommF()
+        if CommF2 then
+            task.spawn(function()
+                pcall(function()
+                    CommF2:InvokeServer("SetLastSpawnPoint", "Tiki")
+                end)
+            end)
+            task.wait(0.2)
+        end
+        if _G.Abyss_LeviathanPresent() then
+            SetStatus("Leviathan, puerta o corazón presentes: no reinicio")
+            return
+        end
+        local CharBefore = LocalPlayer.Character
+        local _, _, hum = GetCharacterParts()
+        if hum and hum.Health > 0 then
+            pcall(function()
+                hum.Health = 0
+            end)
+        end
+        local Deadline = os.clock() + 20
+        local LastKillTry = os.clock()
+        local KillTries = 0
+        local Respawned = false
+        while os.clock() < Deadline do
+            local CharNow, h, hm = GetCharacterParts()
+            if CharNow and h and hm and hm.Health > 0 then
+                if CharNow ~= CharBefore then
+                    Respawned = true
+                    break
+                end
+                if os.clock() - LastKillTry > 3 and KillTries < 3 then
+                    KillTries = KillTries + 1
+                    LastKillTry = os.clock()
+                    pcall(function()
+                        hm.Health = 0
+                    end)
+                    if KillTries >= 2 and CharNow.BreakJoints then
+                        pcall(function()
+                            CharNow:BreakJoints()
+                        end)
+                    end
+                end
+            end
+            task.wait(0.2)
+        end
+        if not Respawned then
+            print("[Abyss] El reinicio no confirmó el respawn (intentos de muerte: " .. KillTries .. ")")
+        end
+        _G.Abyss_ResetFailed = (not Respawned) and os.clock() or nil
+        for _, boat in ipairs(OwnedBoatsOf(LocalPlayer)) do
+            _G.Abyss_AbandonedBoats[boat] = true
+            print("[Abyss] Reinicio hecho, barco viejo abandonado: " .. boat.Name)
+        end
+    end)
+    _G.Abyss_Resetting = false
+    _G.Abyss_ResetStartedAt = nil
+    if not ok then
+        print("[Abyss] Reinicio en Tiki falló: " .. tostring(err))
+        SetStatus("El reinicio en Tiki falló: reintentando")
+    end
+end
+_G.Abyss_StartBoatDeadMonitor = function()
+    if _G.Abyss_BoatDeadMonitorRunning then
+        return
+    end
+    _G.Abyss_BoatDeadMonitorRunning = true
+    _G.Abyss_ResetFailed = nil
+    task.spawn(function()
+        local StartAt = os.clock()
+        local SawRealBoat = false
+        local BoatGoneSince = nil
+        local LastResetAt = -math.huge
+        local SawCaptainAlive = false
+        local CaptainDownSince = nil
+        local CaptainDeathFollowed = false
+        local ShortCrewSince = nil
+        local CaptainDeathReason = "Capitán muerto"
+        local TEAMMATE_RANGE = 5000
+        local TEAMMATE_WANTED = 4
+        while _G.AutoLeviathanFull do
+            if _G.Abyss_Resetting and _G.Abyss_ResetStartedAt
+                and os.clock() - _G.Abyss_ResetStartedAt > 200 then
+                _G.Abyss_Resetting = false
+                _G.Abyss_ResetStartedAt = nil
+                print("[Abyss] Reinicio colgado: libero el bloqueo")
+                SetStatus("El reinicio se quedó colgado: lo libero y sigo")
+            end
+            local Trigger = nil
+            if _G.RespawnRebuy then
+                local isCaptain = _G.Mode == "Capitán"
+                local target = isCaptain and LocalPlayer or Players:FindFirstChild(_G.FollowTarget)
+                local _, hrpSelf, humSelf = GetCharacterParts()
+                local SelfAlive = humSelf ~= nil and humSelf.Health > 0
+                if target then
+                    local Boats = OwnedBoatsOf(target)
+                    if #Boats > 0 then
+                        SawRealBoat = true
+                        BoatGoneSince = nil
+                        _G.Abyss_ResetFailed = nil
+                    elseif SawRealBoat and SelfAlive and not _G.Abyss_Resetting then
+                        BoatGoneSince = BoatGoneSince or os.clock()
+                        if os.clock() - BoatGoneSince >= 10 then
+                            Trigger = isCaptain and "Barco desaparecido" or "Barco del capitán desaparecido"
+                        end
+                    end
+                    if not Trigger and OwnBoatUnusable(target, not isCaptain) then
+                        Trigger = isCaptain and "Barco destruido (vida 0)" or "Barco del capitán inservible"
+                    end
+                    if not Trigger and not isCaptain then
+                        local CChar = target.Character
+                        local CHum = CChar and CChar:FindFirstChildOfClass("Humanoid")
+                        local CaptainAlive = CHum ~= nil and CHum.Health > 0
+                        if CaptainAlive then
+                            SawCaptainAlive = true
+                            CaptainDownSince = nil
+                            CaptainDeathFollowed = false
+                        else
+                            CaptainDownSince = CaptainDownSince or os.clock()
+                            if not SelfAlive then
+                                CaptainDeathFollowed = true
+                            else
+                                local Needed = 15
+                                if CHum ~= nil then
+                                    Needed = 1.5
+                                elseif SawCaptainAlive then
+                                    Needed = 6
+                                end
+                                if not CaptainDeathFollowed and not _G.Abyss_Resetting
+                                    and os.clock() - CaptainDownSince >= Needed then
+                                    Trigger = CaptainDeathReason
+                                end
+                            end
+                        end
+                    end
+                    if not Trigger and isCaptain and not _G.SoloSeaFarm and hrpSelf then
+                        local boat = GetOwnBoat()
+                        local DriverSeat = boat and boat:FindFirstChild("VehicleSeat")
+                        if boat and DriverSeat and IsSittingOn(DriverSeat) then
+                            local OnBoard = CountTeammatesOnBoat(boat)
+                            local Near = CountPlayersNear(hrpSelf.Position, TEAMMATE_RANGE)
+                            local CanFill = (#Players:GetPlayers() - 1) >= TEAMMATE_WANTED
+                            if OnBoard < TEAMMATE_WANTED and Near < TEAMMATE_WANTED and CanFill
+                                and not _G.Abyss_Resetting then
+                                ShortCrewSince = ShortCrewSince or os.clock()
+                                if os.clock() - ShortCrewSince >= 8 then
+                                    Trigger = "Faltan compañeros en el barco"
+                                end
+                            else
+                                ShortCrewSince = nil
+                            end
+                        else
+                            ShortCrewSince = nil
+                        end
+                    end
+                end
+                if Trigger and _G.Abyss_LeviathanPresent and _G.Abyss_LeviathanPresent() then
+                    Trigger = nil
+                end
+                if Trigger and _G.Abyss_NearBoatDealer and _G.Abyss_NearBoatDealer() then
+                    Trigger = nil
+                end
+                if Trigger and _G.Abyss_Resetting then
+                    Trigger = nil
+                end
+                if Trigger then
+                    local Cooldown = _G.Abyss_ResetFailed and 25 or 120
+                    if os.clock() - LastResetAt < Cooldown then
+                        _G.Abyss_BoatDeadArmed = true
+                    elseif _G.Abyss_BoatDeadArmed and os.clock() - StartAt > 8 then
+                        _G.Abyss_BoatDeadArmed = false
+                        LastResetAt = os.clock()
+                        SawRealBoat = true
+                        BoatGoneSince = nil
+                        CaptainDownSince = nil
+                        ShortCrewSince = nil
+                        if Trigger == CaptainDeathReason then
+                            CaptainDeathFollowed = true
+                        end
+                        print("[Abyss] Reinicio por: " .. Trigger)
+                        task.spawn(_G.Abyss_ResetCharacterAtTiki, Trigger)
+                    else
+                        _G.Abyss_BoatDeadArmed = true
+                    end
+                else
+                    _G.Abyss_BoatDeadArmed = true
+                end
+            else
+                SawRealBoat = false
+                BoatGoneSince = nil
+                SawCaptainAlive = false
+                CaptainDownSince = nil
+                CaptainDeathFollowed = false
+                ShortCrewSince = nil
+            end
+            task.wait(0.5)
+        end
+        _G.Abyss_BoatDeadMonitorRunning = false
+    end)
+end
+do
+local RecoverLock = { running = false, tries = 0, since = 0 }
+local function RecoverPositionLock(reason)
+    if RecoverLock.running or not _G.AutoLeviathanFull then
+        return
+    end
+    if os.clock() - (RecoverLock.lastAt or 0) < 30 then
+        return
+    end
+    RecoverLock.lastAt = os.clock()
+    RecoverLock.running = true
+    task.spawn(function()
+        local ok = pcall(function()
+        local _, _, humNow = GetCharacterParts()
+        local Phantom = humNow ~= nil and humNow.SeatPart ~= nil
+            and not _G.Abyss_SeatConfirmed(humNow.SeatPart)
+        if os.clock() - RecoverLock.since > 180 then
+            RecoverLock.tries = 0
+            RecoverLock.since = os.clock()
+        end
+        if Phantom then
+            RecoverLock.tries = RecoverLock.tries + 1
+        end
+        AttackModel = nil
+        AttackStandFn = nil
+        FightTarget = nil
+        ClearHover()
+        SetStatus("Personaje bloqueado en el sitio (" .. tostring(reason or "?") .. "): lo libero")
+        pcall(function()
+            local _, _, hum = GetCharacterParts()
+            _G.Abyss_BreakPhantomSeat(hum and hum.SeatPart or nil)
+        end)
+        pcall(Unseat)
+        local FreedAt = os.clock() + 3
+        local Freed = false
+        while os.clock() < FreedAt do
+            local _, _, hum = GetCharacterParts()
+            if not hum then
+                Freed = true
+                break
+            end
+            if not hum.Sit and hum.SeatPart == nil then
+                Freed = true
+                break
+            end
+            task.wait(0.2)
+        end
+        if not Freed then
+            SetStatus("Personaje bloqueado en el sitio (" .. tostring(reason or "?") .. "): teletransporte forzado")
+            pcall(function()
+                local _, hrpF, humF = GetCharacterParts()
+                if humF then
+                    pcall(function()
+                        humF.Sit = false
+                        humF.PlatformStand = false
+                        humF.Jump = true
+                        humF:ChangeState(Enum.HumanoidStateType.GettingUp)
+                    end)
+                end
+                if hrpF then
+                    hrpF.Anchored = false
+                    hrpF.AssemblyLinearVelocity = Vector3.zero
+                    hrpF.AssemblyAngularVelocity = Vector3.zero
+                    hrpF.CFrame = CFrame.new(hrpF.Position.X, math.max(hrpF.Position.Y, 60) + 80, hrpF.Position.Z)
+                end
+            end)
+            local ForceAt = os.clock() + 2
+            while os.clock() < ForceAt do
+                local _, _, humF2 = GetCharacterParts()
+                if not humF2 or (not humF2.Sit and humF2.SeatPart == nil) then
+                    Freed = true
+                    break
+                end
+                task.wait(0.1)
+            end
+        end
+        if not Freed and _G.AutoLeviathanFull and not _G.Abyss_Resetting then
+            if _G.Abyss_LeviathanPresent and _G.Abyss_LeviathanPresent() then
+                SetStatus("Sigo bloqueado, pero hay Leviathan/puerta/corazón: no reinicio")
+            elseif os.clock() - (RecoverLock.lastResetAt or 0) < 180 then
+                SetStatus("Sigo bloqueado: espero antes de volver a reiniciar")
+            elseif _G.Abyss_ResetCharacterAtTiki then
+                RecoverLock.tries = 0
+                RecoverLock.since = os.clock()
+                RecoverLock.lastResetAt = os.clock()
+                SetStatus("Sigo bloqueado: reinicio el personaje en Tiki")
+                pcall(_G.Abyss_ResetCharacterAtTiki, "Personaje bloqueado", true)
+            end
+        end
+        end)
+        if not ok then
+            print("[Abyss] RecoverPositionLock: error, se libera el flag")
+        end
+        RecoverLock.running = false
+    end)
+end
+_G.Abyss_RecoverLock = RecoverPositionLock
+task.spawn(function()
+    local LastPos, StuckCount, LastRecover = nil, 0, 0
+    while true do
+        task.wait(1)
+        local _, hrp, hum = GetCharacterParts()
+        if not _G.AutoLeviathanFull or not hrp or not hum then
+            LastPos, StuckCount = nil, 0
+        else
+            local seat = hum.SeatPart
+            local Suspicious = false
+            local Distance = nil
+            if seat and seat.Parent then
+                Distance = (hrp.Position - seat.Position).Magnitude
+                Suspicious = not _G.Abyss_SeatConfirmed(seat)
+            elseif hum.Sit then
+                Suspicious = true
+            end
+            if Suspicious then
+                if LastPos and (hrp.Position - LastPos).Magnitude < 8 then
+                    StuckCount = StuckCount + 1
+                else
+                    StuckCount = 0
+                end
+                if StuckCount >= 2 and os.clock() - LastRecover > 30 then
+                    LastRecover = os.clock()
+                    StuckCount = 0
+                    RecoverPositionLock(Distance and ("distancia al asiento " .. math.floor(Distance)) or "sentado sin asiento")
+                end
+            else
+                StuckCount = 0
+            end
+            LastPos = hrp.Position
+        end
+    end
+end)
+end
+local HARPOON_SPEED = 400
+local HARPOON_YAW = 0
+local HARPOON_PITCH_MIN = math.rad(-10)
+local HARPOON_PITCH_MAX = math.rad(45)
+function HarpoonSolvePitch(FromPos, ToPos)
+    local dy = ToPos.Y - FromPos.Y
+    local dx = ToPos.X - FromPos.X
+    local dz = ToPos.Z - FromPos.Z
+    local R = math.sqrt(dx * dx + dz * dz)
+    local Gravity = workspace.Gravity
+    if not Gravity or Gravity <= 0 then
+        Gravity = 196.2
+    end
+    local v2 = HARPOON_SPEED * HARPOON_SPEED
+    if R < 5 then
+        return (dy > 0) and HARPOON_PITCH_MAX or HARPOON_PITCH_MIN
+    end
+    local Disc = v2 * v2 - Gravity * (Gravity * R * R + 2 * dy * v2)
+    if Disc < 0 then
+        return HARPOON_PITCH_MAX
+    end
+    local Root = math.sqrt(Disc)
+    local Low = math.atan2(v2 - Root, Gravity * R)
+    local High = math.atan2(v2 + Root, Gravity * R)
+    if Low >= HARPOON_PITCH_MIN and Low <= HARPOON_PITCH_MAX then
+        return Low
+    end
+    if High >= HARPOON_PITCH_MIN and High <= HARPOON_PITCH_MAX then
+        return High
+    end
+    return math.clamp(Low, HARPOON_PITCH_MIN, HARPOON_PITCH_MAX)
+end
+function HarpoonMuzzle(Harpoon, HarpoonSeat)
+    local Tube = HarpoonSeat and HarpoonSeat:FindFirstChild("TubeWeld")
+    local Tip = Tube and Tube.Part1
+    if Tip and Tip:IsA("BasePart") then
+        return Tip
+    end
+    if not Harpoon then
+        return HarpoonSeat
+    end
+    return Harpoon:FindFirstChild("Muzzle")
+        or Harpoon:FindFirstChild("Tip")
+        or Harpoon.PrimaryPart
+        or HarpoonSeat
+end
+function HarpoonCooling(Harpoon)
+    return Harpoon ~= nil and Harpoon:FindFirstChild("Cooldown") ~= nil
+end
+function HarpoonHeart()
+    local boat = GetOwnBoat()
+    if not boat then
+        return false
+    end
+    local DriverSeat = boat:FindFirstChild("VehicleSeat")
+    if not DriverSeat then
+        return false
+    end
+    local Map = workspace:FindFirstChild("Map")
+    local Heart = Map and Map:FindFirstChild("FrozenHeart")
+    local HeartPos = GetHeartPos(Heart)
+    if not HeartPos then
+        SetStatus("Enganche fallido: no hay corazón")
+        return false
+    end
+    local HeartStartY = HeartPos.Y
+    if IsFrozenHeartHarpooned() then
+        SetStatus("Corazón enganchado (Y=" .. string.format("%.0f", HeartPos.Y) .. ")")
+        return true
+    end
+    local Harpoon = boat:FindFirstChild("Harpoon")
+    local HarpoonSeat = Harpoon and Harpoon:FindFirstChild("Seat")
+    if not HarpoonSeat then
+        SetStatus("Enganche fallido: el barco no tiene asiento de arpón")
+        return false
+    end
+    local BoatStartY = DriverSeat.Position.Y
+    local function AimYaw(flat)
+        return math.atan2(flat.X, flat.Z) + math.pi
+    end
+    local function ReadHeartPos()
+        local HeartNow = workspace:FindFirstChild("Map") and workspace.Map:FindFirstChild("FrozenHeart")
+        return HeartNow and GetHeartPos(HeartNow) or nil
+    end
+    local function BowError(HeartPosNow)
+        if not DriverSeat or not DriverSeat.Parent or not HeartPosNow then
+            return nil
+        end
+        local pos = DriverSeat.Position
+        local aim = Vector3.new(HeartPosNow.X - pos.X, 0, HeartPosNow.Z - pos.Z)
+        if aim.Magnitude < 1 then
+            return nil
+        end
+        local look = DriverSeat.CFrame.LookVector
+        local dot = math.clamp(look.X * aim.Unit.X + look.Z * aim.Unit.Z, -1, 1)
+        return math.acos(dot)
+    end
+    local function ParkShotPose()
+        local HeartPosNow = ReadHeartPos()
+        if not DriverSeat or not DriverSeat.Parent or not HeartPosNow then
+            return false
+        end
+        local Target = Vector3.new(HeartPosNow.X + 300, BoatStartY, HeartPosNow.Z)
+        local flat = Vector3.new(HeartPosNow.X - Target.X, 0, HeartPosNow.Z - Target.Z)
+        if flat.Magnitude < 1 then
+            return false
+        end
+        return pcall(function()
+            DriverSeat.Throttle, DriverSeat.ThrottleFloat = 0, 0
+            DriverSeat.Steer, DriverSeat.SteerFloat = 0, 0
+            DriverSeat.CFrame = CFrame.new(Target) * CFrame.Angles(0, AimYaw(flat), 0)
+            DriverSeat.AssemblyLinearVelocity = Vector3.zero
+            DriverSeat.AssemblyAngularVelocity = Vector3.zero
+        end)
+    end
+    local CommF2 = Leviathan_CommF()
+    local Fires = 0
+    local Rounds = 0
+    while _G.AutoLeviathanFull and Fires < 10 and Rounds < 14 do
+        Rounds = Rounds + 1
+        local Map2 = workspace:FindFirstChild("Map")
+        local CurrentHeart = Map2 and Map2:FindFirstChild("FrozenHeart")
+        local CurrentHeartPos = GetHeartPos(CurrentHeart)
+        if not CurrentHeart or not CurrentHeartPos then
+            break
+        end
+        if HeartHookDetected(HeartStartY) then
+            SetStatus("Corazón enganchado (Y=" .. string.format("%.0f", CurrentHeartPos.Y) .. ")")
+            break
+        end
+        SetStatus("Enganche: subo al timón (intento " .. Rounds .. ")")
+        if not BoardSeatRetry(DriverSeat) then
+            break
+        end
+        local ShotPoint = Vector3.new(CurrentHeartPos.X + 300, BoatStartY, CurrentHeartPos.Z)
+        local pos0 = DriverSeat.Position
+        local NeedStaging = true
+        if (Vector3.new(pos0.X - ShotPoint.X, 0, pos0.Z - ShotPoint.Z)).Magnitude <= 40 then
+            local Err0 = BowError(CurrentHeartPos)
+            NeedStaging = (Err0 ~= nil and Err0 > math.rad(3))
+        end
+        local Stages = NeedStaging and { 600, 300 } or { 300 }
+        SetStatus("Enganche: navego a X+300 del corazón (intento " .. Rounds .. ")")
+        for _, OffsetX in ipairs(Stages) do
+            local StageStart = os.clock()
+            while _G.AutoLeviathanFull and os.clock() - StageStart < 45 do
+                if not DriverSeat or not DriverSeat.Parent then
+                    break
+                end
+                local HeartNow = workspace:FindFirstChild("Map") and workspace.Map:FindFirstChild("FrozenHeart")
+                local HeartPosNow = HeartNow and GetHeartPos(HeartNow)
+                if not HeartPosNow then
+                    break
+                end
+                local pos = DriverSeat.Position
+                local TargetPoint = Vector3.new(HeartPosNow.X + OffsetX, BoatStartY, HeartPosNow.Z)
+                local flat = Vector3.new(TargetPoint.X - pos.X, 0, TargetPoint.Z - pos.Z)
+                local dist = flat.Magnitude
+                SetStatus("Enganche: navegando a X+300 del corazón (dist " .. math.floor(dist) .. ")")
+                if dist < 15 then
+                    break
+                end
+                SailBoatTurn(DriverSeat, TargetPoint, _G.BoatSpeed, BoatStartY)
+                if not IsSittingOn(DriverSeat) then
+                    break
+                end
+            end
+        end
+        if not IsSittingOn(DriverSeat) then
+            SetStatus("Enganche: no estoy en el timón, salto esta ronda")
+            break
+        end
+        SetStatus("Enganche: apunto la proa al corazón (intento " .. Rounds .. ")")
+        local AdjustStart = os.clock()
+        local Aligned = false
+        while _G.AutoLeviathanFull and os.clock() - AdjustStart < 15 do
+            if not DriverSeat or not DriverSeat.Parent then
+                break
+            end
+            if not IsSittingOn(DriverSeat) then
+                SetStatus("Enganche: me caí del asiento, dejo de girar")
+                break
+            end
+            local HeartPosNow = ReadHeartPos()
+            if not HeartPosNow then
+                break
+            end
+            local pos = DriverSeat.Position
+            local flat = Vector3.new(HeartPosNow.X - pos.X, 0, HeartPosNow.Z - pos.Z)
+            if flat.Magnitude < 0.5 then
+                break
+            end
+            DriverSeat.Throttle, DriverSeat.ThrottleFloat = 0, 0
+            DriverSeat.Steer, DriverSeat.SteerFloat = 0, 0
+            DriverSeat.CFrame = CFrame.new(pos.X, BoatStartY, pos.Z) * CFrame.Angles(0, AimYaw(flat), 0)
+            task.wait()
+            local ErrNow = BowError(HeartPosNow)
+            if ErrNow == nil or ErrNow <= math.rad(1.5) then
+                task.wait()
+                local ErrStable = BowError(HeartPosNow)
+                if ErrStable == nil or ErrStable <= math.rad(2) then
+                    Aligned = true
+                    break
+                end
+            end
+        end
+        if not Aligned then
+            SetStatus("Enganche: la proa no apunta al corazón, no disparo esta ronda")
+            Unseat()
+            break
+        end
+        SetStatus("Enganche: bajo al asiento del arpón (intento " .. Rounds .. ")")
+        if not Unseat() then
+            SetStatus("Enganche fallido: no pude bajarme, salto la ronda")
+            break
+        end
+        task.wait(0.3)
+        if not BoardSeatRetry(HarpoonSeat) then
+            SetStatus("Enganche fallido: no pude subir al asiento del arpón")
+            break
+        end
+        local YKeepStart = os.clock()
+        while _G.AutoLeviathanFull and os.clock() - YKeepStart < 3 do
+            ParkShotPose()
+            task.wait(0.2)
+        end
+        local FireRejected = false
+        if CommF2 then
+            local CdStart = os.clock()
+            while _G.AutoLeviathanFull and HarpoonCooling(Harpoon) and os.clock() - CdStart < 10 do
+                SetStatus("Enganche: espero la recarga del arpón (intento " .. Rounds .. ")")
+                ParkShotPose()
+                task.wait(0.2)
+            end
+            ParkShotPose()
+            task.wait()
+            local ErrFire = BowError(ReadHeartPos())
+            if ErrFire ~= nil and ErrFire > math.rad(3) then
+                SetStatus("Enganche: la proa se movió, vuelvo a alinearla")
+                local ReAligned = false
+                if Unseat() then
+                    task.wait(0.2)
+                    if BoardSeatRetry(DriverSeat) then
+                        local ReStart = os.clock()
+                        while _G.AutoLeviathanFull and os.clock() - ReStart < 10 do
+                            ParkShotPose()
+                            task.wait()
+                            local ErrRe = BowError(ReadHeartPos())
+                            if ErrRe == nil or ErrRe <= math.rad(1.5) then
+                                ReAligned = true
+                                break
+                            end
+                        end
+                    end
+                    if ReAligned then
+                        Unseat()
+                        task.wait(0.2)
+                        ReAligned = BoardSeatRetry(HarpoonSeat)
+                        if ReAligned then
+                            ParkShotPose()
+                            task.wait(0.2)
+                        end
+                    end
+                end
+                if not ReAligned then
+                    SetStatus("Enganche: la proa no apunta al corazón, no disparo esta ronda")
+                    Unseat()
+                    break
+                end
+            end
+            local FireOrigin = HarpoonMuzzle(Harpoon, HarpoonSeat)
+            local HeartPosFire = ReadHeartPos()
+            local Pitch = HARPOON_PITCH_MAX
+            if FireOrigin and HeartPosFire then
+                Pitch = HarpoonSolvePitch(FireOrigin.Position, HeartPosFire)
+            end
+            SetStatus("Enganche: disparo el arpón nº " .. Rounds .. " (ángulo " .. string.format("%.1f", math.deg(Pitch)) .. "°)")
+            local FireDone, FireResult = false, nil
+            task.spawn(function()
+                local ok, res = pcall(function()
+                    return CommF2:InvokeServer("FireHarpoon", Pitch, HARPOON_YAW, Harpoon, workspace:GetServerTimeNow())
+                end)
+                FireResult = (ok and res) or false
+                FireDone = true
+            end)
+            local FireWait = os.clock()
+            while not FireDone and _G.AutoLeviathanFull and os.clock() - FireWait < 5 do
+                task.wait(0.1)
+            end
+            if not FireDone then
+                SetStatus("Enganche: el servidor no respondió al disparo, reintento")
+            elseif not FireResult then
+                FireRejected = true
+                SetStatus("Enganche: el servidor rechazó el disparo (¿recarga?), reintento")
+            end
+        end
+        Fires = Fires + 1
+        local GrabbedNow = false
+        if FireRejected then
+            task.wait(0.5)
+        else
+            local PostWaitStart = os.clock()
+            while _G.AutoLeviathanFull and os.clock() - PostWaitStart < 10 do
+                if DriverSeat and DriverSeat.Parent then
+                    local pos2 = DriverSeat.Position
+                    if math.abs(pos2.Y - BoatStartY) > 5 then
+                        DriverSeat.CFrame = CFrame.new(pos2.X, BoatStartY, pos2.Z) * (DriverSeat.CFrame - DriverSeat.CFrame.Position)
+                    end
+                end
+                local Map3 = workspace:FindFirstChild("Map")
+                local Heart3 = Map3 and Map3:FindFirstChild("FrozenHeart")
+                local HeartPos3 = Heart3 and GetHeartPos(Heart3)
+                if not Heart3 or not HeartPos3 then
+                    SetStatus("Enganche: el corazón desapareció")
+                    break
+                end
+                if HeartHookDetected(HeartStartY) then
+                    SetStatus("Corazón enganchado (Y=" .. string.format("%.0f", HeartPos3.Y) .. ")")
+                    GrabbedNow = true
+                    break
+                end
+                SetStatus("Enganche: espero el resultado (disparo " .. Fires .. ", esperando " .. math.floor(os.clock() - PostWaitStart) .. " s)")
+                task.wait(0.5)
+            end
+        end
+        if GrabbedNow then
+            break
+        end
+        SetStatus("Enganche fallido: bajo del arpón para reintentar")
+        if not Unseat() then
+            SetStatus("No pude bajar del arpón: intento la siguiente ronda")
+        end
+        task.wait(0.3)
+    end
+    Unseat()
+    local MapFinal = workspace:FindFirstChild("Map")
+    local HeartFinal = MapFinal and MapFinal:FindFirstChild("FrozenHeart")
+    local HeartPosFinal = HeartFinal and GetHeartPos(HeartFinal)
+    if HeartPosFinal and HeartHookDetected(HeartStartY) then
+        SetStatus("¡Corazón enganchado!")
+        return true
+    end
+    SetStatus("Fallo: el corazón no quedó enganchado")
+    return false
+end
+local function RestorePlayerState()
+    ClearHover()
+    pcall(function()
+        if RestoreWallClip then
+            RestoreWallClip()
+        end
+    end)
+end
+function OpenLeviathanGate()
+    local Map = workspace:FindFirstChild("Map")
+    local Gate = Map and Map:FindFirstChild("LeviathanGate")
+    local Watcher = Gate and Gate:FindFirstChild("FrozenWatcherPart")
+    if not Watcher then
+        return false
+    end
+    local WatcherPos = TargetPos(Watcher)
+    if not WatcherPos then
+        return false
+    end
+    _tp(LiveGateCF(5), function()
+        return (not _G.AutoLeviathanFull) or SeaAPI.Leviathan_SegmentsExist()
+    end)
+    RestorePlayerState()
+    SetStatus("En la puerta del Leviathan: esperando a que aparezca")
+    local ArriveStart = os.clock()
+    while _G.AutoLeviathanFull and os.clock() - ArriveStart < 60 do
+        if SeaAPI.Leviathan_SegmentsExist() then
+            SetStatus("Leviathan apareció: empiezo el combate")
+            return true
+        end
+        local _, hrpA = GetCharacterParts()
+        if hrpA and (hrpA.Position - WatcherPos).Magnitude < 150 then
+            break
+        end
+        task.wait(0.5)
+    end
+    local CommF2 = Leviathan_CommF()
+    local start = os.clock()
+    local Fires = 0
+    local LastInvoke = 0
+    while _G.AutoLeviathanFull and os.clock() - start < 300 do
+        if SeaAPI.Leviathan_SegmentsExist() then
+            SetStatus("Leviathan apareció: empiezo el combate")
+            return true
+        end
+        if CommF2 and os.clock() - LastInvoke >= 10 then
+            LastInvoke = os.clock()
+            Fires = Fires + 1
+            SetStatus("Abriendo la puerta del Leviathan (intento " .. Fires .. ", cada 10 s)")
+            pcall(function()
+                CommF2:InvokeServer("OpenLeviathanGate")
+            end)
+        end
+        task.wait(1)
+    end
+    return SeaAPI.Leviathan_SegmentsExist()
+end
+local TikiWaypointCF = CFrame.new(-2044.52, 27.82, -701.59)
+local TikiReturnCF = CFrame.new(-16206.9014, 7.75799561, 404.552002)
+local HydraReturnRoute = {
+    Vector3.new(7415.8325, 24.000849, -6664.6826),
+    Vector3.new(1162.8353, 24.000189, -1825.8121),
+    Vector3.new(2517.8875, 24.000118, 5109.431),
+    Vector3.new(5172.726, 23.999813, 3893.6245),
+    Vector3.new(5203.809, 24.00104, 2013.0905),
+}
+function ComputeSteerAngle(seat, targetPos)
+    local cframe = seat.CFrame
+    local look = (cframe.LookVector * Vector3.new(1, 0, 1)).Unit
+    local toTarget = ((targetPos - cframe.Position) * Vector3.new(1, 0, 1)).Unit
+    local angle = math.deg(math.acos(math.clamp(look:Dot(toTarget), -1, 1)))
+    if look:Cross(toTarget).Y < 0 then angle = -angle end
+    return angle
+end
+function TurnBoatTowards(seat, targetPos)
+    local pos = seat.Position
+    seat.CFrame = CFrame.lookAt(pos, Vector3.new(targetPos.X, pos.Y, targetPos.Z))
+end
+function TurnBoatPrimTowards(prim, targetPos)
+    local pos = prim.Position
+    prim.CFrame = CFrame.lookAt(pos, Vector3.new(targetPos.X, pos.Y, targetPos.Z))
+end
+local function SailToCF(seat, TargetCF, Speed, HeartCheck)
+    Speed = Speed or _G.BoatSpeed or 250
+    local TargetPos = TargetCF.Position
+    local boat = (seat and seat.Parent and seat.Parent:IsA("Model")) and seat.Parent or nil
+    local prim = boat and boat.PrimaryPart or nil
+    local OrigMaxSpeed = seat.MaxSpeed
+    local OrigTurnSpeed = seat.TurnSpeed
+    local OrigTorque = seat.Torque
+    local start = os.clock()
+    local LastCheckPos = seat.Position
+    local LastCheckAt = os.clock()
+    local LastHeartCheckAt = 0
+    local Arrived = false
+    local SailStalls = 0
+    while _G.AutoLeviathanFull and os.clock() - start < 900 do
+        if NavigationOwner then
+            pcall(function() seat.Throttle, seat.ThrottleFloat = 0, 0 end)
+            return false
+        end
+        LastSailAt = os.clock()
+        if not seat or not seat.Parent or not IsSittingOn(seat) then
+            break
+        end
+        if HeartCheck and os.clock() - LastHeartCheckAt >= 1 then
+            LastHeartCheckAt = os.clock()
+            if not HeartCheck(seat) then
+                break
+            end
+        end
+        if os.clock() - LastCheckAt >= 30 then
+            local Moved = (seat.Position - LastCheckPos).Magnitude
+            if Moved < 200 then
+                SailStalls = SailStalls + 1
+                if SailStalls >= 2 then
+                    SailStalls = 0
+                    LastCheckPos = seat.Position
+                    LastCheckAt = os.clock()
+                    if _G.Abyss_RecoverLock then
+                        _G.Abyss_RecoverLock("el barco no avanza volviendo a Tiki")
+                    end
+                    break
+                end
+                SetStatus("Menos de 200 en 30 s: bajo y vuelvo a subir para reiniciar")
+                if not Unseat() then
+                    SetStatus("Atascado y no pude bajarme: sigo esperando")
+                    LastCheckPos = seat.Position
+                    LastCheckAt = os.clock()
+                else
+                    task.wait(0.5)
+                    if not BoardSeatRetry(seat) then
+                        break
+                    end
+                    LastCheckPos = seat.Position
+                    LastCheckAt = os.clock()
+                end
+            else
+                SailStalls = 0
+                LastCheckPos = seat.Position
+                LastCheckAt = os.clock()
+            end
+        end
+        local pos = seat.Position
+        local flat = Vector3.new(TargetPos.X - pos.X, 0, TargetPos.Z - pos.Z)
+        local distance = flat.Magnitude
+        SetStatus("Volviendo a Tiki (dist " .. math.floor(distance) .. ", navegando " .. math.floor(os.clock() - start) .. " s)")
+        if distance <= 40 then
+            Arrived = true
+            pcall(function()
+                seat.Throttle = 0
+                seat.ThrottleFloat = 0
+            end)
+            if prim then
+                pcall(function()
+                    prim.ThrottleFloat = 0
+                    prim.Throttle = 0
+                end)
+            end
+            break
+        end
+        pcall(function()
+            seat.MaxSpeed = Speed
+            seat.TurnSpeed = Speed
+        end)
+        local steerAngle = ComputeSteerAngle(seat, TargetPos)
+        if math.abs(steerAngle) <= 5 then
+            pcall(function()
+                seat.Throttle = 1
+                seat.ThrottleFloat = 1
+            end)
+            if prim then
+                pcall(function()
+                    prim.ThrottleFloat = 1
+                    prim.Throttle = 1
+                end)
+            end
+        else
+            pcall(function() TurnBoatTowards(seat, TargetPos) end)
+            if prim then
+                pcall(function()
+                    TurnBoatPrimTowards(prim, TargetPos)
+                end)
+            end
+            pcall(function()
+                seat.Throttle = 0
+                seat.ThrottleFloat = 0
+            end)
+            if prim then
+                pcall(function()
+                    prim.ThrottleFloat = 0
+                    prim.Throttle = 0
+                end)
+            end
+        end
+        task.wait()
+    end
+    pcall(function()
+        seat.Throttle = 0
+        seat.ThrottleFloat = 0
+        seat.MaxSpeed = OrigMaxSpeed
+        seat.TurnSpeed = OrigTurnSpeed
+        seat.Torque = OrigTorque
+    end)
+    if prim then
+        pcall(function()
+            prim.ThrottleFloat = 0
+            prim.Throttle = 0
+        end)
+    end
+    return Arrived
+end
+function ReturnTiki(Speed)
+    Speed = Speed or 200
+    local boat = GetOwnBoat()
+    if not boat then
+        print("[ReturnTiki] sin barco")
+        return false
+    end
+    local DriverSeat = boat:FindFirstChild("VehicleSeat")
+    if not DriverSeat then
+        print("[ReturnTiki] sin asiento de conductor")
+        return false
+    end
+    if not BoardSeatRetry(DriverSeat) then
+        print("[ReturnTiki] no pude subir al timón")
+        return false
+    end
+    if _G.LeviathanDestination == "Hydra" then
+        SetStatus("Navegando la ruta fija de Hydra")
+        for _, point in ipairs(HydraReturnRoute) do
+            if not SailToCF(DriverSeat, CFrame.new(point), Speed or 300) then
+                return false
+            end
+        end
+        SetStatus("Llegué al destino de Hydra")
+        return true
+    end
+    print("[ReturnTiki] ya estoy en el timón")
+    SetStatus("Volviendo a Tiki")
+    local function HeartCloseCheck(seat)
+        local Map = workspace:FindFirstChild("Map")
+        local Heart = Map and Map:FindFirstChild("FrozenHeart")
+        local HeartPos = Heart and GetHeartPos(Heart)
+        if not HeartPos then
+            SetStatus("Volviendo a Tiki: el corazón desapareció, cancelo")
+            print("[ReturnTiki] heart gone, interrupt leg")
+            return false
+        end
+        local Dist = (HeartPos - seat.Position).Magnitude
+        if Dist > 3000 then
+            SetStatus("Volviendo a Tiki: corazón a " .. math.floor(Dist) .. " del barco, cancelo")
+            print("[ReturnTiki] heart check fail dist=" .. math.floor(Dist))
+            return false
+        end
+        return true
+    end
+    local TotalStart = os.clock()
+    local Returned = false
+    while _G.AutoLeviathanFull and os.clock() - TotalStart < 1800 do
+        local Map = workspace:FindFirstChild("Map")
+        local Heart = Map and Map:FindFirstChild("FrozenHeart")
+        if not Heart then
+            SetStatus("El corazón desapareció: dejo de volver a Tiki")
+            print("[ReturnTiki] heart gone, stop return")
+            break
+        end
+        local HeartPos = Heart and GetHeartPos(Heart)
+        if not HeartPos then
+            SetStatus("El corazón desapareció: dejo de volver a Tiki")
+            print("[ReturnTiki] heart gone, stop return")
+            break
+        end
+        if not DriverSeat or not DriverSeat.Parent or not IsSittingOn(DriverSeat) then
+            print("[ReturnTiki] me caí del asiento: vuelvo al timón")
+            local b2 = GetOwnBoat()
+            if not b2 then
+                break
+            end
+            DriverSeat = b2:FindFirstChild("VehicleSeat")
+            if not DriverSeat or not BoardSeatRetry(DriverSeat) then
+                break
+            end
+        end
+        local WentToHeart = false
+        local BoatPos = DriverSeat.Position
+        local Dist3D = (HeartPos - BoatPos).Magnitude
+        if Dist3D > 3000 then
+            SetStatus("Volviendo a Tiki: corazón a " .. math.floor(Dist3D) .. " — voy justo debajo del corazón")
+            print("[ReturnTiki] heart far=" .. math.floor(Dist3D) .. ", sail to heart")
+            SailToCF(DriverSeat, CFrame.new(HeartPos.X, BoatPos.Y, HeartPos.Z), Speed)
+            SetStatus("Debajo del corazón: espero 1.5 s")
+            local HoldStart = os.clock()
+            while _G.AutoLeviathanFull and os.clock() - HoldStart < 1.5 do
+                task.wait(0.2)
+            end
+            WentToHeart = true
+        end
+        if not WentToHeart then
+            print("[ReturnTiki] empieza el primer tramo")
+            local R1 = SailToCF(DriverSeat, TikiWaypointCF, Speed, HeartCloseCheck)
+            print("[ReturnTiki] primer tramo terminado arrived=" .. tostring(R1))
+            if R1 then
+                local R2 = SailToCF(DriverSeat, TikiReturnCF, Speed, HeartCloseCheck)
+                pcall(function()
+                    DriverSeat.CFrame = TikiReturnCF
+                end)
+                print("[ReturnTiki] segundo tramo terminado arrived=" .. tostring(R2))
+                if R2 then
+                    Returned = true
+                    break
+                end
+            end
+        end
+    end
+    if Returned and _G.LeviathanDestination == "Tiki" and _G.ReturnMode ~= "Home" then
+        SetStatus("De vuelta en Tiki: espero a que el corazón desaparezca")
+    end
+    return Returned
+end
+local function WaitForTeammates(boat, DriverSeat, ShouldStop, FightEvents, NoRebuy, MaxWait, FarImmediate)
+    if FightEvents == nil then
+        FightEvents = true
+    end
+    local FarStart = nil
+    local WaitStart = os.clock()
+    local LastHopOffAt = os.clock()
+    local LastCrewCount = -1
+    while _G.AutoLeviathanFull do
+        if EnchantHandoff.Park("captain") then continue end
+        if _G.SoloSeaFarm then return boat, DriverSeat, false end
+        if MaxWait and os.clock() - WaitStart >= MaxWait then
+            SetStatus("Se agotó la espera de compañeros")
+            return boat, DriverSeat, false
+        end
+        if ShouldStop and ShouldStop() then
+            return boat, DriverSeat, true
+        end
+        if not IsSittingOn(DriverSeat) then
+            SetStatus("Esperando compañeros: el capitán sube al timón primero")
+            if not BoardSeatRetry(DriverSeat) then
+                local b2 = GetOwnBoat()
+                if not b2 then
+                    SetStatus("El barco desapareció: vuelvo a comprarlo")
+                    return boat, DriverSeat, false
+                end
+                local s2 = b2:FindFirstChild("VehicleSeat")
+                if not s2 then
+                    SetStatus("El barco nuevo no tiene timón: vuelvo a comprar")
+                    return boat, DriverSeat, false
+                end
+                boat, DriverSeat = b2, s2
+            end
+        end
+        if not boat or not boat.Parent then
+            SetStatus("El barco desapareció mientras esperaba: vuelvo a comprar")
+            return boat, DriverSeat, false
+        end
+        if CountTeammatesOnBoat(boat) >= 4 then
+            return boat, DriverSeat, false
+        end
+        if not NoRebuy then
+            local ND = NearestPlayerDistance(boat)
+            local RebuyCd = os.clock() - LastRebuyAt
+            if FarImmediate then
+                if ND > 10000 then
+                    if RebuyCd >= 60 then
+                        SetStatus("El compañero más cercano está a más de 10000: vuelvo a comprar barco")
+                        local b3, s3 = RebuyBoatAndBoard()
+                        if b3 and s3 then
+                            boat, DriverSeat = b3, s3
+                        end
+                    else
+                        SetStatus("Compañero lejos, recompra en espera: aguardo (" .. math.floor(60 - RebuyCd) .. " s)")
+                    end
+                end
+            elseif ND > 12000 then
+                if RebuyCd < 60 then
+                    FarStart = nil
+                else
+                    FarStart = FarStart or os.clock()
+                    if os.clock() - FarStart >= 30 then
+                        FarStart = nil
+                        SetStatus("Compañeros demasiado lejos: vuelvo al muelle a comprar")
+                        local b3, s3 = RebuyBoatAndBoard()
+                        if b3 and s3 then
+                            boat, DriverSeat = b3, s3
+                        end
+                    end
+                end
+            else
+                FarStart = nil
+            end
+        else
+            FarStart = nil
+        end
+        local Mob, Root = SeaAPI.Sea_Mob()
+        if FightEvents and Mob and Root then
+            SetStatus("Mientras espero, farmeo: " .. Mob.Name)
+            if not Unseat() then
+                SetStatus("No pude bajarme: sigo intentando pelear")
+            end
+            local Stuck = {}
+            while _G.AutoLeviathanFull do
+                if ShouldStop and ShouldStop() then
+                    break
+                end
+                if CountTeammatesOnBoat(boat) >= 4 then
+                    break
+                end
+                local M, R, S = SeaAPI.Sea_Mob(SeaAPI.SearchRange, Stuck)
+                if not M or not R then
+                    break
+                end
+                SeaAPI.FightSeaEvent(M, R, S)
+                if SeaAPI.Sea_MobStillAlive(M) then
+                    Stuck[M] = true
+                end
+                task.wait(0.5)
+            end
+            if DriverSeat and DriverSeat.Parent then
+                BoardSeatRetry(DriverSeat)
+            end
+        else
+            local CrewNow = CountTeammatesOnBoat(boat)
+            if CrewNow ~= LastCrewCount then
+                LastCrewCount = CrewNow
+                LastHopOffAt = os.clock()
+            end
+            if os.clock() - LastHopOffAt >= 30 then
+                LastHopOffAt = os.clock()
+                SetStatus("Esperando compañeros: bajo del asiento y vuelvo a subir (anti-atasco)")
+                if Unseat() then
+                    task.wait(0.4)
+                    if DriverSeat and DriverSeat.Parent then
+                        BoardSeatRetry(DriverSeat, 5, 2)
+                    end
+                end
+            end
+            SetStatus("Esperando compañeros a bordo (" .. tostring(CrewNow) .. "/4)")
+            task.wait(1)
+        end
+    end
+    return boat, DriverSeat, false
+end
+local function SoloFarmSeaMob(MaxDistance, Exclude)
+    return SeaAPI.Sea_Mob(MaxDistance, Exclude)
+end
+local function CaptainFarmPhase()
+    local boat = GetOwnBoat()
+    if not boat then
+        BuyOwnBoat()
+        local SpawnStart = os.clock()
+        while _G.AutoLeviathanFull and not _G.Abyss_Resetting and os.clock() - SpawnStart < 20 do
+            boat = GetOwnBoat()
+            if boat then
+                break
+            end
+            task.wait(0.5)
+        end
+    end
+    if not boat then
+        return
+    end
+    local DriverSeat = boat:FindFirstChild("VehicleSeat")
+    if not DriverSeat then
+        return
+    end
+    if not BoardSeatRetry(DriverSeat) then
+        SetStatus("No pude subir al timón: vuelvo al bucle principal")
+        return
+    end
+    if _G.SoloSeaFarm then
+        SetStatus("Farmeo en solitario: no espero compañeros")
+    else
+        SetStatus("Esperando a 4 compañeros a bordo")
+        boat, DriverSeat = WaitForTeammates(boat, DriverSeat, nil, true, false, nil, true)
+        if CountTeammatesOnBoat(boat) >= 4 then
+            SetStatus("4 compañeros a bordo: navego en 0.5 s")
+            task.wait(0.5)
+            SetStatus("4 compañeros a bordo: listos para farmear")
+        end
+    end
+    local FarmDone = false
+    local FarmStart = os.clock()
+    if not _G.SoloSeaFarm then
+        task.spawn(function()
+            while _G.AutoLeviathanFull and not FarmDone do
+                task.wait(2)
+                if _G.SoloSeaFarm then break end
+                local S = GetBribeStatus()
+                if S == nil or S ~= -1 then
+                    FarmDone = true
+                end
+            end
+        end)
+    end
+    local LastTeamCheck = 0
+    local LastMobCheck = 0
+    local LastSlowCheck = 0
+    local Fought = {}
+    local Mob, Root = nil, nil
+    while _G.AutoLeviathanFull and not FarmDone do
+        if EnchantHandoff.Park("captain") then continue end
+        if os.clock() - LastSlowCheck >= 0.4 then
+            LastSlowCheck = os.clock()
+            local MapX = workspace:FindFirstChild("Map")
+            if not _G.SoloSeaFarm and (SeaAPI.Leviathan_SegmentsExist() or (MapX and MapX:FindFirstChild("LeviathanGate"))) then
+                SetStatus("Leviathan apareció: dejo el farmeo y voy a cazarlo")
+                break
+            end
+            local b2 = GetOwnBoat()
+            local s2 = b2 and b2:FindFirstChild("VehicleSeat")
+            if b2 and s2 then
+                boat = b2
+                DriverSeat = s2
+            elseif _G.AutoLeviathanFull then
+                local _, _, humR = GetCharacterParts()
+                if humR and humR.Health > 0 then
+                    local b3, s3 = RebuyBoatAndBoard()
+                    if b3 and s3 then
+                        boat, DriverSeat = b3, s3
+                    end
+                end
+            end
+        end
+        if os.clock() - LastTeamCheck >= 1 then
+            LastTeamCheck = os.clock()
+            if not _G.SoloSeaFarm and CountTeammatesOnBoat(boat) < 4 then
+                local b3, s3, Stopped = WaitForTeammates(boat, DriverSeat, function()
+                    return FarmDone
+                end, true, false, nil, true)
+                boat, DriverSeat = b3, s3
+                if Stopped then
+                    break
+                end
+                task.wait(0.5)
+            else
+                local b2 = GetOwnBoat()
+                local s2 = b2 and b2:FindFirstChild("VehicleSeat")
+                if b2 and s2 then
+                    boat, DriverSeat = b2, s2
+                end
+            end
+        end
+        if os.clock() - LastMobCheck >= 0.2 then
+            LastMobCheck = os.clock()
+            Mob, Root = SoloFarmSeaMob(SeaAPI.SearchRange, Fought)
+        end
+        if Mob and Root then
+            SetStatus("Farmeo marino: peleando a pie")
+            if not Unseat() then
+                SetStatus("No pude bajarme: sigo intentando pelear")
+            end
+            while _G.AutoLeviathanFull and not FarmDone do
+                local M, R, S = SoloFarmSeaMob(SeaAPI.SearchRange, Fought)
+                if not M or not R then
+                    break
+                end
+                SeaAPI.FightSeaEvent(M, R, S)
+                if SeaAPI.Sea_MobStillAlive(M) then
+                    Fought[M] = true
+                end
+                task.wait(0.5)
+            end
+            if DriverSeat and DriverSeat.Parent then
+                BoardSeatRetry(DriverSeat)
+            end
+            LastTeamCheck = 0
+            LastMobCheck = 0
+        else
+            if not DriverSeat or not DriverSeat.Parent then
+                task.wait(0.2)
+            elseif not IsSittingOn(DriverSeat) then
+                BoardSeat(DriverSeat, 3)
+            else
+                SetStatus("Farmeo marino: patrullando (llevo " .. math.floor(os.clock() - FarmStart) .. " s)")
+                local staying = SailBoatStream(DriverSeat, _G.BoatSpeed)
+                if staying == false then
+                    local b3, s3 = RebuyBoatAndBoard()
+                    if b3 and s3 then
+                        boat, DriverSeat = b3, s3
+                    end
+                end
+            end
+        end
+    end
+end
+local function RunNav(fn)
+    return pcall(fn)
+end
+local function IsAtTikiSpawn()
+    local _, hrp = GetCharacterParts()
+    if not hrp then return false end
+    local delta = hrp.Position - TikiReturnCF.Position
+    return Vector3.new(delta.X, 0, delta.Z).Magnitude <= 2500
+end
+local function PressHomeButton()
+    local net = RS:FindFirstChild("Modules") and RS.Modules:FindFirstChild("Net")
+    local remote = net and net:FindFirstChild("RE/OnAnalyticsActivity")
+    local remotes = RS:FindFirstChild("Remotes")
+    local commF = remotes and remotes:FindFirstChild("CommF_")
+    if not remote or not commF then
+        SetStatus("Los remotes del botón Home no están disponibles; la navegación sigue detenida")
+        NavigationOwner = "home-return"
+        return false
+    end
+    NavigationOwner = "home-return"
+    ClearHover()
+    if CurrentTween then pcall(function() CurrentTween:Cancel() end); CurrentTween = nil end
+    local _, hrp = GetCharacterParts()
+    if hrp then
+        pcall(function()
+            hrp.AssemblyLinearVelocity = Vector3.zero
+            hrp.AssemblyAngularVelocity = Vector3.zero
+        end)
+    end
+    local homeOk = pcall(function() remote:FireServer("HUD/Button/Home") end)
+    if not homeOk then
+        SetStatus("El evento del botón Home falló; la navegación sigue detenida")
+        return false
+    end
+    local teleportOk = pcall(function() commF:InvokeServer("TeleportToSpawn") end)
+    if not teleportOk then
+        SetStatus("La solicitud TeleportToSpawn falló; la navegación sigue detenida")
+        return false
+    end
+    SetStatus("Botón Home y TeleportToSpawn enviados: confirmando el spawn en Tiki")
+    local started = os.clock()
+    while _G.AutoLeviathanFull and os.clock() - started < 20 do
+        if IsAtTikiSpawn() then
+            SetStatus("De vuelta en Tiki: navegación bloqueada")
+            return true
+        end
+        task.wait(0.25)
+    end
+    SetStatus("TeleportToSpawn enviado, pero no se confirmó la llegada a Tiki; la navegación sigue bloqueada")
+    return false
+end
+local function HeartFinishPhase()
+    if _G.AutoLeviathanFull and not GetOwnBoat() then
+        BuyOwnBoat("Corazón presente y sin barco: voy a comprar uno")
+        local BoatWaitStart = os.clock()
+        while _G.AutoLeviathanFull and not _G.Abyss_Resetting and os.clock() - BoatWaitStart < 30 do
+            if GetOwnBoat() then
+                break
+            end
+            task.wait(0.5)
+        end
+    end
+    local Grabbed = HarpoonHeart()
+    if not Grabbed then
+        return
+    end
+    SetStatus("Corazón enganchado: subo al barco en 2 s")
+    local PreSyncStart = os.clock()
+    while _G.AutoLeviathanFull and os.clock() - PreSyncStart < 2 do
+        task.wait(0.25)
+    end
+    local Returned = false
+    if _G.ReturnMode == "Home" then
+        SetStatus("Corazón asegurado: me detengo y vuelvo a Tiki con el botón Home")
+        PressHomeButton()
+    else
+        local boat = GetOwnBoat()
+        local DriverSeat = boat and boat:FindFirstChild("VehicleSeat")
+        if DriverSeat and not IsSittingOn(DriverSeat) then
+            SetStatus("Corazón enganchado: subo al timón")
+            BoardSeatRetry(DriverSeat)
+        end
+        SetStatus("En el timón: vuelvo en barco en 2 s")
+        local PostBoardStart = os.clock()
+        while _G.AutoLeviathanFull and os.clock() - PostBoardStart < 2 do
+            task.wait(0.25)
+        end
+        Returned = ReturnTiki(300)
+    end
+    local HeartLockDone = false
+    if Returned then
+        task.spawn(function()
+            while _G.AutoLeviathanFull and not HeartLockDone do
+                pcall(function()
+                    local bL = GetOwnBoat()
+                    local sL = bL and bL:FindFirstChild("VehicleSeat")
+                    if sL and IsSittingOn(sL) then
+                        local _, hrpL = GetCharacterParts()
+                        if hrpL then
+                            hrpL.CFrame = CFrame.new(TikiReturnCF.Position.X, hrpL.Position.Y, TikiReturnCF.Position.Z) * (hrpL.CFrame - hrpL.CFrame.Position)
+                        end
+                        sL.ThrottleFloat = 1
+                        sL.SteerFloat = 0
+                    end
+                end)
+                task.wait(0.2)
+            end
+        end)
+    end
+    local WaitStart = os.clock()
+    local LastHeartScan = 0
+    while _G.AutoLeviathanFull and os.clock() - WaitStart < 1800 do
+        local Map = workspace:FindFirstChild("Map")
+        local Heart = Map and Map:FindFirstChild("FrozenHeart")
+        local HeartGone = not Heart
+        if Heart and Heart:IsA("BasePart") then
+            HeartGone = Heart.Transparency >= 1
+        elseif Heart then
+            local primary = Heart:IsA("Model") and Heart.PrimaryPart
+            local PrimaryGone = primary == nil or primary.Transparency >= 1
+            if PrimaryGone and os.clock() - LastHeartScan >= 5 then
+                LastHeartScan = os.clock()
+                local AnyVisible = false
+                for _, p in ipairs(Heart:GetDescendants()) do
+                    if p:IsA("BasePart") and p.Transparency < 1 then
+                        AnyVisible = true
+                        break
+                    end
+                end
+                HeartGone = not AnyVisible
+            end
+        end
+        if HeartGone then
+            HeartLockDone = true
+            SetStatus("El corazón desapareció: voy al muelle a comprar barco")
+            break
+        end
+        if not Returned and not Heart then
+            HeartLockDone = true
+            SetStatus("El barco desapareció: compro uno nuevo sin esperar el corazón")
+            break
+        end
+        if _G.ReturnMode == "Home" and NavigationOwner == "home-return" then
+            SetStatus(IsAtTikiSpawn()
+                and "En Tiki: esperando el corazón y el regreso del barco"
+                or "Esperando el regreso del botón Home a Tiki")
+        else
+            SetStatus("Esperando a que el corazón desaparezca (llevo " .. math.floor(os.clock() - WaitStart) .. " s)")
+        end
+        task.wait(2)
+    end
+    HeartLockDone = true
+    if not _G.AutoLeviathanFull then
+        if NavigationOwner == "home-return" then NavigationOwner = nil end
+        return
+    end
+    if _G.ReturnMode == "Home" then
+        SetStatus("Fase del corazón terminada: espero el barco en Tiki")
+        local BoatBack = false
+        local BoatWaitStart = os.clock()
+        while _G.AutoLeviathanFull and os.clock() - BoatWaitStart < 180 do
+            local bWait = GetOwnBoat()
+            local sWait = bWait and bWait:FindFirstChild("VehicleSeat")
+            if sWait and Vector3.new(
+                sWait.Position.X - TikiReturnCF.Position.X,
+                0,
+                sWait.Position.Z - TikiReturnCF.Position.Z
+            ).Magnitude <= 2500 then
+                BoatBack = true
+                SetStatus("Barco de vuelta en Tiki: reanudo el flujo principal")
+                break
+            end
+            task.wait(2)
+        end
+        if NavigationOwner == "home-return" then NavigationOwner = nil end
+        if not _G.AutoLeviathanFull then return end
+        if BoatBack then return end
+        SetStatus("El barco no volvió a Tiki a tiempo: recompro para reanudar")
+    elseif not Unseat() then
+        SetStatus("El corazón desapareció y no pude bajarme: voy igual a comprar")
+    end
+    local OldBoat = GetOwnBoat()
+    BuyOwnBoat("Corazón desaparecido: voy al muelle a comprar barco")
+    local SpawnStart = os.clock()
+    while _G.AutoLeviathanFull and not _G.Abyss_Resetting and os.clock() - SpawnStart < 20 do
+        local b3 = GetOwnBoat()
+        if b3 and b3 ~= OldBoat then
+            break
+        end
+        task.wait(0.5)
+    end
+end
+local HuntStart = nil
+local function CaptainHuntPhase()
+    if _G.SoloSeaFarm then return end
+    if HuntStart == nil then
+        HuntStart = os.clock()
+    end
+    local HuntSuccess = false
+    local MapEarly = workspace:FindFirstChild("Map")
+    if SeaAPI.Leviathan_SegmentsExist() or (MapEarly and MapEarly:FindFirstChild("LeviathanGate")) then
+        HuntSuccess = true
+    end
+    local boat = nil
+    local DriverSeat = nil
+    if not HuntSuccess then
+        boat = GetOwnBoat()
+        if not boat then
+            BuyOwnBoat()
+            local SpawnStart = os.clock()
+            while _G.AutoLeviathanFull and not _G.Abyss_Resetting and os.clock() - SpawnStart < 20 do
+                boat = GetOwnBoat()
+                if boat then
+                    break
+                end
+                task.wait(0.5)
+            end
+        end
+        if not boat then
+            return
+        end
+        DriverSeat = boat:FindFirstChild("VehicleSeat")
+        if not DriverSeat then
+            return
+        end
+        if not BoardSeatRetry(DriverSeat) then
+            SetStatus("No pude subir al timón: vuelvo al bucle principal")
+            return
+        end
+        NoClip(true)
+    end
+    local LastHuntCheck = 0
+    local LastTeamCheck2 = 0
+    local LastMobCheck = 0
+    while _G.AutoLeviathanFull and not _G.SoloSeaFarm and not HuntSuccess do
+        if EnchantHandoff.Park("captain") then continue end
+        if not boat or not boat.Parent or _G.Abyss_AbandonedBoats[boat] then
+            SetStatus("El barco desapareció durante la caza: vuelvo al bucle principal")
+            return
+        end
+        if not IsSittingOn(DriverSeat) then
+            SetStatus("Me caí del asiento: vuelvo al timón")
+            if not BoardSeatRetry(DriverSeat, 5, 2) then
+                SetStatus("No pude volver al barco: vuelvo al bucle principal")
+                return
+            end
+        end
+        if os.clock() - LastHuntCheck >= 0.2 then
+            LastHuntCheck = os.clock()
+            local Map = workspace:FindFirstChild("Map")
+            if SeaAPI.Leviathan_SegmentsExist() or (Map and Map:FindFirstChild("LeviathanGate")) then
+                SetStatus("La puerta del Leviathan apareció: detengo el barco")
+                HuntSuccess = true
+                break
+            end
+            SetStatus("Buscando al Leviathan: navegando (llevo " .. math.floor(os.clock() - HuntStart) .. " s)")
+        end
+        if os.clock() - LastTeamCheck2 >= 1 then
+            LastTeamCheck2 = os.clock()
+            if not _G.SoloSeaFarm and CountTeammatesOnBoat(boat) < 4 then
+                local b3, s3 = WaitForTeammates(boat, DriverSeat, nil, _G.HuntFightEvents)
+                boat, DriverSeat = b3, s3
+                if not boat or not DriverSeat or not boat.Parent then
+                    SetStatus("El barco desapareció mientras esperaba: dejo la caza")
+                    return
+                end
+                task.wait(0.5)
+                SetStatus("Buscando al Leviathan: sigo navegando")
+            end
+        end
+        if _G.HuntFightEvents and os.clock() - LastMobCheck >= 0.5 then
+            LastMobCheck = os.clock()
+            local Mob, Root = SeaAPI.Sea_Mob(SeaAPI.SearchRange)
+            if Mob and Root then
+                SetStatus("De caza: farmeo " .. Mob.Name)
+                if not Unseat() then
+                    SetStatus("No pude bajarme: sigo intentando pelear")
+                end
+                local Stuck = {}
+                while _G.AutoLeviathanFull do
+                    local MapX = workspace:FindFirstChild("Map")
+                    if SeaAPI.Leviathan_SegmentsExist() or (MapX and MapX:FindFirstChild("LeviathanGate")) then
+                        break
+                    end
+                    local M, R, S = SeaAPI.Sea_Mob(SeaAPI.SearchRange, Stuck)
+                    if not M or not R then
+                        break
+                    end
+                    SeaAPI.FightSeaEvent(M, R, S, function()
+                        local MapX2 = workspace:FindFirstChild("Map")
+                        return SeaAPI.Leviathan_SegmentsExist() or (MapX2 and MapX2:FindFirstChild("LeviathanGate"))
+                    end)
+                    if SeaAPI.Sea_MobStillAlive(M) then
+                        Stuck[M] = true
+                    end
+                    task.wait(0.5)
+                end
+                if DriverSeat and DriverSeat.Parent then
+                    BoardSeatRetry(DriverSeat)
+                end
+                LastTeamCheck2 = 0
+            end
+        end
+        local staying = SailBoatStream(DriverSeat, _G.BoatSpeed)
+        if staying == false then
+            local b3, s3 = RebuyBoatAndBoard()
+            if b3 and s3 then
+                boat, DriverSeat = b3, s3
+            end
+        end
+    end
+    if not HuntSuccess then
+        SetStatus("La caza terminó con error: reinicio")
+        return
+    end
+    HuntStart = nil
+    if not Unseat() then
+        SetStatus("No pude bajarme: reintento")
+        return
+    end
+    OpenLeviathanGate()
+    local Killed = SeaAPI.FightLeviathan(nil, 8)
+    if not Killed then
+        SetStatus("Leviathan no derrotado: reinicio")
+        return
+    end
+    SetStatus("Leviathan derrotado")
+    if _G.AutoLeviathanFull and not GetOwnBoat() then
+        BuyOwnBoat()
+        local BoatWaitStart = os.clock()
+        while _G.AutoLeviathanFull and not _G.Abyss_Resetting and os.clock() - BoatWaitStart < 30 do
+            if GetOwnBoat() then
+                break
+            end
+            task.wait(0.5)
+        end
+    end
+    local HeartStart = os.clock()
+    while _G.AutoLeviathanFull and os.clock() - HeartStart < 900 do
+        local Map = workspace:FindFirstChild("Map")
+        if Map and Map:FindFirstChild("FrozenHeart") then
+            SetStatus("El corazón apareció: engancho en 5 s")
+            break
+        end
+        SetStatus("Esperando a que aparezca el corazón (llevo " .. math.floor(os.clock() - HeartStart) .. " s)")
+        task.wait(1)
+    end
+    local PostHeartStart = os.clock()
+    while _G.AutoLeviathanFull and os.clock() - PostHeartStart < 5 do
+        SetStatus("El corazón apareció: engancho en 5 s (llevo " .. math.floor(os.clock() - PostHeartStart) .. " s)")
+        task.wait(0.5)
+    end
+    HeartFinishPhase()
+end
+local CaptainRunning = false
+local function StartCaptain()
+    if CaptainRunning then
+        return
+    end
+    CaptainRunning = true
+    task.spawn(function()
+        while _G.AutoLeviathanFull and _G.Mode == "Capitán" do
+            if EnchantHandoff.Park("captain") then continue end
+            StatusPrefix = ""
+            local ok = pcall(function()
+                local Map = workspace:FindFirstChild("Map")
+                local Heart = Map and Map:FindFirstChild("FrozenHeart")
+                if Heart and not _G.SoloSeaFarm then
+                    SetStatus("Corazón detectado: continúo con el enganche")
+                    HeartFinishPhase()
+                    return
+                end
+                if not _G.SoloSeaFarm then
+                    local S = GetBribeStatus()
+                    if S == nil then
+                        SetStatus("Esperando el estado del soborno (no disponible)")
+                        task.wait(2)
+                        return
+                    end
+                    if S ~= -1 and S ~= 5 then
+                        SetStatus("Soborno incompleto (" .. tostring(S) .. "/5): soborno ahora")
+                        BribeUntilDone()
+                        S = GetBribeStatus()
+                    end
+                    if SeaAPI.Leviathan_SegmentsExist() or (Map and Map:FindFirstChild("LeviathanGate")) then
+                        SetStatus("Leviathan detectado: voy a cazarlo")
+                        RunNav(CaptainHuntPhase)
+                        return
+                    end
+                    if S == 5 then
+                        SetStatus("Soborno completado: empiezo la caza del Leviathan")
+                        RunNav(CaptainHuntPhase)
+                    else
+                        SetStatus("Soborno incompleto: farmeo eventos mientras espero")
+                        RunNav(CaptainFarmPhase)
+                    end
+                else
+                    SetStatus("Farmeo en solitario: solo objetivos seleccionados")
+                    RunNav(CaptainFarmPhase)
+                end
+            end)
+            if not ok then
+                task.wait(0.5)
+            end
+            task.wait(1)
+        end
+        CaptainRunning = false
+    end)
+end
+local FollowerRunning = false
+local LastLeviathanSeen = 0
+local FollowSeatsFull = false
+local function IsOnCaptainBoat(boat)
+    local _, _, hum = GetCharacterParts()
+    if not hum or not hum.SeatPart then
+        return false
+    end
+    return hum.SeatPart:IsDescendantOf(boat)
+end
+local function IsCaptainOnBoat(boat)
+    local captain = Players:FindFirstChild(_G.FollowTarget)
+    local char = captain and captain.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    local DriverSeat = boat and boat:FindFirstChild("VehicleSeat")
+    return hum ~= nil and DriverSeat ~= nil and hum.SeatPart == DriverSeat
+end
+local function FollowerBoardSeat(boat)
+    local cannons = GetCannons(boat)
+    local _, hrp0 = GetCharacterParts()
+    local firstSeat = boat and (boat:FindFirstChild("VehicleSeat") or cannons[1])
+    if hrp0 and firstSeat and (hrp0.Position - firstSeat.Position).Magnitude > 2500 then
+        if (hrp0.Position - firstSeat.Position).Magnitude > BoatFindRange then
+            SetStatus("Siguiendo: el barco del capitán está a más de " .. BoatFindRange .. " — no lo persigo")
+            return false
+        end
+        SetStatus("Siguiendo: el barco está lejos, me acerco volando")
+        ClearHover()
+        local FlyStart = os.clock()
+        while _G.AutoLeviathanFull and os.clock() - FlyStart < 30 do
+            local _, hrp1 = GetCharacterParts()
+            if not hrp1 or not firstSeat or not firstSeat.Parent then
+                break
+            end
+            if (hrp1.Position - firstSeat.Position).Magnitude <= 500 then
+                break
+            end
+            _tp(function()
+                return firstSeat.Parent and firstSeat.CFrame or nil
+            end, function()
+                local _, h = GetCharacterParts()
+                return (not firstSeat.Parent) or (not h)
+                    or (firstSeat.Position - h.Position).Magnitude <= 500
+            end)
+            task.wait(0.1)
+        end
+    end
+    local SeatTrySeconds = math.floor(tonumber(_G.FollowerSeatTrySeconds) or 2)
+    if SeatTrySeconds < 1 then
+        SeatTrySeconds = 2
+    end
+    local tried = {}
+    local BoardStart = os.clock()
+    local BoardBudget = math.clamp(#cannons * SeatTrySeconds + 10, 20, 45)
+    while _G.AutoLeviathanFull and os.clock() - BoardStart < BoardBudget do
+        local seat, FreeSeats = nil, 0
+        for _, cannon in ipairs(cannons) do
+            local s = cannon:FindFirstChild("Seat")
+            if s and not IsSeatOccupied(s) then
+                FreeSeats = FreeSeats + 1
+                if not tried[s] then
+                    seat = s
+                    break
+                end
+            end
+        end
+        if not seat and FreeSeats == 0 then
+            SetStatus("Siguiendo: no hay asientos libres (¿4/4?)")
+            FollowSeatsFull = true
+            return false
+        end
+        if not seat then
+            tried = {}
+            task.wait(0.2)
+        else
+            FollowSeatsFull = false
+            _G.Abyss_BoardStall = nil
+            local SeatName = seat.Parent and seat.Parent.Name or "?"
+            SetStatus("Siguiendo: pruebo el asiento " .. SeatName .. " (cambio cada " .. SeatTrySeconds .. " s)")
+            local BoardOk, SeatTaken = BoardSeat(seat, SeatTrySeconds)
+            if BoardOk then
+                return true
+            end
+            if SeatTaken then
+                SetStatus("Siguiendo: asiento " .. SeatName .. " ocupado por otro jugador, pruebo otro")
+            end
+            tried[seat] = true
+            local _, _, humTried = GetCharacterParts()
+            if humTried and (humTried.Sit or humTried.SeatPart ~= nil) then
+                Unseat()
+            end
+        end
+    end
+    return false
+end
+function FollowerHeartWait()
+    pcall(function()
+        if CurrentTween then
+            CurrentTween:Cancel()
+            CurrentTween = nil
+        end
+    end)
+    Tweening = false
+    Unseat()
+    local StartAt = os.clock()
+    local StatusAt = 0
+    local LastTPPos = nil
+    while _G.AutoLeviathanFull and _G.Mode == "Seguidor" do
+        local Map = workspace:FindFirstChild("Map")
+        local Heart = Map and Map:FindFirstChild("FrozenHeart")
+        if not Heart then
+            if NavigationOwner == "home-return" then NavigationOwner = nil end
+            SetStatus("El corazón desapareció: subo al barco a seguir")
+            return
+        end
+        if IsFrozenHeartHarpooned() then
+            if _G.ReturnMode == "Home" then
+                SetStatus("Corazón asegurado: me detengo y vuelvo a Tiki con el botón Home")
+                PressHomeButton()
+            else
+                SetStatus("Corazón asegurado: me quedo a bordo para el regreso en barco")
+                local boat = GetCaptainBoat()
+                if boat then pcall(FollowerBoardSeat, boat) end
+            end
+            local securedAt = os.clock()
+            repeat task.wait(0.5) until not _G.AutoLeviathanFull or not Heart.Parent or os.clock() - securedAt > 1800
+            if NavigationOwner == "home-return" then NavigationOwner = nil end
+            return
+        end
+        local hp = GetHeartPos(Heart)
+        if hp and (LastTPPos == nil or (hp - LastTPPos).Magnitude > 20) then
+            LastTPPos = hp
+            _tp(LiveHeartCF(35), function()
+                return not _G.AutoLeviathanFull
+            end)
+        end
+        if os.clock() - StatusAt > 2 then
+            StatusAt = os.clock()
+            SetStatus("Esperando el corazón: me teletransporto (llevo " .. math.floor(os.clock() - StartAt) .. " s)")
+        end
+        task.wait(1)
+    end
+end
+local function StartFollower()
+    if FollowerRunning then
+        return
+    end
+    FollowerRunning = true
+    local function CaptainBackOnBoat()
+        local boat = GetCaptainBoat()
+        return IsCaptainOnBoat(boat)
+    end
+    task.spawn(function()
+        local GateTweening = false
+        while _G.AutoLeviathanFull and _G.Mode == "Seguidor" do
+            if EnchantHandoff.Park("follower") then continue end
+            StatusPrefix = "follow"
+            local ok = pcall(function()
+                local boat = GetCaptainBoat()
+                local CaptainOn = boat ~= nil and IsCaptainOnBoat(boat)
+                local Map = workspace:FindFirstChild("Map")
+                local Heart = Map and Map:FindFirstChild("FrozenHeart")
+                local HeartPos = Heart and GetHeartPos(Heart)
+                local HeartGrabbed = HeartPos ~= nil and IsFrozenHeartHarpooned()
+                if Heart then
+                    FollowerHeartWait()
+                    return
+                end
+                if HeartGrabbed then
+                    if boat then
+                        if not IsOnCaptainBoat(boat) then
+                            SetStatus("Corazón enganchado: subo al cañón")
+                            FollowerBoardSeat(boat)
+                        else
+                            SetStatus("En espera en el barco (corazón enganchado)")
+                        end
+                    else
+                        if GetCaptainHRP() then
+                            SetStatus("Corazón enganchado: sigo al capitán")
+                            _tp(LiveCaptainTopCF(35), function()
+                                return not _G.AutoLeviathanFull
+                            end)
+                        end
+                    end
+                    return
+                end
+                local LV = SeaAPI.Leviathan_Find()
+                if LV then
+                    if GateTweening then
+                        GateTweening = false
+                        pcall(function()
+                            if CurrentTween then
+                                CurrentTween:Cancel()
+                                CurrentTween = nil
+                            end
+                        end)
+                        Tweening = false
+                        SetStatus("Leviathan apareció: cancelo el viaje a la puerta")
+                    end
+                    if boat and IsOnCaptainBoat(boat) then
+                        if not Unseat() then
+                            SetStatus("Leviathan apareció y no pude bajarme: reintentando")
+                        else
+                            SetStatus("Leviathan apareció: me bajo a pelear")
+                        end
+                    end
+                    LastLeviathanSeen = os.clock()
+                    SeaAPI.FightLeviathan(CaptainBackOnBoat, 10)
+                    return
+                end
+                if boat and CaptainOn then
+                    local Mob, Root, Skill = nil, nil, false
+                    if _G.HuntFightEvents then
+                        Mob, Root, Skill = SeaAPI.Sea_Mob(SeaAPI.SearchRange)
+                    end
+                    if Mob and Root then
+                        SetStatus("El capitán sigue al timón: bajo a farmear " .. Mob.Name)
+                        if not Unseat() then
+                            SetStatus("No pude bajarme: sigo intentando pelear")
+                        end
+                        SeaAPI.FightSeaEvent(Mob, Root, Skill, function()
+                            local MapNow = workspace:FindFirstChild("Map")
+                            return SeaAPI.Leviathan_SegmentsExist()
+                                or (MapNow and (MapNow:FindFirstChild("LeviathanGate")
+                                    or MapNow:FindFirstChild("FrozenHeart")))
+                        end)
+                    elseif not IsOnCaptainBoat(boat) then
+                        FollowerBoardSeat(boat)
+                    else
+                        SetStatus("En espera en el barco (capitán " .. (_G.FollowTarget or "?") .. " al timón)")
+                    end
+                else
+                    if boat and IsOnCaptainBoat(boat) then
+                        if not Unseat() then
+                            SetStatus("El capitán bajó y yo no puedo: reintentando")
+                        else
+                            SetStatus("El capitán bajó: bajo también")
+                        end
+                    elseif not boat then
+                        SetStatus("Barco del capitán perdido: peleo mientras compra otro")
+                    end
+                    local MapG = workspace:FindFirstChild("Map")
+                    local Gate = MapG and MapG:FindFirstChild("LeviathanGate")
+                    local Watcher = Gate and Gate:FindFirstChild("FrozenWatcherPart")
+                    if Watcher and SeaAPI.Leviathan_SegmentsExist() then
+                        if GateTweening then
+                            GateTweening = false
+                            pcall(function()
+                                if CurrentTween then
+                                    CurrentTween:Cancel()
+                                    CurrentTween = nil
+                                end
+                            end)
+                            Tweening = false
+                            SetStatus("Leviathan apareció: fuerzo salir del viaje a la puerta")
+                        end
+                    elseif Watcher and os.clock() - LastLeviathanSeen >= 120 then
+                        GateTweening = true
+                        local WatcherPos = TargetPos(Watcher)
+                        if WatcherPos then
+                            SetStatus("La puerta del Leviathan apareció: me teletransporto")
+                            _tp(LiveGateCF(5), function()
+                                return (not _G.AutoLeviathanFull) or SeaAPI.Leviathan_SegmentsExist()
+                            end)
+                            GateTweening = false
+                            RestorePlayerState()
+                            SetStatus("En la puerta del Leviathan: esperando a que aparezca")
+                        end
+                    elseif Heart then
+                        local HeartPos2 = GetHeartPos(Heart)
+                        if HeartPos2 then
+                            SetStatus("Me teletransporto al corazón")
+                            _tp(LiveHeartCF(35), function()
+                                return not _G.AutoLeviathanFull
+                            end)
+                        end
+                    elseif os.clock() - LastLeviathanSeen < 120 then
+                        local capHrp = GetCaptainHRP()
+                        if capHrp then
+                            SetStatus("Siguiendo al capitán (esperando el corazón)")
+                            _tp(LiveCaptainTopCF(35), function()
+                                return not _G.AutoLeviathanFull
+                            end)
+                        end
+                    else
+                        local Mob, Root, Skill = nil, nil, false
+                        if _G.HuntFightEvents then
+                            Mob, Root, Skill = SeaAPI.Sea_Mob(SeaAPI.SearchRange)
+                        end
+                        if Mob and Root then
+                            SeaAPI.FightSeaEvent(Mob, Root, Skill, CaptainBackOnBoat)
+                        else
+                            SetStatus("El capitán está a pie, sin objetivo: en espera")
+                            if not IsOnBoat() then
+                                if GetCaptainHRP() then
+                                    _tp(LiveCaptainTopCF(35), function()
+                                        return not _G.AutoLeviathanFull
+                                    end)
+                                else
+                                    _tp(LiveSelfCF(50), function()
+                                        return not _G.AutoLeviathanFull
+                                    end)
+                                end
+                            end
+                        end
+                    end
+                end
+            end)
+            if not ok then
+                task.wait(0.5)
+            end
+            if FollowSeatsFull and not IsOnBoat() then
+                if GetCaptainHRP() then
+                    _tp(LiveCaptainTopCF(35), function()
+                        return not _G.AutoLeviathanFull
+                    end)
+                else
+                    _tp(LiveSelfCF(50), function()
+                        return not _G.AutoLeviathanFull
+                    end)
+                end
+            end
+            task.wait(0.2)
+        end
+        FollowerRunning = false
+    end)
+end
+function GetStatusDetails()
+    local lines = {}
+    if not _G.AutoLeviathanFull then
+        return T("notstarted")
+    end
+    lines[#lines + 1] = T("sec.mode") .. ": " .. ModeDisplay()
+    if _G.Mode == "Seguidor" then
+        lines[#lines + 1] = T("detail.follow") .. ": " .. (_G.FollowTarget ~= "" and _G.FollowTarget or T("detail.no.captain"))
+    end
+    local boat = nil
+    if _G.Mode == "Capitán" then
+        boat = GetOwnBoat()
+    else
+        boat = GetCaptainBoat()
+    end
+    if boat then
+        lines[#lines + 1] = T("detail.teammates") .. ": " .. CountTeammatesOnBoat(boat) .. "/4"
+    else
+        lines[#lines + 1] = T("detail.teammates") .. ": " .. T("detail.no.boat")
+    end
+    local _, _, hum = GetCharacterParts()
+    if hum and hum.SeatPart then
+        lines[#lines + 1] = T("detail.seat") .. ": " .. hum.SeatPart.Name
+    elseif hum then
+        lines[#lines + 1] = T("detail.seat") .. ": " .. T("detail.not.seated")
+    end
+    local S = GetBribeStatus()
+    if S ~= nil then
+        if S == -1 then
+            lines[#lines + 1] = T("detail.bribe") .. ": " .. T("bribe.cd")
+        elseif S == 5 then
+            lines[#lines + 1] = T("detail.bribe") .. ": " .. T("bribe.done")
+        else
+            lines[#lines + 1] = T("detail.bribe") .. ": " .. tostring(S) .. "/5"
+        end
+    else
+        lines[#lines + 1] = T("detail.bribe") .. ": " .. T("bribe.unknown")
+    end
+    return table.concat(lines, "\n")
+end
+function GetTargetStatus()
+    local lines = {}
+    if not _G.AutoLeviathanFull then
+        return T("notstarted")
+    end
+    local LV = SeaAPI.Leviathan_Find()
+    if LV then
+        local HP = SeaAPI.Leviathan_GetHP(LV)
+        lines[#lines + 1] = T("tab.main") .. ": " .. LV.Name
+            .. (HP and (" " .. T("target.hp") .. " " .. string.format("%.0f", HP)) or "")
+    else
+        local Map = workspace:FindFirstChild("Map")
+        if Map and Map:FindFirstChild("LeviathanGate") then
+            lines[#lines + 1] = T("tab.main") .. ": " .. T("target.gate")
+        else
+            lines[#lines + 1] = T("tab.main") .. ": " .. T("target.not.spawned")
+        end
+    end
+    local Map2 = workspace:FindFirstChild("Map")
+    local Heart = Map2 and Map2:FindFirstChild("FrozenHeart")
+    if Heart then
+        local P = GetHeartPos(Heart)
+        if P and IsFrozenHeartHarpooned() then
+            lines[#lines + 1] = T("target.heart") .. ": " .. T("target.hooked")
+        else
+            lines[#lines + 1] = T("target.heart") .. ": " .. T("target.spawned")
+        end
+    else
+        lines[#lines + 1] = T("target.heart") .. ": " .. T("target.not.spawned")
+    end
+    return table.concat(lines, "\n")
+end
+local InfoUIFrame = nil
+local InfoUIText = nil
+local function BuildInfoUIContent()
+    if not _G.ShowInfoUI then
+        return ""
+    end
+    local lines = {}
+    lines[#lines + 1] = "Abyss"
+    lines[#lines + 1] = "━━━━━━━━━━━━━━━━"
+    local S = GetBribeStatus()
+    if S ~= nil then
+        if S == -1 then
+            lines[#lines + 1] = T("ui.bribe") .. ": " .. T("bribe.cd")
+        elseif S == 5 then
+            lines[#lines + 1] = T("ui.bribe") .. ": " .. T("bribe.done")
+        else
+            lines[#lines + 1] = T("ui.bribe") .. ": " .. tostring(S) .. "/5"
+        end
+    else
+        lines[#lines + 1] = T("ui.bribe") .. ": " .. T("bribe.unknown")
+    end
+    local boat = nil
+    if _G.Mode == "Capitán" then
+        boat = GetOwnBoat()
+    else
+        boat = GetCaptainBoat()
+    end
+    if boat then
+        lines[#lines + 1] = T("ui.teammates") .. ": " .. CountTeammatesOnBoat(boat) .. "/4"
+    else
+        lines[#lines + 1] = T("ui.teammates") .. ": " .. T("detail.no.boat")
+    end
+    lines[#lines + 1] = T("ui.details") .. ": " .. (StatusText ~= "" and StatusText or "-")
+    local LV = SeaAPI.Leviathan_Find()
+    if LV then
+        local HP = SeaAPI.Leviathan_GetHP(LV)
+        lines[#lines + 1] = T("tab.main") .. ": " .. LV.Name .. (HP and (" " .. T("target.hp") .. " " .. string.format("%.0f", HP)) or "")
+    end
+    local Map = workspace:FindFirstChild("Map")
+    local Heart = Map and Map:FindFirstChild("FrozenHeart")
+    if Heart then
+        local P = GetHeartPos(Heart)
+        if P and IsFrozenHeartHarpooned() then
+            lines[#lines + 1] = T("target.heart") .. ": " .. T("target.hooked")
+        else
+            lines[#lines + 1] = T("target.heart") .. ": " .. T("target.spawned")
+        end
+    else
+        lines[#lines + 1] = T("target.heart") .. ": " .. T("target.not.spawned")
+    end
+    return table.concat(lines, "\n")
+end
+local function CreateInfoUI()
+    if InfoUIFrame then
+        return
+    end
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "AbyssInfo"
+    ScreenGui.ResetOnSpawn = false
+    ScreenGui.IgnoreGuiInset = true
+    ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+    InfoUIFrame = Instance.new("Frame")
+    InfoUIFrame.Name = "Main"
+    InfoUIFrame.BackgroundColor3 = AbyssAccent
+    InfoUIFrame.BackgroundTransparency = 0.05
+    InfoUIFrame.BorderSizePixel = 0
+    InfoUIFrame.Position = UDim2.new(0.5, -160, 0, 12)
+    InfoUIFrame.Size = UDim2.new(0, 320, 0, 0)
+    InfoUIFrame.Parent = ScreenGui
+    local Corner = Instance.new("UICorner")
+    Corner.CornerRadius = UDim.new(0, 12)
+    Corner.Parent = InfoUIFrame
+    local Stroke = Instance.new("UIStroke")
+    Stroke.Color = AbyssAmber
+    Stroke.Thickness = 2
+    Stroke.Parent = InfoUIFrame
+    local TitleBar = Instance.new("Frame")
+    TitleBar.Name = "TitleBar"
+    TitleBar.BackgroundColor3 = AbyssAmber
+    TitleBar.BackgroundTransparency = 0.9
+    TitleBar.Size = UDim2.new(1, 0, 0, 8)
+    TitleBar.Parent = InfoUIFrame
+    local TitleCorner = Instance.new("UICorner")
+    TitleCorner.CornerRadius = UDim.new(0, 12)
+    TitleCorner.Parent = TitleBar
+    InfoUIText = Instance.new("TextLabel")
+    InfoUIText.BackgroundTransparency = 1
+    InfoUIText.Position = UDim2.new(0, 12, 0, 12)
+    InfoUIText.Size = UDim2.new(1, -24, 1, -18)
+    InfoUIText.Font = Enum.Font.Gotham
+    InfoUIText.TextSize = 14
+    InfoUIText.TextColor3 = AbyssInk
+    InfoUIText.TextXAlignment = Enum.TextXAlignment.Left
+    InfoUIText.TextYAlignment = Enum.TextYAlignment.Top
+    InfoUIText.TextWrapped = true
+    InfoUIText.RichText = true
+    InfoUIText.Parent = InfoUIFrame
+    local dragging = false
+    local dragOffset = Vector2.zero
+    local UIS = game:GetService("UserInputService")
+    InfoUIFrame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            local mp = Vector2.new(input.Position.X, input.Position.Y)
+            dragOffset = mp - InfoUIFrame.AbsolutePosition
+        end
+    end)
+    UIS.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = false
+        end
+    end)
+    UIS.InputChanged:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local mp = Vector2.new(input.Position.X, input.Position.Y)
+            local newPos = mp - dragOffset
+            InfoUIFrame.Position = UDim2.new(0, newPos.X, 0, newPos.Y)
+        end
+    end)
+    local initContent = BuildInfoUIContent()
+    if InfoUIText then
+        InfoUIText.Text = initContent
+    end
+    local initLines = #initContent:split("\n")
+    InfoUIFrame:SetAttribute("LastText", initContent)
+    InfoUIFrame:SetAttribute("LastLines", initLines)
+    InfoUIFrame.Size = UDim2.new(0, 320, 0, math.max(40, initLines * 22 + 18))
+end
+local function UpdateInfoUI()
+    if not InfoUIFrame then
+        return
+    end
+    local content = BuildInfoUIContent()
+    if content == InfoUIFrame:GetAttribute("LastText") then
+        return
+    end
+    if InfoUIText then
+        InfoUIText.Text = content
+    end
+    local lines = #content:split("\n")
+    if lines ~= InfoUIFrame:GetAttribute("LastLines") then
+        InfoUIFrame.Size = UDim2.new(0, 320, 0, math.max(40, lines * 22 + 18))
+        InfoUIFrame:SetAttribute("LastLines", lines)
+    end
+    InfoUIFrame:SetAttribute("LastText", content)
+end
+local function DestroyInfoUI()
+    if InfoUIFrame then
+        local parent = InfoUIFrame.Parent
+        if parent then
+            pcall(function()
+                parent:Destroy()
+            end)
+        end
+        InfoUIFrame = nil
+        InfoUIText = nil
+    end
+end
+task.spawn(function()
+    while true do
+        task.wait(0.5)
+        if _G.ShowInfoUI then
+            if not InfoUIFrame then
+                CreateInfoUI()
+            end
+            UpdateInfoUI()
+        else
+            if InfoUIFrame then
+                DestroyInfoUI()
+            end
+        end
+    end
+end)
+RunService.Heartbeat:Connect(function()
+    if os.clock() - LastAttackTime < 0.1 then
+        return
+    end
+    if _G.AutoLeviathanFull and (_G.FastAttack or _G.FruitM1) then
+        local _, _, hum = GetCharacterParts()
+        if hum and hum.SeatPart == nil and not hum.Sit then
+            if _G.FastAttack then pcall(Attack_Auto) end
+            if _G.FruitM1 then pcall(CombatAPI.FruitM1) end
+        end
+        LastAttackTime = os.clock()
+    end
+end)
+local function HandleAbility(abilityType)
+    task.spawn(function()
+        while true do
+            if _G["Auto" .. abilityType] then
+                if abilityType == "V4" then
+                    local Awakening = LocalPlayer:FindFirstChild("Backpack") and LocalPlayer.Backpack:FindFirstChild("Awakening")
+                    if Awakening and Awakening:FindFirstChild("RemoteFunction") then
+                        pcall(function()
+                            Awakening.RemoteFunction:InvokeServer(true)
+                        end)
+                    end
+                elseif abilityType == "V3" then
+                    local Remotes = RS:FindFirstChild("Remotes")
+                    local CommE2 = Remotes and Remotes:FindFirstChild("CommE")
+                    if CommE2 then
+                        pcall(function()
+                            CommE2:FireServer("ActivateAbility")
+                        end)
+                    end
+                end
+            end
+            task.wait(1)
+        end
+    end)
+end
+HandleAbility("V3")
+HandleAbility("V4")
+RunService.Heartbeat:Connect(function()
+    if _G.AutoLeviathanFull and HRP then
+        if not IsOnBoat() then
+            HRP.AssemblyLinearVelocity = Vector3.zero
+        end
+    end
+end)
+local function DoRemoveFog()
+    local layers = game:GetService("Lighting"):FindFirstChild("LightingLayers")
+    if layers then
+        layers:Destroy()
+    end
+end
+local PerformanceAPI = {}
+do
+    local function ClickGameSetting(name, enableFirstButton)
+        local gui = LocalPlayer:WaitForChild("PlayerGui", 15)
+        local main = gui and gui:WaitForChild("Main", 15)
+        local menu = main and main:WaitForChild("SettingsMenu", 15)
+        local content = menu and menu:WaitForChild("Content", 15)
+        local list = content and content:WaitForChild("ScrollingFrame", 15)
+        local row = list and list:WaitForChild(name, 9)
+        local button = row and row:WaitForChild(enableFirstButton and "FirstButton" or "SecondButton", 9)
+        if button then firesignal(button.Activated) end
+    end
+    PerformanceAPI.ApplyAutoFastMode = function()
+        task.spawn(function()
+            pcall(function()
+                ClickGameSetting("FastMode", true)
+                local Env = (getgenv and getgenv()) or _G
+                if Env.FastMode or Env.reducing then return end
+                Env.reducing, Env.FastMode = true, true
+                Env.FastModeCache = Env.FastModeCache or {}
+                local Replicated = game:GetService("ReplicatedStorage")
+                local function Reduce(descendants)
+                    local sliceStarted = os.clock()
+                    for _, item in next, descendants do
+                        if item:IsA("BasePart") then
+                            Env.FastModeCache[item] = item.Material
+                            item.Material = Enum.Material.SmoothPlastic
+                        elseif item:IsA("Texture") and not item:GetAttribute("Offset") then
+                            item:Destroy()
+                        end
+                        if os.clock() - sliceStarted > 0.0083 then task.wait(); sliceStarted = os.clock() end
+                    end
+                end
+                local map, unloaded = workspace:FindFirstChild("Map"), Replicated:FindFirstChild("Unloaded")
+                if map then Reduce(map:GetDescendants()) end
+                if unloaded then Reduce(unloaded:GetDescendants()) end
+                local optimizer = LocalPlayer.PlayerScripts:FindFirstChild("OptimizerClientActor")
+                if optimizer and optimizer.SendMessage then optimizer:SendMessage("Optimize", true) end
+                Env.reducing = false
+            end)
+        end)
+    end
+    local FPSBoostHookDone = false
+    local function ApplyFPSBoostToNew(obj)
+        if not _G.FPSBoost then
+            return
+        end
+        local ok = pcall(function()
+            if obj:IsA("ParticleEmitter") then
+                if obj.Parent and obj.Parent.Name ~= "ElectricFire" then
+                    obj.Enabled = false
+                    obj.Lifetime = NumberRange.new(0)
+                end
+            elseif obj:IsA("Trail") then
+                obj.Lifetime = NumberRange.new(0)
+            elseif obj:IsA("Decal") or obj:IsA("Texture") then
+                obj.Transparency = 1
+            elseif obj:IsA("Fire") or obj:IsA("SpotLight") or obj:IsA("Smoke") then
+                obj.Enabled = false
+            elseif obj:IsA("Explosion") then
+                obj.BlastPressure, obj.BlastRadius = 1, 1
+            elseif obj:IsA("BasePart") or obj:IsA("UnionOperation")
+                or obj:IsA("CornerWedgePart") or obj:IsA("TrussPart") then
+                obj.Material = Enum.Material.SmoothPlastic
+                obj.Reflectance = 0
+            end
+        end)
+        return ok
+    end
+    PerformanceAPI.ApplyFPSBoost = function()
+        pcall(function() setfflag("RemoteEventSingleInvocationSizeLimit", "1500") end)
+        task.spawn(function()
+            pcall(function()
+                local lighting = game:GetService("Lighting")
+                local atmosphere = lighting:FindFirstChild("BaseAtmosphere")
+                if atmosphere then atmosphere:Destroy() end
+            end)
+            pcall(function() settings().Rendering.QualityLevel = "Level01" end)
+            pcall(function()
+                local terrain = workspace.Terrain
+                if terrain then
+                    terrain.WaterWaveSize = 0
+                    terrain.WaterWaveSpeed = 0
+                    terrain.WaterReflectance = 0
+                    terrain.WaterTransparency = 0
+                end
+            end)
+            pcall(function()
+                local lighting = game:GetService("Lighting")
+                lighting.GlobalShadows = false
+                for _, item in ipairs(lighting:GetDescendants()) do
+                    if item:IsA("BlurEffect") then
+                        item.Enabled = false
+                    end
+                end
+            end)
+            pcall(function()
+                local sliceStarted = os.clock()
+                for _, item in ipairs(game:GetDescendants()) do
+                    if item:IsA("ParticleEmitter") or item:IsA("Trail") then
+                        item.Lifetime = NumberRange.new(0)
+                    elseif item:IsA("Decal") or item:IsA("Texture") then
+                        item.Transparency = 1
+                    elseif item:IsA("Fire") or item:IsA("SpotLight") or item:IsA("Smoke") then
+                        item.Enabled = false
+                    elseif item:IsA("Explosion") then
+                        item.BlastPressure, item.BlastRadius = 1, 1
+                    elseif item:IsA("BasePart") or item:IsA("UnionOperation") or item:IsA("CornerWedgePart") or item:IsA("TrussPart") then
+                        item.Reflectance = 0
+                    end
+                    if os.clock() - sliceStarted >= 0.0042 then task.wait(); sliceStarted = os.clock() end
+                end
+            end)
+            pcall(function()
+                local replicated = game:GetService("ReplicatedStorage")
+                local smooth = Enum.Material.SmoothPlastic
+                local sliceStarted = os.clock()
+                local folders = {}
+                local map = workspace:FindFirstChild("Map")
+                if map then folders[#folders + 1] = map end
+                local unloaded = replicated:FindFirstChild("Unloaded")
+                if unloaded then folders[#folders + 1] = unloaded end
+                for _, folder in ipairs(folders) do
+                    for _, item in ipairs(folder:GetDescendants()) do
+                        if item:IsA("BasePart") then
+                            item.Material = smooth
+                        elseif item:IsA("Texture") and not item:GetAttribute("Offset") then
+                            item:Destroy()
+                        end
+                        if os.clock() - sliceStarted >= 0.0042 then task.wait(); sliceStarted = os.clock() end
+                    end
+                end
+            end)
+            pcall(function()
+                local optimizer = LocalPlayer.PlayerScripts:FindFirstChild("OptimizerClientActor")
+                if optimizer and optimizer.SendMessage then optimizer:SendMessage("Optimize", true) end
+            end)
+            if FPSBoostHookDone then
+                return
+            end
+            FPSBoostHookDone = true
+            task.spawn(function()
+                local worldOrigin = workspace:FindFirstChild("_WorldOrigin")
+                local waited = 0
+                while not worldOrigin and waited < 60 do
+                    task.wait(1)
+                    waited = waited + 1
+                    worldOrigin = workspace:FindFirstChild("_WorldOrigin")
+                end
+                if not worldOrigin then
+                    return
+                end
+                worldOrigin.DescendantAdded:Connect(function(obj)
+                    pcall(ApplyFPSBoostToNew, obj)
+                end)
+            end)
+        end)
+    end
+end
+local SailNoclipOn = false
+local function ApplySailNoclip(on)
+    local boats = workspace:FindFirstChild("Boats")
+    if boats then
+        for _, boat in ipairs(boats:GetChildren()) do
+            for _, d in ipairs(boat:GetDescendants()) do
+                if d:IsA("BasePart") then
+                    d.CanCollide = not on
+                end
+            end
+        end
+    end
+    for _, p in ipairs(Players:GetPlayers()) do
+        local char = p.Character
+        if char then
+            for _, d in ipairs(char:GetDescendants()) do
+                if d:IsA("BasePart") then
+                    if on then
+                        d.CanCollide = false
+                    else
+                        d.CanCollide = d.Name == "HumanoidRootPart"
+                            or d.Name:find("LowerTorso") ~= nil
+                            or d.Name:find("UpperTorso") ~= nil
+                    end
+                end
+            end
+        end
+    end
+end
+RestoreWallClip = function()
+    pcall(ApplySailNoclip, false)
+end
+_G.Abyss_ResetMapNoclipState = function()
+    if not _G.AutoLeviathanFull then EnchantHandoff.Release() end
+    RestoreWallClip()
+end
+task.spawn(function()
+    while task.wait(0.1) do
+        local on = (os.clock() - LastSailAt) < 0.5
+        if on or SailNoclipOn then
+            pcall(ApplySailNoclip, on)
+        end
+        SailNoclipOn = on
+    end
+end)
+do
+local Abyss_AimPos, Abyss_AimTargetPart = nil, nil
+local Abyss_AimToken, Abyss_AimRewrites = 0, 0
+local Abyss_AimHookReady, Abyss_AimHookMT, Abyss_AimHookOld = false, nil, nil
+local Abyss_MouseHookReady, Abyss_MouseMT, Abyss_MouseStore = false, nil, nil
+local Abyss_MouseOldIndex, Abyss_MouseOldNewIndex, Abyss_MouseMod = nil, nil, nil
+local function Abyss_AimGate()
+    return _G.AutoLeviathanFull and _G.SilentAim and not NavigationOwner
+end
+local function Abyss_RootOf(model)
+    if not model then
+        return nil
+    end
+    return model:FindFirstChild("HumanoidRootPart")
+        or model:FindFirstChild("RootPart")
+        or model.PrimaryPart
+        or model:FindFirstChild("Head")
+        or model:FindFirstChildWhichIsA("BasePart")
+end
+local function Abyss_AimPoint(model, root)
+    local part = CombatAPI.TargetPart(model, root)
+    if part then return part.Position, part end
+    return nil, nil
+end
+local function Abyss_AimPointFor(inst)
+    if not inst or not inst.Parent then
+        return nil, nil
+    end
+    if inst:IsA("BasePart") then
+        local model = inst:FindFirstAncestorOfClass("Model")
+        if model then
+            local pos, part = Abyss_AimPoint(model, inst)
+            if pos then
+                return pos, part
+            end
+        end
+        return inst.Position, inst
+    end
+    if inst:IsA("Model") then
+        return Abyss_AimPoint(inst, Abyss_RootOf(inst))
+    end
+    return nil, nil
+end
+local Abyss_FindAimTarget = function()
+    if AttackModel and AttackModel.Parent then
+        return Abyss_AimPoint(AttackModel, Abyss_RootOf(AttackModel))
+    end
+    return nil, nil
+end
+local function Abyss_SetAim(target)
+    if not target then
+        return nil
+    end
+    local pos, part
+    local kind = typeof(target)
+    if kind == "Instance" then
+        pos, part = Abyss_AimPointFor(target)
+    elseif kind == "Vector3" then
+        pos = target
+    elseif kind == "CFrame" then
+        pos = target.Position
+    end
+    if not pos then
+        return nil
+    end
+    Abyss_AimPos = CFrame.new(pos)
+    Abyss_AimTargetPart = part
+    return Abyss_AimPos
+end
+Abyss_AimBegin = function(target)
+    if not Abyss_AimGate() then
+        return nil
+    end
+    Abyss_AimToken = Abyss_AimToken + 1
+    if target and Abyss_SetAim(target) then
+        return Abyss_AimToken
+    end
+    local pos, part = Abyss_FindAimTarget()
+    if not pos then
+        Abyss_AimPos = nil
+        Abyss_AimTargetPart = nil
+        return nil
+    end
+    Abyss_AimPos = CFrame.new(pos)
+    Abyss_AimTargetPart = part
+    return Abyss_AimToken
+end
+Abyss_AimEndSoon = function(delay)
+    local token = Abyss_AimToken
+    task.delay(delay or 0.6, function()
+        if Abyss_AimToken == token then
+            Abyss_AimPos = nil
+            Abyss_AimTargetPart = nil
+        end
+    end)
+end
+local function Abyss_InstallAimHook()
+    if Abyss_AimHookReady then
+        return true
+    end
+    if type(getrawmetatable) ~= "function" or type(newcclosure) ~= "function" then
+        return false
+    end
+    local ok = pcall(function()
+        local mt = getrawmetatable(game)
+        local oldNamecall = mt.__namecall
+        setreadonly(mt, false)
+        mt.__namecall = newcclosure(function(self, ...)
+            if not (Abyss_AimPos and Abyss_AimGate()) then
+                return oldNamecall(self, ...)
+            end
+            local method = getnamecallmethod()
+            if method ~= "FireServer" and method ~= "InvokeServer" then
+                return oldNamecall(self, ...)
+            end
+            if type(checkcaller) == "function" and checkcaller() then
+                return oldNamecall(self, ...)
+            end
+            local nm = self.Name
+            if nm ~= "RemoteEvent" and nm ~= "RemoteFunction" and nm ~= "CommE" then
+                return oldNamecall(self, ...)
+            end
+            local n = select("#", ...)
+            if n == 0 then
+                return oldNamecall(self, ...)
+            end
+            local args = table.pack(...)
+            if typeof(args[1]) == "boolean" then
+                return oldNamecall(self, ...)
+            end
+            local pos = Abyss_AimPos.Position
+            if tostring(pos.X) == "nan" then
+                return oldNamecall(self, ...)
+            end
+            local limit = math.min(8, n)
+            for i = 1, limit do
+                local v = args[i]
+                if typeof(v) == "CFrame" then
+                    args[i] = CFrame.new(v.Position, pos)
+                    Abyss_AimRewrites = Abyss_AimRewrites + 1
+                    return oldNamecall(self, table.unpack(args, 1, n))
+                elseif typeof(v) == "Vector3" then
+                    args[i] = pos
+                    Abyss_AimRewrites = Abyss_AimRewrites + 1
+                    return oldNamecall(self, table.unpack(args, 1, n))
+                end
+            end
+            return oldNamecall(self, ...)
+        end)
+        setreadonly(mt, true)
+        Abyss_AimHookMT = mt
+        Abyss_AimHookOld = oldNamecall
+    end)
+    Abyss_AimHookReady = ok
+    return ok
+end
+local function Abyss_InstallMouseHook()
+    if Abyss_MouseHookReady then
+        return true
+    end
+    local mod = RS:FindFirstChild("Mouse")
+    if not mod then
+        return false
+    end
+    local okReq, MouseMod = pcall(require, mod)
+    if not okReq or type(MouseMod) ~= "table" then
+        return false
+    end
+    local ok = pcall(function()
+        local store = { Hit = rawget(MouseMod, "Hit"), Target = rawget(MouseMod, "Target") }
+        local mt = getrawmetatable(MouseMod)
+        if mt then
+            setreadonly(mt, false)
+        else
+            mt = {}
+            setmetatable(MouseMod, mt)
+        end
+        rawset(MouseMod, "Hit", nil)
+        rawset(MouseMod, "Target", nil)
+        local oldIndex = mt.__index
+        local oldNewIndex = mt.__newindex
+        mt.__index = function(self, key)
+            if Abyss_AimPos and Abyss_AimGate() and (key == "Hit" or key == "Target") then
+                if key == "Hit" then
+                    return Abyss_AimPos
+                end
+                if Abyss_AimTargetPart then
+                    return Abyss_AimTargetPart
+                end
+            end
+            if type(oldIndex) == "function" then
+                return oldIndex(self, key)
+            end
+            if type(oldIndex) == "table" then
+                return oldIndex[key]
+            end
+            return store[key]
+        end
+        mt.__newindex = function(self, key, value)
+            if key == "Hit" or key == "Target" then
+                store[key] = value
+            elseif type(oldNewIndex) == "function" then
+                oldNewIndex(self, key, value)
+            else
+                rawset(self, key, value)
+            end
+        end
+        setreadonly(mt, true)
+        Abyss_MouseMT = mt
+        Abyss_MouseStore = store
+        Abyss_MouseOldIndex = oldIndex
+        Abyss_MouseOldNewIndex = oldNewIndex
+        Abyss_MouseMod = MouseMod
+    end)
+    Abyss_MouseHookReady = ok
+    return ok
+end
+local function Abyss_UninstallMouseHook()
+    if not Abyss_MouseHookReady or not Abyss_MouseMT then
+        return
+    end
+    pcall(function()
+        local mt = Abyss_MouseMT
+        setreadonly(mt, false)
+        mt.__index = Abyss_MouseOldIndex
+        mt.__newindex = Abyss_MouseOldNewIndex
+        setreadonly(mt, true)
+        if Abyss_MouseMod and Abyss_MouseStore then
+            rawset(Abyss_MouseMod, "Hit", Abyss_MouseStore.Hit)
+            rawset(Abyss_MouseMod, "Target", Abyss_MouseStore.Target)
+        end
+    end)
+    Abyss_MouseHookReady = false
+    Abyss_MouseMT = nil
+    Abyss_MouseMod = nil
+end
+local function Abyss_UninstallAimHook()
+    Abyss_UninstallMouseHook()
+    if not Abyss_AimHookReady or not Abyss_AimHookMT then
+        return
+    end
+    pcall(function()
+        setreadonly(Abyss_AimHookMT, false)
+        Abyss_AimHookMT.__namecall = Abyss_AimHookOld
+        setreadonly(Abyss_AimHookMT, true)
+    end)
+    Abyss_AimHookReady = false
+    Abyss_AimHookMT = nil
+    Abyss_AimHookOld = nil
+end
+_G.Abyss_AimInstall = function()
+    local eventOk = Abyss_InstallAimHook()
+    local mouseOk = Abyss_InstallMouseHook()
+    if not eventOk then
+        print("[Aim] este executor no permite getrawmetatable: no se puede interceptar los remotes")
+    end
+    return eventOk, mouseOk
+end
+_G.Abyss_AimUninstall = Abyss_UninstallAimHook
+_G.Abyss_AimStats = function()
+    print(string.format("[Aim] remotes reescritos: %d | objetivo: %s | ventana: %s",
+        Abyss_AimRewrites,
+        Abyss_AimTargetPart and Abyss_AimTargetPart.Name or "ninguno",
+        Abyss_AimPos and "abierta" or "cerrada"))
+end
+task.spawn(function()
+    if _G.SilentAim then
+        _G.Abyss_AimInstall()
+    end
+end)
+end
+local function Update_Character()
+    Character = LocalPlayer.Character
+    HD = Character and (Character:FindFirstChild("Humanoid") or Character:WaitForChild("Humanoid"))
+    HRP = Character and (Character:FindFirstChild("HumanoidRootPart") or Character:WaitForChild("HumanoidRootPart"))
+end
+LocalPlayer.CharacterAdded:Connect(function()
+    if _G.AutoLeviathanFull and _G.Mode == "Capitán" then
+        pcall(function()
+            local boats = workspace:FindFirstChild("Boats")
+            if boats then
+                local Marked = 0
+                for _, boat in ipairs(boats:GetChildren()) do
+                    if IsBeastHunterBoat(boat) and BoatOwnerMatch(boat, LocalPlayer) then
+                        _G.Abyss_AbandonedBoats[boat] = true
+                        Marked = Marked + 1
+                    end
+                end
+                if Marked > 0 then
+                    print("[Abyss] El capitán murió: abandonados " .. Marked .. " barcos viejos, pendientes de recompra")
+                end
+            end
+        end)
+    end
+    task.wait(1)
+    Update_Character()
+    task.wait(2)
+    Haki_Auto()
+end)
+LocalPlayer.CharacterRemoving:Connect(function()
+    Character = nil
+    HD = nil
+    HRP = nil
+    NoclipOn = false
+    LastNoclipApply = 0
+end)
+local CraftStatus = "Desactivado"
+local CraftQualityList = {
+    { Key = "CommonScroll", Label = "Common Scroll" },
+    { Key = "RareScroll", Label = "Rare Scroll" },
+    { Key = "LegendaryScroll", Label = "Legendary Scroll" },
+    { Key = "MythicalScroll", Label = "Mythical Scroll" },
+}
+local function CountValue(value)
+    if type(value) == "table" then
+        value = value.Quantity or value.Count or value.Amount or value.Value
+    end
+    return tonumber(value)
+end
+function CraftQualityList.GetLabel(Key)
+    for _, scroll in ipairs(CraftQualityList) do
+        if scroll.Key == Key then
+            return scroll.Label
+        end
+    end
+end
+function CraftQualityList.GetKey(KeyOrLabel)
+    if KeyOrLabel == nil then
+        return nil
+    end
+    local normalized = tostring(KeyOrLabel):lower():gsub("%s+", ""):gsub("_", "")
+    for _, scroll in ipairs(CraftQualityList) do
+        local key = tostring(scroll.Key):lower():gsub("%s+", ""):gsub("_", "")
+        local label = tostring(scroll.Label):lower():gsub("%s+", ""):gsub("_", "")
+        if normalized == key or normalized == label then
+            return scroll.Key
+        end
+    end
+end
+function CraftQualityList.Lookup(source, Key)
+    if not source then
+        return nil
+    end
+    local canonical = CraftQualityList.GetKey(Key) or Key
+    local value = CountValue(source[canonical])
+    if value == nil then
+        local label = CraftQualityList.GetLabel(canonical) or tostring(Key)
+        value = CountValue(source[label])
+    end
+    return value
+end
+function CraftQualityList.GetCount(Prog, Etc, Key)
+    local canonical = CraftQualityList.GetKey(Key) or Key
+    local preferred = (canonical == "MythicalScroll") and Etc or Prog
+    local fallback = (preferred == Etc) and Prog or Etc
+    local value = CraftQualityList.Lookup(preferred, canonical)
+    if value == nil then
+        value = CraftQualityList.Lookup(fallback, canonical)
+    end
+    return value or 0
+end
+function CraftQualityList.GetProgressView(Prog, Etc)
+    local view = {}
+    for key, value in pairs(Prog or {}) do
+        view[key] = value
+    end
+    for _, scroll in ipairs(CraftQualityList) do
+        local count = CraftQualityList.GetCount(Prog, Etc, scroll.Key)
+        view[scroll.Key] = count
+        view[scroll.Label] = count
+    end
+    return view
+end
+function CraftQualityList.GetNextUnlockKey(Recipes, Prog, Key, Depth)
+    Depth = Depth or 0
+    if Depth > #CraftQualityList then
+        return nil, "depth"
+    end
+    local canonical = CraftQualityList.GetKey(Key) or Key
+    local recipe = Recipes[canonical]
+    if not recipe then
+        return nil, "recipe", canonical
+    end
+    for progressKey, required in pairs(recipe.ProgressionRequirement or {}) do
+        local dependency = CraftQualityList.GetKey(progressKey)
+        local current = CraftQualityList.Lookup(Prog, progressKey) or 0
+        local needed = tonumber(required) or 0
+        if current < needed then
+            if not dependency then
+                return nil, "progress", progressKey, current, needed
+            end
+            return CraftQualityList.GetNextUnlockKey(Recipes, Prog, dependency, Depth + 1)
+        end
+    end
+    for ingredientKey, required in pairs(recipe.Ingredients or {}) do
+        if type(ingredientKey) == "string" then
+            local dependency = CraftQualityList.GetKey(ingredientKey)
+            local current = dependency and (CraftQualityList.Lookup(Prog, dependency) or 0) or nil
+            local needed = tonumber(required) or 0
+            if dependency and current < needed then
+                return CraftQualityList.GetNextUnlockKey(Recipes, Prog, dependency, Depth + 1)
+            end
+        end
+    end
+    return canonical
+end
+local CraftRecipesCache = nil
+local function GetCraftRecipes()
+    if not CraftRecipesCache then
+        local ok, r = pcall(function()
+            return require(RS.Modules.Data.CraftingRecipes)
+        end)
+        if ok then
+            CraftRecipesCache = r
+        end
+    end
+    return CraftRecipesCache
+end
+local function GetCraftData()
+    local RF = RS.Modules and RS.Modules:FindFirstChild("Net") and RS.Modules.Net:FindFirstChild("RF/GetCraftPlayerData")
+    if not RF then
+        return nil, nil
+    end
+    local ok, data = pcall(function()
+        return RF:InvokeServer()
+    end)
+    if ok and type(data) == "table" then
+        return data.EtcItems, data.CraftProgression
+    end
+    return nil, nil
+end
+local function CheckCraftRecipe(r, Etc, Prog, UseScrollLookup)
+    if UseScrollLookup then
+        for k, v in pairs(r.ProgressionRequirement or {}) do
+            local current = CraftQualityList.Lookup(Prog, k) or 0
+            local required = tonumber(v) or 0
+            if current < required then
+                return false, TranslateStatus("Falta progreso " .. tostring(k) .. " (" .. current .. "/" .. required .. ")")
+            end
+        end
+        for k, v in pairs(r.Ingredients or {}) do
+            if type(k) == "string" then
+                local current = CountValue(Etc and Etc[k]) or 0
+                local required = tonumber(v) or 0
+                if current < required then
+                    return false, TranslateStatus("Falta " .. k .. " (" .. current .. "/" .. required .. ")")
+                end
+            end
+        end
+        return true
+    end
+    for k, v in pairs(r.ProgressionRequirement or {}) do
+        if (Prog[k] or 0) < v then
+            return false, TranslateStatus("Falta progreso " .. k .. " (" .. (Prog[k] or 0) .. "/" .. v .. ")")
+        end
+    end
+    for k, v in pairs(r.Ingredients or {}) do
+        if type(k) == "string" then
+            if (Etc[k] or 0) < v then
+                return false, TranslateStatus("Falta " .. k .. " (" .. (Etc[k] or 0) .. "/" .. v .. ")")
+            end
+        end
+    end
+    return true
+end
+function TryCraft(key)
+    local RF = RS.Modules and RS.Modules:FindFirstChild("Net") and RS.Modules.Net:FindFirstChild("RF/Craft")
+    if not RF then
+        return
+    end
+    pcall(function()
+        RF:InvokeServer("Craft", key, 1, {})
+    end)
+end
+task.spawn(function()
+    while true do
+        task.wait(5)
+        local Q = _G.CraftQuality
+        if not _G.AutoUnlockMythical then
+            if not _G.AutoCraftScrolls or Q == nil or Q == "None" then
+                if CraftStatus ~= T("craft.status.none") then
+                    CraftStatus = T("craft.status.none")
+                end
+            else
+                pcall(function()
+                    local Etc, Prog = GetCraftData()
+                    local Recipes = GetCraftRecipes()
+                    if not Etc or not Prog or not Recipes then
+                        CraftStatus = T("craft.status.error")
+                        return
+                    end
+                    local target
+                    for _, c in ipairs(CraftQualityList) do
+                        if c.Label == Q then
+                            target = c
+                            break
+                        end
+                    end
+                    if not target then
+                        return
+                    end
+                    local r = Recipes[target.Key]
+                    if not r then
+                        CraftStatus = TranslateStatus("Receta no encontrada: " .. target.Key)
+                        return
+                    end
+                    local okC, miss = CheckCraftRecipe(r, Etc, Prog)
+                    if okC then
+                        TryCraft(target.Key)
+                        CraftStatus = TranslateStatus(target.Label .. ": fabricado")
+                    else
+                        CraftStatus = TranslateStatus(target.Label .. ": " .. miss)
+                    end
+                end)
+            end
+        end
+    end
+end)
+local function StopAutoUnlockMythical(statusKey)
+    _G.AutoUnlockMythical = false
+    SaveConfig()
+    if _G.Abyss_AutoUnlockMythicalToggle then
+        pcall(function()
+            _G.Abyss_AutoUnlockMythicalToggle:SetValue(false)
+        end)
+    end
+    CraftStatus = T(statusKey)
+end
+function AutoUnlockMythicalStep()
+    local Etc, Prog = GetCraftData()
+    local Recipes = GetCraftRecipes()
+    if not Etc or not Prog or not Recipes then
+        CraftStatus = T("craft.status.error")
+        return
+    end
+    if CraftQualityList.Pending then
+        local pending = CraftQualityList.Pending
+        local current = CraftQualityList.GetCount(Prog, Etc, pending.Key)
+        if current > pending.Before then
+            CraftQualityList.Pending = nil
+            if pending.Key == "MythicalScroll" then
+                local continueMythicalCrafting = _G.AutoCraftScrolls and _G.CraftQuality == "Mythical Scroll"
+                StopAutoUnlockMythical("craft.unlock.done")
+                if continueMythicalCrafting then
+                    _G.AutoCraftScrolls = true
+                    if _G.Abyss_AutoCraftScrollsToggle then
+                        pcall(function()
+                            _G.Abyss_AutoCraftScrollsToggle:SetValue(true)
+                        end)
+                    else
+                        SaveConfig()
+                    end
+                end
+                return
+            end
+        elseif os.clock() - pending.At < 15 then
+            CraftStatus = T("craft.unlock.wait") .. ": " .. pending.Label
+            return
+        else
+            CraftQualityList.Pending = nil
+            if pending.Key == "MythicalScroll" and pending.Accepted then
+                StopAutoUnlockMythical("craft.unlock.unknown")
+                return
+            end
+        end
+    end
+    local craftKey, unlockError, detail, current, required =
+        CraftQualityList.GetNextUnlockKey(Recipes, CraftQualityList.GetProgressView(Prog, Etc), "MythicalScroll")
+    if not craftKey then
+        if unlockError == "progress" then
+            CraftStatus = TranslateStatus(
+                "Falta progreso " .. tostring(detail) .. " (" .. tostring(current) .. "/" .. tostring(required) .. ")"
+            )
+        elseif unlockError == "recipe" then
+            CraftStatus = TranslateStatus("Receta no encontrada: " .. tostring(detail))
+        else
+            CraftStatus = T("craft.status.error")
+        end
+        return
+    end
+    local recipe = Recipes[craftKey]
+    if not recipe then
+        CraftStatus = TranslateStatus("Receta no encontrada: " .. craftKey)
+        return
+    end
+    local canCraft, missing = CheckCraftRecipe(recipe, Etc, CraftQualityList.GetProgressView(Prog, Etc), true)
+    if not canCraft then
+        CraftStatus = T("craft.unlock") .. ": " .. missing
+        return
+    end
+    local RF = RS.Modules
+        and RS.Modules:FindFirstChild("Net")
+        and RS.Modules.Net:FindFirstChild("RF/Craft")
+    local label = CraftQualityList.GetLabel(craftKey) or craftKey
+    if not RF then
+        CraftStatus = T("craft.unlock.retry") .. ": " .. label
+        return
+    end
+    local ok, result = pcall(function()
+        return RF:InvokeServer("Craft", craftKey, 1, {})
+    end)
+    if ok then
+        CraftQualityList.Pending = {
+            Key = craftKey,
+            Before = CraftQualityList.GetCount(Prog, Etc, craftKey),
+            At = os.clock(),
+            Label = label,
+            Accepted = result ~= nil and result ~= false,
+        }
+        if result == false or result == nil then
+            CraftStatus = T("craft.unlock.retry") .. ": " .. label
+        else
+            CraftStatus = T("craft.unlock") .. ": " .. label
+        end
+    else
+        CraftStatus = T("craft.unlock.retry") .. ": " .. label
+    end
+end
+task.spawn(function()
+    while true do
+        task.wait(2)
+        if _G.AutoUnlockMythical then
+            local ok, err = pcall(AutoUnlockMythicalStep)
+            if not ok then
+                print("[DEBUG] AutoUnlockMythicalStep: " .. tostring(err))
+                StopAutoUnlockMythical("craft.status.error")
+            end
+        end
+    end
+end)
+local FruitStoreBlackList = {}
+local FruitStoreFailCount = {}
+local function FruitCommF()
+    if CommF and CommF.Parent then
+        return CommF
+    end
+    local remotes = RS:FindFirstChild("Remotes")
+    return remotes and remotes:FindFirstChild("CommF_")
+end
+local function GachaPull()
+    local modules = RS:FindFirstChild("Modules")
+    local net = modules and modules:FindFirstChild("Net")
+    local gacha = net and net:FindFirstChild("RF/GachaNetworkRF")
+    if not gacha then
+        return false
+    end
+    pcall(function()
+        gacha:InvokeServer({ Context = "Purchase", BoxName = "ZiolesGacha" })
+    end)
+    return true
+end
+task.spawn(function()
+    while true do
+        task.wait(120)
+        if _G.AutoRandomFruit and HRP and HD and HD.Health > 0 then
+            GachaPull()
+        end
+    end
+end)
+task.spawn(function()
+    while task.wait(1) do
+        if _G.AutoStoreFruits and HRP then
+            local containers = { LocalPlayer:FindFirstChild("Backpack"), LocalPlayer.Character }
+            for _, container in ipairs(containers) do
+                if container then
+                    for _, tool in ipairs(container:GetChildren()) do
+                        if tool:IsA("Tool") and string.find(tool.Name, "Fruit", 1, true) then
+                            local original = tool:GetAttribute("OriginalName")
+                            local key = original or tool.Name
+                            if not FruitStoreBlackList[key] then
+                                local home = tool.Parent
+                                local comm = FruitCommF()
+                                if comm then
+                                    pcall(function()
+                                        comm:InvokeServer("StoreFruit", key, tool)
+                                    end)
+                                end
+                                task.wait(0.2)
+                                if tool.Parent == home then
+                                    local fails = (FruitStoreFailCount[key] or 0) + 1
+                                    FruitStoreFailCount[key] = fails
+                                    if fails >= 3 then
+                                        FruitStoreBlackList[key] = true
+                                    end
+                                else
+                                    FruitStoreFailCount[key] = nil
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+local _ = (function()
+do
+    local LegacyCaptain = "\229\188\128\232\136\185"
+    local LegacyFollower = "\232\183\159\233\154\143"
+    if _G.Mode == LegacyCaptain then
+        _G.Mode = "Capitán"
+    elseif _G.Mode == LegacyFollower then
+        _G.Mode = "Seguidor"
+    end
+end
+-- Fluent trae el tema "Dark" con grises fijos y el acento azul escrito dentro de
+-- la libreria. Antes de compilarla se reemplaza la tabla completa del tema por
+-- una amarilla, asi toda la interfaz (fondo, paneles, pestanas, toggles, sliders,
+-- dropdowns, inputs, dialogos y notificaciones) queda en amarillo.
+local function PatchFluentTheme(source)
+    if type(source) ~= "string" then
+        return source
+    end
+    local function rgb(c)
+        return ("Color3.fromRGB(%d,%d,%d)"):format(c[1], c[2], c[3])
+    end
+    local theme = table.concat({
+        "Name='Dark'",
+        "Accent=" .. rgb(AbyssAmberRGB),
+        "AcrylicMain=" .. rgb(AbyssAccentRGB),
+        "AcrylicBorder=" .. rgb(AbyssAmberRGB),
+        "AcrylicGradient=ColorSequence.new(" .. rgb({ 255, 226, 90 }) .. "," .. rgb({ 245, 190, 20 }) .. ")",
+        "AcrylicNoise=0.9",
+        "TitleBarLine=" .. rgb({ 190, 133, 0 }),
+        "Tab=" .. rgb({ 255, 243, 175 }),
+        "Element=" .. rgb({ 255, 246, 190 }),
+        "ElementBorder=" .. rgb(AbyssAmberRGB),
+        "InElementBorder=" .. rgb({ 185, 128, 0 }),
+        "ElementTransparency=0.72",
+        "ToggleSlider=" .. rgb({ 205, 150, 0 }),
+        "ToggleToggled=" .. rgb({ 255, 248, 210 }),
+        "SliderRail=" .. rgb({ 225, 170, 15 }),
+        "DropdownFrame=" .. rgb({ 255, 233, 120 }),
+        "DropdownHolder=" .. rgb({ 255, 240, 155 }),
+        "DropdownBorder=" .. rgb(AbyssAmberRGB),
+        "DropdownOption=" .. rgb({ 255, 226, 90 }),
+        "Keybind=" .. rgb({ 255, 233, 120 }),
+        "Input=" .. rgb({ 255, 244, 175 }),
+        "InputFocused=" .. rgb({ 255, 250, 215 }),
+        "InputIndicator=" .. rgb(AbyssAmberRGB),
+        "Dialog=" .. rgb({ 255, 224, 90 }),
+        "DialogHolder=" .. rgb({ 255, 240, 155 }),
+        "DialogHolderLine=" .. rgb({ 235, 190, 30 }),
+        "DialogButton=" .. rgb({ 255, 230, 110 }),
+        "DialogButtonBorder=" .. rgb(AbyssAmberRGB),
+        "DialogBorder=" .. rgb(AbyssAmberRGB),
+        "DialogInput=" .. rgb({ 255, 246, 185 }),
+        "DialogInputLine=" .. rgb(AbyssAmberRGB),
+        "Text=" .. rgb(AbyssInkRGB),
+        "SubText=" .. rgb({ 105, 72, 0 }),
+        "Hover=" .. rgb({ 255, 255, 255 }),
+        "HoverChange=0.12}",
+    }, ",")
+    local patched, count = source:gsub("Name='Dark',.-HoverChange=0%.07}", theme)
+    if count ~= 1 then
+        warn("[Abyss] No se pudo aplicar el tema amarillo a Fluent (coincidencias: " .. tostring(count) .. ").")
+        return source
+    end
+    -- La sombra de la ventana es una imagen negra casi opaca que apaga el amarillo.
+    -- Se hace mas transparente para que el panel se vea amarillo limpio.
+    patched = patched:gsub("ImageColor3=Color3%.fromRGB%(0,0,0%),ImageTransparency=0%.7",
+        "ImageColor3=Color3.fromRGB(0,0,0),ImageTransparency=0.9", 1)
+    local chunk = loadstring(patched)
+    if type(chunk) ~= "function" then
+        warn("[Abyss] El tema amarillo genero un error de sintaxis; se usa el tema original.")
+        return source
+    end
+    return patched
+end
+
+local function LoadRemote(url, label, tries)
+    tries = tries or 4
+    local lastErr = "desconocido"
+    for attempt = 1, tries do
+        local ok, result = pcall(function()
+            local body = game:HttpGet(url)
+            if type(body) ~= "string" or #body < 64 then
+                error("respuesta vacia o invalida")
+            end
+            if label == "Fluent" then
+                body = PatchFluentTheme(body)
+            end
+            local chunk, compileErr = loadstring(body)
+            if not chunk then
+                error(compileErr or "loadstring fallo")
+            end
+            return chunk()
+        end)
+        if ok and result ~= nil then
+            return result
+        end
+        lastErr = result
+        if attempt < tries then
+            warn(("[Abyss] Reintentando %s (%d/%d): %s"):format(tostring(label), attempt, tries, tostring(result)))
+            task.wait(0.4 * attempt)
+        end
+    end
+    warn(("[Abyss] No se pudo cargar %s: %s"):format(tostring(label), tostring(lastErr)))
+    return nil
+end
+
+print("[Abyss] Cargando libreria de interfaz (Fluent)...")
+local Fluent = LoadRemote("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua", "Fluent", 5)
+if type(Fluent) ~= "table" or type(Fluent.CreateWindow) ~= "function" then
+    error("No se pudo cargar la libreria Fluent. Revisa tu conexion a internet o usa otro executor.")
+end
+local SaveManager = LoadRemote("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua", "SaveManager", 3)
+local InterfaceManager = LoadRemote("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua", "InterfaceManager", 3)
+
+if type(SaveManager) ~= "table" then
+    SaveManager = {
+        SetLibrary = function() end,
+        IgnoreThemeSettings = function() end,
+        SetIgnoreIndexes = function() end,
+        SetFolder = function() end,
+        LoadAutoloadConfig = function() end,
+        BuildConfigSection = function(_, tab)
+            pcall(function()
+                tab:AddParagraph({
+                    Title = "Config Manager",
+                    Content = "No disponible: no se pudo descargar el complemento.",
+                })
+            end)
+        end,
+    }
+end
+if type(InterfaceManager) ~= "table" then
+    InterfaceManager = {
+        Settings = { MenuKeybind = "G" },
+        SetLibrary = function() end,
+        SetFolder = function() end,
+        BuildInterfaceSection = function(_, tab)
+            pcall(function()
+                tab:AddParagraph({
+                    Title = "Interface Manager",
+                    Content = "No disponible: no se pudo descargar el complemento.",
+                })
+            end)
+        end,
+    }
+end
+local LANGUAGE_LABELS = _G.Abyss_LanguageLabels or { "English", "Español" }
+local function NormalizeLanguage(value)
+    local norm = _G.Abyss_NormalizeLanguage
+    if norm then
+        return norm(value)
+    end
+    return value
+end
+_G.Language = NormalizeLanguage(_G.Language) or "English"
+local Window = Fluent:CreateWindow({
+    Title = "BANANA CAT by Sam",
+    SubTitle = "Abyss | Auto Leviathan",
+    TabWidth = 160,
+    Size = UDim2.fromOffset(606, 503),
+    Acrylic = false,
+    Theme = "Dark",
+    MinimizeKey = Enum.KeyCode.G,
+})
+__env.AbyssWindow = Window
+do
+    -- Red de seguridad: si Fluent cambia el formato de su tema y el parche no se
+    -- aplica, se recolorea la interfaz ya construida traduciendo los grises y el
+    -- azul viejos a la paleta amarilla.
+    local COLOR_MAP = {
+        { old = Color3.fromRGB(96, 205, 255), new = AbyssAmber },
+        { old = Color3.fromRGB(76, 194, 255), new = AbyssAmber },
+        { old = Color3.fromRGB(90, 200, 255), new = AbyssAmber },
+        { old = Color3.fromRGB(150, 60, 255), new = AbyssAmber },
+        { old = Color3.fromRGB(60, 60, 60), new = AbyssAccent },
+        { old = Color3.fromRGB(40, 40, 40), new = AbyssAccent },
+        { old = Color3.fromRGB(90, 90, 90), new = AbyssAmber },
+        { old = Color3.fromRGB(75, 75, 75), new = AbyssAmber },
+        { old = Color3.fromRGB(120, 120, 120), new = Color3.fromRGB(205, 150, 0) },
+        { old = Color3.fromRGB(35, 35, 35), new = AbyssAmber },
+        { old = Color3.fromRGB(45, 45, 45), new = Color3.fromRGB(255, 235, 140) },
+        { old = Color3.fromRGB(30, 30, 30), new = Color3.fromRGB(235, 190, 30) },
+        { old = Color3.fromRGB(80, 80, 80), new = AbyssAmber },
+        { old = Color3.fromRGB(70, 70, 70), new = AbyssAmber },
+        { old = Color3.fromRGB(55, 55, 55), new = Color3.fromRGB(255, 246, 185) },
+        { old = Color3.fromRGB(160, 160, 160), new = Color3.fromRGB(255, 236, 130) },
+        { old = Color3.fromRGB(150, 150, 150), new = AbyssAmber },
+        { old = Color3.fromRGB(240, 240, 240), new = AbyssInk },
+        { old = Color3.fromRGB(170, 170, 170), new = Color3.fromRGB(105, 72, 0) },
+    }
+    local function mapColor(value)
+        if typeof(value) ~= "Color3" then
+            return nil
+        end
+        for _, entry in ipairs(COLOR_MAP) do
+            if value == entry.old then
+                return entry.new
+            end
+        end
+        return nil
+    end
+    local function mapSequence(sequence)
+        if typeof(sequence) ~= "ColorSequence" then
+            return nil
+        end
+        local points = {}
+        local changed = false
+        for _, point in ipairs(sequence.Keypoints) do
+            local mapped = mapColor(point.Value)
+            if mapped then
+                changed = true
+                points[#points + 1] = ColorSequenceKeypoint.new(point.Time, mapped)
+            else
+                points[#points + 1] = point
+            end
+        end
+        if not changed then
+            return nil
+        end
+        return ColorSequence.new(points)
+    end
+    local function recolor(root)
+        if not root then
+            return
+        end
+        local okList, list = pcall(function()
+            return root:GetDescendants()
+        end)
+        if not okList then
+            return
+        end
+        for _, obj in ipairs(list) do
+            if obj:IsA("GuiObject") then
+                local mapped = mapColor(obj.BackgroundColor3)
+                if mapped then
+                    obj.BackgroundColor3 = mapped
+                end
+            end
+            if obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox") then
+                local mapped = mapColor(obj.TextColor3)
+                if mapped then
+                    obj.TextColor3 = mapped
+                end
+            end
+            if obj:IsA("ImageLabel") or obj:IsA("ImageButton") then
+                local mapped = mapColor(obj.ImageColor3)
+                if mapped then
+                    obj.ImageColor3 = mapped
+                end
+            end
+            if obj:IsA("UIStroke") then
+                local mapped = mapColor(obj.Color)
+                if mapped then
+                    obj.Color = mapped
+                end
+            end
+            if obj:IsA("UIGradient") then
+                local mapped = mapSequence(obj.Color)
+                if mapped then
+                    obj.Color = mapped
+                end
+            end
+        end
+    end
+    local function sweep()
+        pcall(function()
+            recolor(Window and Window.Root)
+        end)
+        pcall(function()
+            recolor(Window and Window.Root and Window.Root.Parent)
+        end)
+        local parent = (gethui and gethui()) or game:GetService("CoreGui")
+        for _, name in ipairs({ "AbyssInfo", "Abyss_FloatingBall", "Abyss_EnchantView", "Abyss_Error", "Abyss_Boot" }) do
+            local okFind, found = pcall(function()
+                return parent:FindFirstChild(name)
+            end)
+            if okFind and found then
+                pcall(recolor, found)
+            end
+        end
+    end
+    for _, delay in ipairs({ 0, 0.4, 1.2, 3, 6 }) do
+        task.delay(delay, sweep)
+    end
+end
+if __bootGui then pcall(function() __bootGui:Destroy() end) end
+print("[Abyss] Interfaz creada correctamente.")
+local InputService = game:GetService("UserInputService")
+local IsMobile = InputService.TouchEnabled and not InputService.KeyboardEnabled
+do
+    local BASE_W, BASE_H = 606, 503
+    local MARGIN = 0.95
+    local function FitWindowToViewport()
+        local root = Window and Window.Root
+        if not (root and root:IsA("GuiObject")) then
+            return
+        end
+        local camera = workspace.CurrentCamera
+        if not camera then
+            task.defer(function()
+                task.wait(0.5)
+                FitWindowToViewport()
+            end)
+            return
+        end
+        local viewport = camera.ViewportSize
+        if not viewport or viewport.X <= 0 or viewport.Y <= 0 then
+            return
+        end
+        local function FitAxis(base, viewportSize, fluentMin)
+            local target = math.min(base, viewportSize * MARGIN)
+            return math.max(target, math.min(fluentMin, viewportSize))
+        end
+        local width = math.floor(FitAxis(BASE_W, viewport.X, 470))
+        local height = math.floor(FitAxis(BASE_H, viewport.Y, 380))
+        local size = UDim2.fromOffset(width, height)
+        local position = UDim2.fromOffset(
+            math.floor((viewport.X - width) / 2),
+            math.floor((viewport.Y - height) / 2)
+        )
+        root.Size = size
+        root.Position = position
+        Window.Size = size
+        Window.Position = position
+    end
+    FitWindowToViewport()
+    if IsMobile then
+        local camera = workspace.CurrentCamera
+        if camera then
+            local lastX, lastY = camera.ViewportSize.X, camera.ViewportSize.Y
+            camera:GetPropertyChangedSignal("ViewportSize"):Connect(function()
+                local viewport = camera.ViewportSize
+                if viewport.X == lastX and viewport.Y == lastY then
+                    return
+                end
+                lastX, lastY = viewport.X, viewport.Y
+                if Window.Maximized then
+                    return
+                end
+                FitWindowToViewport()
+            end)
+        end
+    end
+end
+local Tabs = {
+    Status   = Window:AddTab({ Title = T("tab.status"), Icon = "anchor" }),
+    Combat   = Window:AddTab({ Title = T("tab.combat"), Icon = "swords" }),
+    Perf     = Window:AddTab({ Title = T("tab.perf"), Icon = "activity" }),
+    Extra    = Window:AddTab({ Title = T("tab.craft"), Icon = "package" }),
+    Enchant  = Window:AddTab({ Title = T("tab.enchant"), Icon = "sparkles" }),
+    Webhook  = Window:AddTab({ Title = T("tab.webhook"), Icon = "link" }),
+    Config   = Window:AddTab({ Title = T("tab.config"), Icon = "settings" }),
+    Announce = Window:AddTab({ Title = T("tab.announcement"), Icon = "megaphone" }),
+}
+local function SendNotify(title, content)
+    pcall(function()
+        Fluent:Notify({
+            Title = title,
+            Content = content,
+            Duration = 3,
+        })
+    end)
+end
+local SectionKeys = {}
+local ButtonKeys = {}
+local ParagraphKeys = {}
+local TabKeys = {
+    { tab = Tabs.Status, key = "tab.status" },
+    { tab = Tabs.Combat, key = "tab.combat" },
+    { tab = Tabs.Perf, key = "tab.perf" },
+    { tab = Tabs.Extra, key = "tab.craft" },
+    { tab = Tabs.Enchant, key = "tab.enchant" },
+    { tab = Tabs.Webhook, key = "tab.webhook" },
+    { tab = Tabs.Config, key = "tab.config" },
+    { tab = Tabs.Announce, key = "tab.announcement" },
+}
+local function SetSectionTitle(section, key)
+    local root = section and section.Container and section.Container.Parent
+    local label = root and root:FindFirstChildOfClass("TextLabel")
+    if label then
+        label.Text = T(key)
+    end
+end
+local function SetTabTitle(tab, key)
+    local label = tab and tab.Frame and tab.Frame:FindFirstChildOfClass("TextLabel")
+    if label then
+        label.Text = T(key)
+    end
+end
+local ApplyLanguage
+local StatusPara = Tabs.Status:AddParagraph({
+    Title = T("status.current"),
+    Content = T("notstarted"),
+})
+ParagraphKeys[#ParagraphKeys + 1] = { element = StatusPara, title = "status.current" }
+local DetailPara = Tabs.Status:AddParagraph({
+    Title = T("status.detail"),
+    Content = T("notstarted"),
+})
+ParagraphKeys[#ParagraphKeys + 1] = { element = DetailPara, title = "status.detail" }
+local TargetPara = Tabs.Status:AddParagraph({
+    Title = T("status.target"),
+    Content = T("notstarted"),
+})
+ParagraphKeys[#ParagraphKeys + 1] = { element = TargetPara, title = "status.target" }
+task.spawn(function()
+    local lastStatus, lastDetail, lastTarget = nil, nil, nil
+    while task.wait(1) do
+        pcall(function()
+            if StatusText ~= lastStatus then
+                lastStatus = StatusText
+                StatusPara:SetDesc(StatusText)
+            end
+            local detail = GetStatusDetails()
+            if detail ~= lastDetail then
+                lastDetail = detail
+                DetailPara:SetDesc(detail)
+            end
+            local target = GetTargetStatus()
+            if target ~= lastTarget then
+                lastTarget = target
+                TargetPara:SetDesc(target)
+            end
+        end)
+    end
+end)
+local playerListLocked = false
+local abyssAutoFullLocked = false
+local SuppressModeNotify = false
+local LastLockNotice = 0
+local function NotifyLocked(key)
+    if os.clock() - LastLockNotice < 2 then
+        return
+    end
+    LastLockNotice = os.clock()
+    SendNotify(T("notify.locked.title"), T(key))
+end
+local SuppressLockCallback = false
+local function RevertLockedOption(option, value)
+    if not option then
+        return
+    end
+    SuppressLockCallback = true
+    pcall(option.SetValue, option, value)
+    SuppressLockCallback = false
+end
+local function UpdateModeLocks()
+    local isCaptain = _G.Mode == "Capitán"
+    playerListLocked = isCaptain
+end
+local ModeSection = Tabs.Status:AddSection(T("sec.mode"))
+SectionKeys[#SectionKeys + 1] = { element = ModeSection, key = "sec.mode" }
+local ModeDropdown = ModeSection:AddDropdown("mode.select", {
+    Title = T("mode.select"),
+    Values = { T("mode.captain"), T("mode.follower") },
+    Default = ModeDisplay(),
+    Multi = false,
+    Callback = function(Value)
+        _G.Mode = (Value == T("mode.captain")) and "Capitán" or "Seguidor"
+        SaveConfig()
+        UpdateModeLocks()
+        if not SuppressModeNotify then
+            if _G.Mode == "Capitán" then
+                SendNotify(T("sec.mode"), T("notify.mode.captain"))
+            else
+                SendNotify(T("sec.mode"), T("notify.mode.follower"))
+            end
+        end
+        if _G.AutoLeviathanFull then
+            if _G.Mode == "Capitán" then
+                StartCaptain()
+            else
+                StartFollower()
+            end
+            StatusText = T("status.on") .. " (" .. ModeDisplay() .. ")"
+        end
+    end,
+})
+local TeamSection = Tabs.Status:AddSection(T("sec.team"))
+SectionKeys[#SectionKeys + 1] = { element = TeamSection, key = "sec.team" }
+local PlayerListOptions = {}
+local PlayerDropdown
+local PushedPlayerList
+local function SamePlayerList(a, b)
+    if not a or not b or #a ~= #b then
+        return false
+    end
+    for i = 1, #a do
+        if a[i] ~= b[i] then
+            return false
+        end
+    end
+    return true
+end
+local function RefreshPlayerList()
+    local list = {}
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            table.insert(list, player.Name)
+        end
+    end
+    table.sort(list)
+    if #list == 0 then
+        list = { "--" }
+    end
+    PlayerListOptions = list
+    if PlayerDropdown and not SamePlayerList(PushedPlayerList, list) then
+        PushedPlayerList = list
+        pcall(function()
+            PlayerDropdown:SetValues(list)
+        end)
+    end
+    if not playerListLocked
+        and (_G.FollowTarget == nil or _G.FollowTarget == "" or _G.FollowTarget == "--") then
+        _G.FollowTarget = list[1] or ""
+        if _G.FollowTarget == "--" then
+            _G.FollowTarget = ""
+        end
+        if PlayerDropdown then
+            pcall(function()
+                PlayerDropdown:SetValue(_G.FollowTarget)
+            end)
+        end
+        SaveConfig()
+    end
+end
+PlayerDropdown = TeamSection:AddDropdown("follow.player", {
+    Title = T("follow.player"),
+    Values = PlayerListOptions,
+    Default = nil,
+    Multi = false,
+    Callback = function(Value)
+        if SuppressLockCallback then
+            return
+        end
+        if playerListLocked then
+            NotifyLocked("notify.locked.player")
+            if _G.FollowTarget and _G.FollowTarget ~= "" then
+                RevertLockedOption(PlayerDropdown, _G.FollowTarget)
+            end
+            return
+        end
+        _G.FollowTarget = Value or ""
+        SaveConfig()
+    end,
+})
+local RefreshButton = TeamSection:AddButton({
+    Title = T("refresh.btn"),
+    Callback = function()
+        RefreshPlayerList()
+        SendNotify(T("sec.team"), T("notify.players.refreshed"))
+    end,
+})
+ButtonKeys[#ButtonKeys + 1] = { element = RefreshButton, key = "refresh.btn" }
+task.spawn(function()
+    while true do
+        task.wait(5)
+        pcall(RefreshPlayerList)
+    end
+end)
+local ReturnModeDropdown
+local DestinationDropdown
+local SoloSeaBoatDropdown
+local TravelSection = Tabs.Status:AddSection(T("sec.travel"))
+SectionKeys[#SectionKeys + 1] = { element = TravelSection, key = "sec.travel" }
+TravelSection:AddInput("boat.speed", {
+    Title = T("boat.speed"),
+    Description = T("boat.speed.desc"),
+    Default = tostring(_G.BoatSpeed),
+    Placeholder = "250",
+    Numeric = true,
+    Finished = false,
+    Callback = function(Value)
+        local speed = tonumber(Value)
+        if speed then
+            _G.BoatSpeed = math.clamp(speed, 50, 500)
+            SaveConfig()
+        end
+    end,
+})
+TravelSection:AddInput("boat.height", {
+    Title = T("boat.height"),
+    Description = T("boat.height.desc"),
+    Default = tostring(_G.BoatHeight),
+    Placeholder = "150",
+    Numeric = true,
+    Finished = false,
+    Callback = function(Value)
+        local height = tonumber(Value)
+        if height then
+            _G.BoatHeight = math.clamp(height, 30, 500)
+            _G.BoatLockY = _G.BoatHeight
+            SaveConfig()
+        end
+    end,
+})
+TravelSection:AddInput("player.tween.speed", {
+    Title = T("player.tween.speed"),
+    Description = T("player.tween.speed.desc"),
+    Default = tostring(_G.PlayerTweenSpeed),
+    Placeholder = "275",
+    Numeric = true,
+    Finished = false,
+    Callback = function(Value)
+        local speed = tonumber(Value)
+        if speed then
+            _G.PlayerTweenSpeed = math.clamp(speed, 50, 500)
+            SaveConfig()
+        end
+    end,
+})
+ReturnModeDropdown = TravelSection:AddDropdown("return.mode", {
+    Title = T("return.mode"),
+    Values = { T("return.home"), T("return.boat") },
+    Default = (_G.ReturnMode == "Home") and T("return.home") or T("return.boat"),
+    Multi = false,
+    Callback = function(Value)
+        _G.ReturnMode = (Value == T("return.home")) and "Home" or "Boat"
+        SaveConfig()
+    end,
+})
+TravelSection:AddToggle("cruise.return", {
+    Title = T("cruise.return"),
+    Description = T("cruise.return.desc"),
+    Default = _G.CruiseReturn,
+    Callback = function(State)
+        _G.CruiseReturn = State
+        SaveConfig()
+    end,
+})
+local MainSection = Tabs.Status:AddSection(T("sec.main"))
+SectionKeys[#SectionKeys + 1] = { element = MainSection, key = "sec.main" }
+DestinationDropdown = MainSection:AddDropdown("destination", {
+    Title = T("destination"),
+    Values = { T("destination.tiki"), T("destination.hydra") },
+    Default = (_G.LeviathanDestination == "Hydra") and T("destination.hydra") or T("destination.tiki"),
+    Multi = false,
+    Callback = function(Value)
+        _G.LeviathanDestination = (Value == T("destination.hydra")) and "Hydra" or "Tiki"
+        SaveConfig()
+    end,
+})
+MainSection:AddToggle("ignite.lantern", {
+    Title = T("ignite.lantern"),
+    Description = T("ignite.lantern.desc"),
+    Default = _G.IgniteLantern,
+    Callback = function(State)
+        _G.IgniteLantern = State and true or false
+        SaveConfig()
+    end,
+})
+task.spawn(function()
+    while true do
+        if _G.IgniteLantern then
+            pcall(function()
+                local origin = workspace:FindFirstChild("_WorldOrigin")
+                local locations = origin and origin:FindFirstChild("Locations")
+                if locations and locations:FindFirstChild("Freezing Hydra Island") then
+                    local client = workspace:FindFirstChild("HydraIslandClient")
+                    local remote = client and client:FindFirstChild("RemoteFunction")
+                    if remote then remote:InvokeServer("Interacted") end
+                end
+            end)
+            task.wait(2)
+        else
+            task.wait(1)
+        end
+    end
+end)
+_G.Abyss_AutoFullToggle = {
+    Lock = function()
+        abyssAutoFullLocked = true
+    end,
+    Unlock = function()
+        abyssAutoFullLocked = false
+    end,
+}
+local AutoFullToggle
+AutoFullToggle = MainSection:AddToggle("auto.full", {
+    Title = T("auto.full"),
+    Description = "",
+    Default = _G.AutoLeviathanFull,
+    Callback = function(State)
+        if SuppressLockCallback then
+            return
+        end
+        if abyssAutoFullLocked then
+            NotifyLocked("notify.locked.solo")
+            RevertLockedOption(AutoFullToggle, _G.AutoLeviathanFull)
+            return
+        end
+        _G.AutoLeviathanFull = State
+        StatusPrefix = ""
+        if State then
+            RefreshPlayerList()
+            SaveConfig()
+            if _G.Mode == "Capitán" then
+                StartCaptain()
+            else
+                StartFollower()
+            end
+            StatusText = T("status.on") .. " (" .. ModeDisplay() .. ")"
+            _G.Abyss_BoatDeadArmed = true
+            if _G.Abyss_StartBoatDeadMonitor then
+                _G.Abyss_StartBoatDeadMonitor()
+            end
+        else
+            NavigationOwner = nil
+            StopTweenAll()
+            _G.Abyss_ResetMapNoclipState()
+            StatusText = T("status.off")
+        end
+    end,
+})
+MainSection:AddToggle("solo.seafarm", {
+    Title = T("solo.seafarm"),
+    Description = T("solo.seafarm.desc"),
+    Default = _G.SoloSeaFarm,
+    Callback = function(State)
+        _G.SoloSeaFarm = State and true or false
+        if State and _G.Mode ~= "Capitán" then
+            _G.Mode = "Capitán"
+            if ModeDropdown then
+                pcall(function() ModeDropdown:SetValue(T("mode.captain")) end)
+            end
+            UpdateModeLocks()
+        end
+        SaveConfig()
+        if State then
+            _G.AutoLeviathanFull = true
+            StatusPrefix = ""
+            RefreshPlayerList()
+            pcall(function()
+                AutoFullToggle:SetValue(true)
+            end)
+            if _G.Mode == "Capitán" then
+                StartCaptain()
+            else
+                StartFollower()
+            end
+            StatusText = T("status.on") .. " (" .. ModeDisplay() .. ")"
+            if _G.Abyss_AutoFullToggle and _G.Abyss_AutoFullToggle.Lock then
+                pcall(function()
+                    _G.Abyss_AutoFullToggle:Lock()
+                end)
+            end
+            _G.Abyss_BoatDeadArmed = true
+            if _G.Abyss_StartBoatDeadMonitor then
+                _G.Abyss_StartBoatDeadMonitor()
+            end
+        else
+            StopTweenAll()
+            _G.AutoLeviathanFull = false
+            _G.Abyss_ResetMapNoclipState()
+            StatusPrefix = ""
+            StatusText = T("status.stopped")
+            if _G.Abyss_AutoFullToggle and _G.Abyss_AutoFullToggle.Unlock then
+                pcall(function()
+                    _G.Abyss_AutoFullToggle:Unlock()
+                end)
+            end
+        end
+    end,
+})
+local SoloSeaBoatOptions = { "Sloop", "Caravel", "Brigade", "Enforcer", "Sentinel", "Guardian", "Beast Hunter" }
+if not table.find(SoloSeaBoatOptions, _G.SoloSeaBoat) then _G.SoloSeaBoat = "Beast Hunter" end
+SoloSeaBoatDropdown = MainSection:AddDropdown("solo.boat", {
+    Title = T("solo.boat"),
+    Values = SoloSeaBoatOptions,
+    Default = _G.SoloSeaBoat,
+    Multi = false,
+    Callback = function(Value)
+        if table.find(SoloSeaBoatOptions, Value) then
+            _G.SoloSeaBoat = Value
+            SaveConfig()
+        end
+    end,
+})
+MainSection:AddToggle("respawn.rebuy", {
+    Title = T("respawn.rebuy"),
+    Description = T("respawn.rebuy.desc"),
+    Default = _G.RespawnRebuy,
+    Callback = function(State)
+        _G.RespawnRebuy = State
+        SaveConfig()
+        if State and _G.AutoLeviathanFull then
+            _G.Abyss_BoatDeadArmed = true
+            if _G.Abyss_StartBoatDeadMonitor then
+                _G.Abyss_StartBoatDeadMonitor()
+            end
+        end
+    end,
+})
+MainSection:AddToggle("info.ui", {
+    Title = T("info.ui"),
+    Description = T("info.ui.desc"),
+    Default = _G.ShowInfoUI,
+    Callback = function(State)
+        _G.ShowInfoUI = State
+        SaveConfig()
+        if State then
+            CreateInfoUI()
+        else
+            DestroyInfoUI()
+        end
+    end,
+})
+local StopButton = MainSection:AddButton({
+    Title = T("stop.btn"),
+    Callback = function()
+        StopTweenAll()
+        _G.AutoLeviathanFull = false
+        _G.Abyss_ResetMapNoclipState()
+        StatusPrefix = ""
+        StatusText = T("status.stopped")
+        if _G.SoloSeaFarm then
+            _G.SoloSeaFarm = false
+            SaveConfig()
+        end
+        if _G.Abyss_AutoFullToggle and _G.Abyss_AutoFullToggle.Unlock then
+            pcall(function()
+                _G.Abyss_AutoFullToggle:Unlock()
+            end)
+        end
+        SendNotify(T("stop.btn"), T("status.stopped"))
+    end,
+})
+ButtonKeys[#ButtonKeys + 1] = { element = StopButton, key = "stop.btn" }
+do
+    local function ArrayCopy(t)
+        local out = {}
+        for _, v in ipairs(CheckSkillTable(t)) do
+            out[#out + 1] = v
+        end
+        return out
+    end
+    local CombatSection = Tabs.Combat:AddSection(T("sec.combat"))
+    SectionKeys[#SectionKeys + 1] = { element = CombatSection, key = "sec.combat" }
+    if _G.SelectWeapon == "Blox Fruit" then
+        _G.SelectWeapon = "Melee"
+        SaveConfig()
+    end
+    CombatSection:AddDropdown("sel.weapon", {
+        Title = T("sel.weapon"),
+        Values = { "Melee", "Sword", "Gun" },
+        Default = _G.SelectWeapon,
+        Multi = false,
+        Callback = function(Value)
+            _G.SelectWeapon = Value
+            SaveConfig()
+        end,
+    })
+    CombatSection:AddDropdown("skill.melee", {
+        Title = T("skill.melee"),
+        Values = { "Z", "X", "C", "V" },
+        Default = ArrayCopy(_G.SkillMelee),
+        Multi = true,
+        Callback = function(Value)
+            _G.SkillMelee = CheckSkillTable(Value, true)
+            SaveConfig()
+        end,
+    })
+    CombatSection:AddDropdown("skill.sword", {
+        Title = T("skill.sword"),
+        Values = { "Z", "X" },
+        Default = ArrayCopy(_G.SkillSword),
+        Multi = true,
+        Callback = function(Value)
+            _G.SkillSword = CheckSkillTable(Value, true)
+            SaveConfig()
+        end,
+    })
+    CombatSection:AddDropdown("skill.fruit", {
+        Title = T("skill.fruit"),
+        Values = { "Z", "X", "C", "V", "F" },
+        Default = ArrayCopy(_G.SkillFruit),
+        Multi = true,
+        Callback = function(Value)
+            _G.SkillFruit = CheckSkillTable(Value, true)
+            SaveConfig()
+        end,
+    })
+    CombatSection:AddDropdown("skill.gun", {
+        Title = T("skill.gun"),
+        Values = { "Z", "X" },
+        Default = ArrayCopy(_G.SkillGun),
+        Multi = true,
+        Callback = function(Value)
+            _G.SkillGun = CheckSkillTable(Value, true)
+            SaveConfig()
+        end,
+    })
+    CombatSection:AddToggle("fruit.m1", {
+        Title = T("fruit.m1"),
+        Description = T("fruit.m1.desc"),
+        Default = _G.FruitM1,
+        Callback = function(State)
+            _G.FruitM1 = State and true or false
+            SaveConfig()
+        end,
+    })
+    CombatSection:AddToggle("silent.aim", {
+        Title = T("silent.aim"),
+        Description = T("silent.aim.desc"),
+        Default = _G.SilentAim,
+        Callback = function(State)
+            _G.SilentAim = State
+            if State then
+                if _G.Abyss_AimInstall then
+                    pcall(_G.Abyss_AimInstall)
+                end
+            else
+                if _G.Abyss_AimUninstall then
+                    pcall(_G.Abyss_AimUninstall)
+                end
+            end
+            SaveConfig()
+        end,
+    })
+    CombatSection:AddToggle("fast.attack", {
+        Title = T("fast.attack"),
+        Description = T("fast.attack.desc"),
+        Default = _G.FastAttack,
+        Callback = function(State)
+            _G.FastAttack = State
+            SaveConfig()
+        end,
+    })
+    CombatSection:AddToggle("dragon.farm", {
+        Title = T("dragon.farm"),
+        Description = T("dragon.farm.desc"),
+        Default = _G.DragonGunFarm,
+        Callback = function(State)
+            _G.DragonGunFarm = State
+            SaveConfig()
+            if State then
+                SeaAPI.StartDragonAttack()
+            end
+        end,
+    })
+    CombatSection:AddToggle("dragon.leviathan", {
+        Title = T("dragon.leviathan"),
+        Description = T("dragon.leviathan.desc"),
+        Default = _G.DragonGunLeviathan,
+        Callback = function(State)
+            _G.DragonGunLeviathan = State
+            SaveConfig()
+            if State then
+                SeaAPI.InitDragon()
+            end
+        end,
+    })
+    CombatSection:AddToggle("remove.fog", {
+        Title = T("remove.fog"),
+        Description = T("remove.fog.desc"),
+        Default = _G.RemoveFog,
+        Callback = function(State)
+            _G.RemoveFog = State
+            SaveConfig()
+            if State then
+                DoRemoveFog()
+            end
+        end,
+    })
+    local HuntSection = Tabs.Combat:AddSection(T("sec.hunt"))
+    SectionKeys[#SectionKeys + 1] = { element = HuntSection, key = "sec.hunt" }
+    HuntSection:AddToggle("hunt.events", {
+        Title = T("hunt.events"),
+        Description = T("hunt.events.desc"),
+        Default = _G.HuntFightEvents,
+        Callback = function(State)
+            if SuppressLockCallback then
+                return
+            end
+            _G.HuntFightEvents = State and true or false
+            SaveConfig()
+        end,
+    })
+    local HuntEventDropdown = HuntSection:AddDropdown("hunt.select.events", {
+        Title = T("hunt.select.events"),
+        Description = T("hunt.select.events.desc"),
+        Values = SeaAPI.SeaEventOptions,
+        Default = ArrayCopy(_G.HuntSelectEvents),
+        Multi = true,
+    })
+    HuntEventDropdown:OnChanged(function(Value)
+        SeaAPI.SetSelection(Value)
+        SaveConfig()
+    end)
+end
+do
+    local PerfSection = Tabs.Perf:AddSection(T("sec.performance"))
+    SectionKeys[#SectionKeys + 1] = { element = PerfSection, key = "sec.performance" }
+    PerfSection:AddToggle("auto.fast", {
+        Title = T("auto.fast"),
+        Description = T("auto.fast.desc"),
+        Default = _G.AutoFastMode,
+        Callback = function(State)
+            _G.AutoFastMode = State
+            SaveConfig()
+            if State then
+                PerformanceAPI.ApplyAutoFastMode()
+            end
+        end,
+    })
+    PerfSection:AddToggle("fps.boost", {
+        Title = T("fps.boost"),
+        Description = T("fps.boost.desc"),
+        Default = _G.FPSBoost,
+        Callback = function(State)
+            _G.FPSBoost = State
+            SaveConfig()
+            if State then
+                PerformanceAPI.ApplyFPSBoost()
+            end
+        end,
+    })
+    local HakiSection = Tabs.Perf:AddSection(T("sec.haki"))
+    SectionKeys[#SectionKeys + 1] = { element = HakiSection, key = "sec.haki" }
+    HakiSection:AddToggle("auto.buso", {
+        Title = T("auto.buso"),
+        Description = "",
+        Default = _G.AutoBuso,
+        Callback = function(State)
+            _G.AutoBuso = State
+            SaveConfig()
+        end,
+    })
+    HakiSection:AddToggle("auto.ken", {
+        Title = T("auto.ken"),
+        Description = T("auto.ken.desc"),
+        Default = _G.AutoKen,
+        Callback = function(State)
+            _G.AutoKen = State
+            SaveConfig()
+        end,
+    })
+    local KenPara = HakiSection:AddParagraph({
+        Title = T("ken.status"),
+        Content = T("ken.status.off"),
+    })
+    ParagraphKeys[#ParagraphKeys + 1] = { element = KenPara, title = "ken.status" }
+    task.spawn(function()
+        local lastKen = nil
+        while task.wait(1) do
+            pcall(function()
+                local key, detail = "ken.status.off", ""
+                if _G.Abyss_KenStatus then
+                    key, detail = _G.Abyss_KenStatus()
+                end
+                local text = T(key or "ken.status.off") .. (detail or "")
+                if text ~= lastKen then
+                    lastKen = text
+                    KenPara:SetDesc(text)
+                end
+            end)
+        end
+    end)
+    HakiSection:AddToggle("auto.v3", {
+        Title = T("auto.v3"),
+        Description = T("auto.v3.desc"),
+        Default = _G.AutoV3,
+        Callback = function(State)
+            _G.AutoV3 = State
+            SaveConfig()
+        end,
+    })
+    HakiSection:AddToggle("auto.v4", {
+        Title = T("auto.v4"),
+        Description = T("auto.v4.desc"),
+        Default = _G.AutoV4,
+        Callback = function(State)
+            _G.AutoV4 = State
+            SaveConfig()
+        end,
+    })
+end
+do
+    local CraftPara = Tabs.Extra:AddParagraph({
+        Title = T("craft.status"),
+        Content = T("notstarted"),
+    })
+    ParagraphKeys[#ParagraphKeys + 1] = { element = CraftPara, title = "craft.status" }
+    task.spawn(function()
+        local lastCraft = nil
+        while task.wait(1) do
+            pcall(function()
+                if CraftStatus ~= lastCraft then
+                    lastCraft = CraftStatus
+                    CraftPara:SetDesc(CraftStatus)
+                end
+            end)
+        end
+    end)
+    local AutoCraftScrollsToggle
+    AutoCraftScrollsToggle = Tabs.Extra:AddToggle("craft.auto", {
+        Title = T("craft.auto"),
+        Description = T("craft.auto.desc"),
+        Default = _G.AutoCraftScrolls,
+        Callback = function(State)
+            _G.AutoCraftScrolls = State
+            SaveConfig()
+        end,
+    })
+    _G.Abyss_AutoCraftScrollsToggle = AutoCraftScrollsToggle
+    Tabs.Extra:AddDropdown("craft.quality", {
+        Title = T("craft.quality"),
+        Description = T("craft.quality.desc"),
+        Values = { "None", "Common Scroll", "Rare Scroll", "Legendary Scroll", "Mythical Scroll" },
+        Default = _G.CraftQuality,
+        Multi = false,
+        Callback = function(Value)
+            _G.CraftQuality = Value or "None"
+            SaveConfig()
+        end,
+    })
+    Tabs.Extra:AddToggle("craft.roll", {
+        Title = T("craft.roll"),
+        Description = "",
+        Default = _G.AutoRandomFruit,
+        Callback = function(State)
+            _G.AutoRandomFruit = State
+            if State then
+                GachaPull()
+            end
+            SaveConfig()
+        end,
+    })
+    Tabs.Extra:AddToggle("craft.store", {
+        Title = T("craft.store"),
+        Description = "",
+        Default = _G.AutoStoreFruits,
+        Callback = function(State)
+            _G.AutoStoreFruits = State
+            SaveConfig()
+        end,
+    })
+    local AutoUnlockToggle
+    AutoUnlockToggle = Tabs.Extra:AddToggle("craft.unlock", {
+        Title = T("craft.unlock"),
+        Description = T("craft.unlock.desc"),
+        Default = _G.AutoUnlockMythical,
+        Callback = function(State)
+            _G.AutoUnlockMythical = State
+
+            if not State then
+                CraftQualityList.Pending = nil
+            end
+
+            SaveConfig()
+        end,
+    })
+    _G.Abyss_AutoUnlockMythicalToggle = AutoUnlockToggle
+    local ResetButton = Tabs.Extra:AddButton({
+        Title = T("reset.data"),
+        Callback = function()
+            local args = {
+                "BlackbeardReward",
+                "Refund",
+                "2"
+            }
+            pcall(function()
+                local remotes = RS:FindFirstChild("Remotes")
+                local CommF2 = remotes and remotes:FindFirstChild("CommF_")
+                if CommF2 then
+                    CommF2:InvokeServer(unpack(args))
+                end
+            end)
+        end,
+    })
+    ButtonKeys[#ButtonKeys + 1] = { element = ResetButton, key = "reset.data" }
+
+    local TP_ENCHANT_POS = Vector3.new(-15906.6494, 483.391998, 945.215027)
+    local ManualEnchantActive = false
+    local ManualEnchantToken = 0
+    local GoEnchantToggle
+    GoEnchantToggle = Tabs.Enchant:AddToggle("tp.enchant", {
+        Title = T("tp.enchant"),
+        Default = false,
+        Callback = function(State)
+            if State then
+                if NavigationOwner and NavigationOwner ~= "manual-enchant" then
+                    pcall(function() GoEnchantToggle:SetValue(false) end)
+                    return
+                end
+                ManualEnchantToken = ManualEnchantToken + 1
+                local token = ManualEnchantToken
+                ManualEnchantActive = true
+                _G.TeleportEnchantNPC = true
+                NavigationOwner = "manual-enchant"
+                task.spawn(function()
+                    pcall(function()
+                        local function cancelled()
+                            return not ManualEnchantActive or ManualEnchantToken ~= token
+                        end
+                        pcall(function() LocalPlayer:RequestStreamAroundAsync(TP_ENCHANT_POS, 3) end)
+                        for attempt = 1, 3 do
+                            if cancelled() then break end
+                            local _, root = GetCharacterParts()
+                            if not root then break end
+                            if (root.Position - TP_ENCHANT_POS).Magnitude <= 8 then
+                                pcall(function() LocalPlayer:RequestStreamAroundAsync(TP_ENCHANT_POS, 3) end)
+                                break
+                            end
+                            _tp(TP_ENCHANT_POS, cancelled, true)
+                        end
+                    end)
+                    if ManualEnchantToken == token then
+                        ManualEnchantActive = false
+                        _G.TeleportEnchantNPC = false
+                        if NavigationOwner == "manual-enchant" then
+                            NavigationOwner = nil
+                        end
+                        pcall(ClearHover)
+                        pcall(function() GoEnchantToggle:SetValue(false) end)
+                    end
+                end)
+            else
+                ManualEnchantActive = false
+                _G.TeleportEnchantNPC = false
+            end
+        end,
+    })
+    local EnchantWeaponDropdown
+    _G.EnchantWeaponType = (_G.EnchantWeaponType == "Gun") and "Gun" or "Sword"
+    local function GetEnchantWeaponNames(weaponType)
+        local names, seen, containers = {}, {}, {}
+        if LocalPlayer.Character then table.insert(containers, LocalPlayer.Character) end
+        local backpack = LocalPlayer:FindFirstChildOfClass("Backpack")
+        if backpack then table.insert(containers, backpack) end
+        for _, container in ipairs(containers) do
+            for _, item in ipairs(container:GetChildren()) do
+                if item:IsA("Tool") and item:GetAttribute("WeaponType") == weaponType and not seen[item.Name] then
+                    seen[item.Name] = true
+                    table.insert(names, item.Name)
+                end
+            end
+        end
+        table.sort(names)
+        return names
+    end
+    local initialEnchantWeaponNames = GetEnchantWeaponNames(_G.EnchantWeaponType)
+    if not table.find(initialEnchantWeaponNames, _G.EnchantWeaponName) then
+        _G.EnchantWeaponName = initialEnchantWeaponNames[1] or ""
+    end
+    local function RefreshEnchantWeaponNames()
+        local names = GetEnchantWeaponNames(_G.EnchantWeaponType or "Sword")
+        local selected = _G.EnchantWeaponName
+        if not selected or not table.find(names, selected) then
+            selected = names[1] or ""
+            _G.EnchantWeaponName = selected
+        end
+        if EnchantWeaponDropdown then
+            pcall(function() EnchantWeaponDropdown:SetValues(names) end)
+            pcall(function() EnchantWeaponDropdown:SetValue(selected) end)
+        end
+        SaveConfig()
+        if _G.Abyss_EnchantViewer then pcall(_G.Abyss_EnchantViewer.ReadCurrent, true) end
+    end
+    _G.Abyss_EnchantStatusPara = Tabs.Enchant:AddParagraph({
+        Title = T("enchant.status"),
+        Content = T("status.off"),
+    })
+    ParagraphKeys[#ParagraphKeys + 1] = { element = _G.Abyss_EnchantStatusPara, title = "enchant.status" }
+    Tabs.Enchant:AddDropdown("enchant.weapon.type", {
+        Title = T("enchant.weapon.type"),
+        Values = { "Sword", "Gun" },
+        Default = _G.EnchantWeaponType,
+        Multi = false,
+        Callback = function(Value)
+            _G.EnchantWeaponType = (Value == "Gun") and "Gun" or "Sword"
+            _G.EnchantWeaponName = ""
+            RefreshEnchantWeaponNames()
+        end,
+    })
+    EnchantWeaponDropdown = Tabs.Enchant:AddDropdown("enchant.weapon", {
+        Title = T("enchant.weapon"),
+        Values = initialEnchantWeaponNames,
+        Default = _G.EnchantWeaponName ~= "" and _G.EnchantWeaponName or nil,
+        Multi = false,
+        Callback = function(Value)
+            local previous = _G.EnchantWeaponName
+            _G.EnchantWeaponName = tostring(Value or "")
+            if previous ~= _G.EnchantWeaponName and _G.Abyss_EnchantViewer then
+                pcall(_G.Abyss_EnchantViewer.SelectionChanged)
+            end
+            SaveConfig()
+        end,
+    })
+    local RefreshEnchantButton = Tabs.Enchant:AddButton({
+        Title = T("enchant.refresh"),
+        Callback = RefreshEnchantWeaponNames,
+    })
+    ButtonKeys[#ButtonKeys + 1] = { element = RefreshEnchantButton, key = "enchant.refresh" }
+    do
+        if not table.find(_G.EnchantWanted, "Reaper") then
+            table.insert(_G.EnchantWanted, "Reaper")
+        end
+        local restoringReaper = false
+        local WantedDropdown = Tabs.Enchant:AddDropdown("enchant.wanted", {
+            Title = T("enchant.wanted"),
+            Values = { "Rot", "Burning", "Frozen", "Storm", "Reaper", "Thief" },
+            Default = table.clone(_G.EnchantWanted),
+            Multi = true,
+        })
+        WantedDropdown:OnChanged(function(Value)
+            if restoringReaper then return end
+            if type(Value) == "table" and Value.Reaper ~= true then
+                Value.Reaper = true
+                restoringReaper = true
+                pcall(function() WantedDropdown:SetValue(Value) end)
+                restoringReaper = false
+            end
+            local selected = { "Reaper" }
+            if type(Value) == "table" then
+                for _, name in ipairs({ "Rot", "Burning", "Frozen", "Storm", "Reaper", "Thief" }) do
+                    if name ~= "Reaper" and Value[name] == true then table.insert(selected, name) end
+                end
+            end
+            table.sort(selected)
+            _G.EnchantWanted = selected
+            SaveConfig()
+            if _G.Abyss_EnchantViewer then pcall(_G.Abyss_EnchantViewer.SelectionChanged) end
+        end)
+    end
+    _G.Abyss_AutoEnchantOnHeartToggle = Tabs.Enchant:AddToggle("enchant.onheart", {
+        Title = T("enchant.onheart"),
+        Description = T("enchant.onheart.desc"),
+        Default = _G.AutoEnchantOnHeart,
+        Callback = function(State)
+            _G.AutoEnchantOnHeart = State and true or false
+            if _G.Abyss_EnchantViewer then
+                if State then
+                    _G.Abyss_EnchantViewer.Dismissed = false
+                    pcall(_G.Abyss_EnchantViewer.ReadCurrent, false)
+                else
+                    pcall(_G.Abyss_EnchantViewer.CancelRead)
+                end
+            end
+            if not _G.AutoEnchantOnHeart and NavigationOwner == "enchant" then
+                NavigationOwner = nil
+            end
+            SaveConfig()
+        end,
+    })
+    local SetSpawnRunning = false
+    local SetSpawnButton = Tabs.Enchant:AddButton({
+        Title = T("enchant.go.spawn"),
+        Callback = function()
+            if SetSpawnRunning then return end
+            SetSpawnRunning = true
+            SetStatus(T("enchant.spawn.wait"))
+            task.spawn(function()
+                local ok, err = xpcall(function()
+                    local previousOwner = NavigationOwner
+                    if previousOwner == "enchant" or previousOwner == "manual-enchant" then
+                        warn("[SetSpawn] blocked by active navigation:", previousOwner)
+                        SetStatus(T("enchant.spawn.busy") .. ": " .. tostring(previousOwner))
+                        return
+                    end
+                    if previousOwner then
+                        warn("[SetSpawn] taking navigation from:", tostring(previousOwner))
+                    end
+                    NavigationOwner = "set-spawn"
+                    if CurrentTween then
+                        pcall(function() CurrentTween:Cancel() end)
+                        CurrentTween = nil
+                    end
+                    _G.StopTween = false
+                    pcall(ClearHover)
+                    warn("[SetSpawn] navigation lock acquired; searching NPC")
+                    SetStatus(T("enchant.spawn.search"))
+                    local spawnStand = CFrame.new(-16276.5098, 49.224823, 538.23468,
+                        0.890063882, 4.41327472e-08, 0.455835819,
+                        -6.19365181e-08, 1, 2.41198901e-08,
+                        -0.455835819, -4.9701125e-08, 0.890063882)
+                    local tikiPosition = spawnStand.Position
+                    local function cancelled()
+                        return _G.StopTween or NavigationOwner ~= "set-spawn"
+                    end
+                    local function loadTiki()
+                        pcall(function() LocalPlayer:RequestStreamAroundAsync(tikiPosition, 3) end)
+                    end
+                    local function findSpawn()
+                        local candidates, seen = {}, {}
+                        for _, obj in ipairs(workspace:GetDescendants()) do
+                            if obj:IsA("Model") then
+                                local internalName = obj:GetAttribute("InternalName")
+                                local internalValue = obj:FindFirstChild("InternalName", true)
+                                if internalValue and internalValue:IsA("StringValue") then
+                                    internalName = internalValue.Value
+                                end
+                                local normalizedName = string.lower(obj.Name):gsub("[%s_%-]", "")
+                                local normalizedInternal = string.lower(tostring(internalName or "")):gsub("[%s_%-]", "")
+                                local exact = normalizedInternal == "spawnpoint"
+                                    or normalizedName == "spawnpoint"
+                                    or normalizedName == "setspawnpoint"
+                                    or normalizedName == "sethomepoint"
+                                local possible = exact
+                                    or normalizedName:find("spawn", 1, true) ~= nil
+                                    or normalizedName:find("homepoint", 1, true) ~= nil
+                                if possible and not seen[obj] then
+                                    local part = obj:FindFirstChild("HumanoidRootPart")
+                                        or obj.PrimaryPart
+                                        or obj:FindFirstChildWhichIsA("BasePart", true)
+                                    if part then
+                                        seen[obj] = true
+                                        local distance = (part.Position - tikiPosition).Magnitude
+                                        if distance <= 100 then
+                                            table.insert(candidates, {
+                                                model = obj,
+                                                part = part,
+                                                exact = exact,
+                                                distance = distance,
+                                            })
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                        table.sort(candidates, function(a, b)
+                            if a.exact ~= b.exact then return a.exact end
+                            return a.distance < b.distance
+                        end)
+                        return candidates[1]
+                    end
+                    SetStatus(T("enchant.spawn.move"))
+                    _tp(spawnStand, cancelled, true)
+                    if cancelled() then return end
+                    local _, root = GetCharacterParts()
+                    if not root or (root.Position - tikiPosition).Magnitude > 8 then
+                        SetStatus(T("enchant.spawn.cancelled"))
+                        return
+                    end
+                    loadTiki()
+                    local target
+                    local deadline = os.clock() + 5
+                    repeat
+                        if cancelled() then return end
+                        target = findSpawn()
+                        if target then break end
+                        task.wait(0.2)
+                    until os.clock() >= deadline
+                    if not target then
+                        SetStatus(T("enchant.spawn.notfound"))
+                        return
+                    end
+
+                    SetStatus(T("enchant.spawn.move"))
+                    if cancelled() or not target.part.Parent then return end
+                    local _, nearRoot = GetCharacterParts()
+                    if not nearRoot then return end
+                    if (nearRoot.Position - target.part.Position).Magnitude > 8 then
+                        _tp(target.part.CFrame + Vector3.new(0, 3, 0), function()
+                            return cancelled() or not target.part.Parent
+                        end, true)
+                    end
+                    local _, hrp = GetCharacterParts()
+                    local arrived = not cancelled() and hrp
+                        and target.part.Parent ~= nil
+                        and (hrp.Position - target.part.Position).Magnitude <= 8
+                    if not arrived then
+                        SetStatus(T("enchant.spawn.cancelled"))
+                        return
+                    end
+                    warn("[SetSpawn] reached NPC; invoking spawn setup")
+
+                    local net = RS:FindFirstChild("Modules") and RS.Modules:FindFirstChild("Net")
+                    local analytics = net and net:FindFirstChild("RE/RobloxAnalytics")
+                    local remotes = RS:FindFirstChild("Remotes")
+                    local commF = remotes and remotes:FindFirstChild("CommF_")
+                    pcall(function()
+                        if analytics then analytics:FireServer({ Context = "SpokeToNPC", InternalName = "SpawnPoint" }) end
+                    end)
+                    pcall(function()
+                        if commF then commF:InvokeServer("SetSpawnPoint") end
+                    end)
+                    local confirmed = false
+                    local started = os.clock()
+                    while os.clock() - started < 4 do
+                        local data = LocalPlayer:FindFirstChild("Data")
+                        local lastSpawn = data and data:FindFirstChild("LastSpawnPoint")
+                        if lastSpawn and (lastSpawn.Value == "Tiki" or lastSpawn.Value == "Tiki2") then
+                            confirmed = true
+                            break
+                        end
+                        task.wait(0.2)
+                    end
+                    SetStatus(T(confirmed and "enchant.spawn.done" or "enchant.spawn.failed"))
+                end, debug.traceback)
+                if NavigationOwner == "set-spawn" then
+                    NavigationOwner = nil
+                end
+                SetSpawnRunning = false
+                pcall(ClearHover)
+                if not ok then
+                    SetStatus("Error al configurar el spawn en Tiki: " .. tostring(err))
+                end
+            end)
+        end,
+    })
+    ButtonKeys[#ButtonKeys + 1] = { element = SetSpawnButton, key = "enchant.go.spawn" }
+end
+do
+    local WebhookSendLock = false
+    local AvatarCache = {}
+    local function TrimWebhookText(value)
+        return tostring(value or ""):match("^%s*(.-)%s*$") or ""
+    end
+    local function GetAvatarImage(userId)
+        userId = tostring(userId)
+        if AvatarCache[userId] then
+            return AvatarCache[userId]
+        end
+        local apiUrl = "https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=" .. userId
+            .. "&size=420x420&format=Png&isCircular=false"
+        local fallback = "https://www.roblox.com/headshot-thumbnail/image?userId=" .. userId
+            .. "&width=420&height=420&format=png"
+        local avatarReq = (syn and syn.request) or (http and http.request) or http_request or request
+        local found
+        if avatarReq then
+            local ok, resp = pcall(avatarReq, {
+                Url = apiUrl,
+                Method = "GET",
+            })
+            if ok and resp and (resp.StatusCode or resp.statusCode) == 200 then
+                local body = resp.Body or resp.body or ""
+                local okDec, data = pcall(HttpService.JSONDecode, HttpService, body)
+                if okDec and type(data) == "table" and data.data and type(data.data[1]) == "table" then
+                    found = data.data[1].imageUrl
+                end
+            end
+        end
+        if not found then
+            found = fallback
+        end
+        AvatarCache[userId] = found
+        return found
+    end
+    local function SendWebhook(content, title, onDone, mentionEveryone, colorOverride, footerDetails)
+        local webhookUrl = TrimWebhookText(_G.WebhookURL)
+        if webhookUrl == "" then
+            if onDone then onDone(false, T("webhook.no.url")) end
+            return false, T("webhook.no.url")
+        end
+        if not webhookUrl:match("^https?://") then
+            local message = "URL de webhook invalida"
+            if onDone then onDone(false, message) end
+            return false, message
+        end
+        if WebhookSendLock then
+            if onDone then onDone(false) end
+            return false
+        end
+        local req = (syn and syn.request) or (http and http.request) or http_request or request
+        local httpPost = http and http.post
+        if not req and not httpPost then
+            if onDone then onDone(false) end
+            return false, "no request api"
+        end
+        WebhookSendLock = true
+        task.spawn(function()
+            local ok = false
+            local errText
+            local callOk, callErr = pcall(function()
+                local HttpServiceLocal = game:GetService("HttpService")
+                local payload, headers
+                headers = { ["Content-Type"] = "application/json" }
+                do
+                    local titleStr = title or "Abyss"
+                    local embedColor
+                    if titleStr:find("Leviathan", 1, true) then
+                        embedColor = 0x9C27B0
+                    elseif titleStr:find("Corazón", 1, true) or titleStr:find("Heart", 1, true) then
+                        embedColor = 0x1E88E5
+                    elseif titleStr:find("Soborno", 1, true) or titleStr:find("Bribe", 1, true) then
+                        embedColor = 0xFB8C00
+                    elseif titleStr:find("Jugadores", 1, true) or titleStr:find("Players", 1, true) then
+                        embedColor = 0xE53935
+                    else
+                        embedColor = 0x32CD32
+                    end
+                    embedColor = colorOverride or embedColor
+                    local fields = {}
+                    local descriptions = {}
+                    for line in (content or ""):gmatch("[^\n]+") do
+                        local k, v = line:match("^(.-):%s*(.*)$")
+                        if k and v and v ~= "" then
+                            fields[#fields + 1] = {
+                                name = k:gsub("^%s*(.-)%s*$", "%1"),
+                                value = v:gsub("^%s*(.-)%s*$", "%1"),
+                                inline = true,
+                            }
+                        else
+                            descriptions[#descriptions + 1] = line
+                        end
+                    end
+                    if #fields == 0 then
+                        fields = { { name = "Info", value = table.concat(descriptions, "\n"), inline = false } }
+                    end
+                    local userFields = {
+                        { name = T("wh.field.user"), value = LocalPlayer.Name, inline = true },
+                        { name = T("wh.field.display"), value = LocalPlayer.DisplayName, inline = true },
+                        { name = T("wh.field.uid"), value = string.format("[%d](https://www.roblox.com/users/%d/profile)", LocalPlayer.UserId, LocalPlayer.UserId), inline = true },
+                    }
+                    local finalFields = {}
+                    for _, f in ipairs(fields) do
+                        finalFields[#finalFields + 1] = f
+                    end
+                    for _, f in ipairs(userFields) do
+                        finalFields[#finalFields + 1] = f
+                    end
+                    local SenderName = TrimWebhookText(_G.WebhookUsername)
+                    if SenderName == "" then SenderName = "Leviatan" end
+                    local safeFields = {}
+                    for i = 1, math.min(#finalFields, 25) do
+                        local field = finalFields[i]
+                        local fieldName = tostring(field.name or ""):sub(1, 256)
+                        local fieldValue = tostring(field.value or ""):sub(1, 1000)
+                        if fieldName:match("^%s*$") then fieldName = "Info" end
+                        if fieldValue:match("^%s*$") then fieldValue = "-" end
+                        safeFields[i] = { name = fieldName, value = fieldValue, inline = field.inline }
+                    end
+                    local descText = (#descriptions > 0) and table.concat(descriptions, "\n") or nil
+                    if descText and #descText > 3800 then
+                        descText = descText:sub(1, 3800) .. "..."
+                    end
+                    payload = {
+                        username = SenderName,
+                        avatar_url = GetAvatarImage(LocalPlayer.UserId),
+                        embeds = {{
+                            color = tonumber("0x" .. string.format("%X", embedColor)),
+                            title = tostring(titleStr):sub(1, 256),
+                            description = descText,
+                            thumbnail = { url = GetAvatarImage(LocalPlayer.UserId) },
+                            fields = safeFields,
+                            footer = {
+                                text = (footerDetails and (footerDetails .. "\n") or "") .. SenderName .. " · " .. os.date("%Y-%m-%d %H:%M:%S"),
+                                icon_url = GetAvatarImage(LocalPlayer.UserId),
+                            },
+                        }}
+                    }
+                    if mentionEveryone then
+                        payload.content = "@everyone"
+                    end
+                end
+                local resp
+                if httpPost and not req then
+                    resp = httpPost(webhookUrl, HttpServiceLocal:JSONEncode(payload), headers)
+                else
+                    resp = req({
+                        Url = webhookUrl,
+                        Method = "POST",
+                        Headers = headers,
+                        Body = HttpServiceLocal:JSONEncode(payload)
+                    })
+                end
+                local code = tonumber(resp and (resp.StatusCode or resp.statusCode or resp.Status or resp.status))
+                if resp == nil then
+                    ok = false
+                    errText = "sin respuesta del executor"
+                    print("[Abyss] Webhook: " .. tostring(errText))
+                elseif code then
+                    ok = (code == 200 or code == 204)
+                    if not ok then
+                        local rawBody = type(resp) == "table" and (resp.Body or resp.body or resp.Content) or tostring(resp)
+                        errText = "HTTP " .. tostring(code) .. " " .. tostring(rawBody or ""):sub(1, 180)
+                        print("[Abyss] Webhook: " .. tostring(errText))
+                    end
+                else
+                    ok = true
+                end
+            end)
+            if not callOk then
+                ok = false
+                errText = tostring(callErr)
+                print("[Abyss] Webhook error: " .. tostring(errText))
+            end
+            WebhookSendLock = false
+            if onDone then
+                pcall(onDone, ok, errText)
+            end
+        end)
+        return true
+    end
+    local WebhookStatusPara = Tabs.Webhook:AddParagraph({
+        Title = T("webhook.status"),
+        Content = T("webhook.off"),
+    })
+    ParagraphKeys[#ParagraphKeys + 1] = { element = WebhookStatusPara, title = "webhook.status" }
+    local function SendWebhookUI(content, title, mentionEveryone, colorOverride, footerDetails)
+        if TrimWebhookText(_G.WebhookURL) == "" then
+            WebhookStatusPara:SetDesc(T("webhook.no.url"))
+            return
+        end
+        pcall(function() WebhookStatusPara:SetDesc(T("webhook.sending")) end)
+        local okCall, err = SendWebhook(content, title, function(ok, reason)
+            if ok then
+                WebhookStatusPara:SetDesc(T("webhook.sent") .. os.date("%H:%M:%S"))
+            else
+                local text = T("wh.sendfailed")
+                if reason and reason ~= "" and not tostring(reason):match("^HTTP ") then
+                    text = text .. " (" .. tostring(reason):sub(1, 100) .. ")"
+                end
+                WebhookStatusPara:SetDesc(text)
+            end
+        end, mentionEveryone, colorOverride, footerDetails)
+        if not okCall then
+            WebhookStatusPara:SetDesc(T("wh.sendfailed") .. (err and (" (" .. tostring(err) .. ")") or ""))
+        end
+    end
+    local function GetMaterialCounts()
+        local Etc = GetCraftData()
+        local ScaleT, HeartT, ScrollT = "0", "0", ""
+        if Etc then
+            for k, v in pairs(Etc) do
+                if type(v) == "number" then
+                    local key = tostring(k)
+                    if key:find("Leviathan") ~= nil and key:find("Scale") ~= nil then
+                        ScaleT = tostring(v)
+                    elseif key:find("Leviathan") ~= nil and key:find("Heart") ~= nil then
+                        HeartT = tostring(v)
+                    elseif key:find("Scroll") ~= nil then
+                        if ScrollT == "" then
+                            ScrollT = key .. ": " .. tostring(v)
+                        else
+                            ScrollT = ScrollT .. ", " .. key .. ": " .. tostring(v)
+                        end
+                    end
+                end
+            end
+        end
+        return ScaleT, HeartT, ScrollT
+    end
+    local function GetHeartCount()
+        local Etc = GetCraftData()
+        if type(Etc) ~= "table" then
+            return nil
+        end
+        local Count = 0
+        for k, v in pairs(Etc) do
+            if type(v) == "number" then
+                local key = tostring(k)
+                if key:find("Leviathan") ~= nil and key:find("Heart") ~= nil then
+                    Count = v
+                end
+            end
+        end
+        return Count
+    end
+    local function GetScrollCounts()
+        local Etc = GetCraftData()
+        if type(Etc) ~= "table" then
+            return nil
+        end
+        local Out = {}
+        for k, v in pairs(Etc) do
+            if type(v) == "number" and tostring(k):find("Scroll") ~= nil then
+                Out[tostring(k)] = v
+            end
+        end
+        return Out
+    end
+    local function BuildProgressMsg()
+        local ScaleT, HeartT, ScrollT = GetMaterialCounts()
+        return T("wh.bribe") .. ": " .. StatusText
+            .. "\n" .. T("wh.material") .. ": Leviathan Scale: " .. ScaleT .. ", Leviathan Heart: " .. HeartT
+            .. "\n" .. T("wh.scroll") .. ": " .. (ScrollT == "" and T("wh.none") or ScrollT)
+            .. "\n" .. T("wh.crafted") .. ": " .. CraftStatus
+    end
+    Tabs.Webhook:AddInput("webhook.url", {
+        Title = T("webhook.url"),
+        Description = T("webhook.url.desc"),
+        Default = _G.WebhookURL,
+        Placeholder = "https://discord.com/api/webhooks/...",
+        Finished = true,
+        Callback = function(Text)
+            _G.WebhookURL = TrimWebhookText(Text)
+            SaveConfig()
+        end,
+    })
+    Tabs.Webhook:AddInput("webhook.username", {
+        Title = T("webhook.username"),
+        Description = T("webhook.username.desc"),
+        Default = _G.WebhookUsername,
+        Placeholder = "Leviatan",
+        Finished = true,
+        Callback = function(Text)
+            _G.WebhookUsername = TrimWebhookText(Text)
+            SaveConfig()
+        end,
+    })
+    Tabs.Webhook:AddToggle("webhook.auto", {
+        Title = T("webhook.auto"),
+        Description = T("webhook.auto.desc"),
+        Default = _G.AutoWebhook,
+        Callback = function(State)
+            _G.AutoWebhook = State
+            SaveConfig()
+        end,
+    })
+    Tabs.Webhook:AddInput("webhook.interval", {
+        Title = T("webhook.interval"),
+        Description = "",
+        Default = tostring(_G.WebhookInterval or 60),
+        Placeholder = "60",
+        Numeric = true,
+        Finished = false,
+        Callback = function(Text)
+            local n = tonumber(Text)
+            if n and n > 0 then
+                _G.WebhookInterval = math.clamp(math.floor(n), 1, 3600)
+                SaveConfig()
+            end
+        end,
+    })
+    Tabs.Webhook:AddToggle("webhook.send.progress", {
+        Title = T("webhook.send.progress"),
+        Description = T("webhook.send.progress.desc"),
+        Default = _G.WebhookSendProgress,
+        Callback = function(State)
+            _G.WebhookSendProgress = State
+            SaveConfig()
+        end,
+    })
+    Tabs.Webhook:AddToggle("webhook.send.enchant", {
+        Title = T("webhook.send.enchant"),
+        Description = "",
+        Default = _G.WebhookSendEnchantResult,
+        Callback = function(State)
+            _G.WebhookSendEnchantResult = State
+            SaveConfig()
+        end,
+    })
+    Tabs.Webhook:AddToggle("webhook.send.bribe", {
+        Title = T("webhook.send.bribe"),
+        Description = T("webhook.send.bribe.desc"),
+        Default = _G.WebhookSendBribeReady,
+        Callback = function(State)
+            _G.WebhookSendBribeReady = State
+            SaveConfig()
+        end,
+    })
+    Tabs.Webhook:AddToggle("webhook.send.leviathan", {
+        Title = T("webhook.send.leviathan"),
+        Description = "",
+        Default = _G.WebhookSendLeviathan,
+        Callback = function(State)
+            _G.WebhookSendLeviathan = State
+            SaveConfig()
+        end,
+    })
+    Tabs.Webhook:AddToggle("webhook.send.heartspawn", {
+        Title = T("webhook.send.heartspawn"),
+        Description = "",
+        Default = _G.WebhookSendHeartSpawn,
+        Callback = function(State)
+            _G.WebhookSendHeartSpawn = State
+            SaveConfig()
+        end,
+    })
+    Tabs.Webhook:AddToggle("webhook.send.heartgot", {
+        Title = T("webhook.send.heartgot"),
+        Description = "",
+        Default = _G.WebhookSendHeartGot,
+        Callback = function(State)
+            _G.WebhookSendHeartGot = State
+            SaveConfig()
+        end,
+    })
+    Tabs.Webhook:AddToggle("wh.lowplayers", {
+        Title = T("wh.lowplayers"),
+        Description = T("wh.lowplayers.desc"),
+        Default = _G.WebhookSendLowPlayers,
+        Callback = function(State)
+            _G.WebhookSendLowPlayers = State
+            SaveConfig()
+        end,
+    })
+    Tabs.Webhook:AddToggle("webhook.send.heartgain", {
+        Title = T("webhook.send.heartgain"),
+        Description = "",
+        Default = _G.WebhookSendHeartGain,
+        Callback = function(State)
+            _G.WebhookSendHeartGain = State
+            SaveConfig()
+        end,
+    })
+    Tabs.Webhook:AddToggle("webhook.send.scrollgain", {
+        Title = T("webhook.send.scrollgain"),
+        Description = "",
+        Default = _G.WebhookSendScrollGain,
+        Callback = function(State)
+            _G.WebhookSendScrollGain = State
+            SaveConfig()
+        end,
+    })
+    Tabs.Webhook:AddToggle("webhook.send.fruit", {
+        Title = T("webhook.send.fruit"),
+        Default = _G.WebhookSendFruit,
+        Callback = function(state)
+            _G.WebhookSendFruit = state and true or false
+            SaveConfig()
+        end,
+    })
+    do
+        local seen = setmetatable({}, {__mode = "k"})
+        local queue, catalog, retryAt, working = {}, nil, 0, false
+        local function fruitKey(name)
+            local key = tostring(name):lower():gsub("fruit", ""):gsub("[%s_%-]", "")
+            local half = #key / 2
+            if half == math.floor(half) and key:sub(1, half) == key:sub(half + 1) then
+                key = key:sub(1, half)
+            end
+            return key
+        end
+        local function rarity(name, attribute)
+            local label = tostring(attribute or ""):lower()
+            if label == "legendary" then return "Legendary", 0xFF69B4 end
+            if label == "mythical" then return "Mythical", 0xFF3030 end
+            if not catalog and os.clock() >= retryAt then
+                retryAt = os.clock() + 60
+                local comm = FruitCommF()
+                local ok, data = pcall(function() return comm and comm:InvokeServer("GetFruits") end)
+                if ok and type(data) == "table" and next(data) then catalog = data end
+            end
+            for _, entry in pairs(catalog or {}) do
+                if type(entry) == "table" and fruitKey(entry.Name) == fruitKey(name) then
+                    local tier = type(entry.Rarity) == "string" and entry.Rarity:lower() or ""
+                    local price = tonumber(entry.Price)
+                    if tier == "mythical" or (tier == "" and price and price >= 2500000) then
+                        return "Mythical", 0xFF3030
+                    elseif tier == "legendary" or (tier == "" and price and price >= 1000000 and price < 2500000) then
+                        return "Legendary", 0xFF69B4
+                    end
+                end
+            end
+        end
+        local function acquired(tool)
+            if not tool:IsA("Tool") or seen[tool] or not tool.Name:find("Fruit", 1, true) then return end
+            seen[tool] = true
+            if not _G.WebhookSendFruit or not _G.WebhookURL or _G.WebhookURL == "" then return end
+            queue[#queue + 1] = {name = tool:GetAttribute("OriginalName") or tool.Name,
+                rarity = tool:GetAttribute("Rarity")}
+            if working then return end
+            working = true
+            task.spawn(function()
+                while #queue > 0 do
+                    local item = table.remove(queue, 1)
+                    local tier, color = rarity(item.name, item.rarity)
+                    if tier and _G.WebhookSendFruit then
+                        while WebhookSendLock do task.wait(0.15) end
+                        if _G.WebhookSendFruit then
+                            SendWebhookUI(item.name .. " (" .. tier .. ")", T("webhook.send.fruit"), false, color)
+                            while WebhookSendLock do task.wait(0.15) end
+                        end
+                    end
+                end
+                working = false
+            end)
+        end
+        local function watch(container, initial)
+            if not container then return end
+            if initial then
+                for _, tool in ipairs(container:GetChildren()) do seen[tool] = true end
+            end
+            container.ChildAdded:Connect(acquired)
+            if not initial then
+                for _, tool in ipairs(container:GetChildren()) do acquired(tool) end
+            end
+        end
+        watch(LocalPlayer:FindFirstChildOfClass("Backpack"), true)
+        watch(LocalPlayer.Character, true)
+        LocalPlayer.ChildAdded:Connect(function(child)
+            if child:IsA("Backpack") then watch(child, false) end
+        end)
+        LocalPlayer.CharacterAdded:Connect(function(character) watch(character, false) end)
+    end
+    local SendNowButton = Tabs.Webhook:AddButton({
+        Title = T("webhook.send.now"),
+        Callback = function()
+            pcall(function()
+                SendWebhookUI(BuildProgressMsg(), T("wh.title.manual"))
+            end)
+        end,
+    })
+    ButtonKeys[#ButtonKeys + 1] = { element = SendNowButton, key = "webhook.send.now" }
+    local LastAutoWebhookState, LastWebhookUrl
+    task.spawn(function()
+        while task.wait(1) do
+            pcall(function()
+                local autoState = _G.AutoWebhook == true
+                local url = TrimWebhookText(_G.WebhookURL)
+                if autoState ~= LastAutoWebhookState or url ~= LastWebhookUrl then
+                    LastAutoWebhookState, LastWebhookUrl = autoState, url
+                    if not autoState then
+                        WebhookStatusPara:SetDesc(T("webhook.off"))
+                    elseif url == "" then
+                        WebhookStatusPara:SetDesc(T("webhook.no.url"))
+                    else
+                        WebhookStatusPara:SetDesc(T("webhook.active"))
+                    end
+                end
+            end)
+        end
+    end)
+    task.spawn(function()
+        while true do
+            local interval = math.clamp(tonumber(_G.WebhookInterval) or 60, 1, 3600)
+            task.wait(interval)
+            if _G.AutoWebhook and _G.WebhookSendProgress
+                and _G.WebhookURL and _G.WebhookURL ~= "" then
+                pcall(function()
+                    SendWebhookUI(BuildProgressMsg(), T("wh.title.progress"))
+                end)
+            end
+        end
+    end)
+    do
+        local ENCHANT_TARGET = Vector3.new(-15906.6494, 483.391998, 945.215027)
+        local ENCHANT_SCROLL = "Mythical Scroll"
+        local EnchantView = { Dismissed = false, Serial = 0, Rolls = 0, Status = "", HasRead = false,
+            Checked = false, Hit = false, Reading = false, NeedsRefresh = false, ReadEpoch = 0 }
+        _G.Abyss_EnchantViewer = EnchantView
+        local EnchantArmedHeart = nil
+        local EnchantRunning = false
+        local EnchantPending = false
+        local EnchantRetryAt = 0
+        local EnchantRunToken = 0
+        local EnchantWebhookQueue = {}
+        local EnchantWebhookWorker = false
+        local ENCHANT_MAX_TELEPORT_TRIES = 8
+        local ENCHANT_MAX_CHECK_FAILS = 6
+        local ENCHANT_MAX_ROLL_FAILS = 5
+        local ENCHANT_MAX_WEAPON_WAITS = 12
+        local ENCHANT_LOCK_TIMEOUT = 240
+        local EnchantLockAt = 0
+        local EnchantBeatAt = 0
+        local function SetEnchantStatus(text)
+            EnchantView.Status = tostring(text)
+            if EnchantView.Refresh then pcall(EnchantView.Refresh) end
+            pcall(function()
+                if _G.Abyss_EnchantStatusPara then
+                    _G.Abyss_EnchantStatusPara:SetDesc(tostring(text))
+                end
+            end)
+        end
+        local function SetBusy(state)
+            pcall(function()
+                local char = LocalPlayer.Character
+                local busy = char and char:FindFirstChild("Busy")
+                if busy then
+                    busy.Value = state and true or false
+                end
+            end)
+        end
+        local function ReadEnchantInventory()
+            local etc = GetCraftData()
+            if type(etc) ~= "table" or next(etc) == nil then
+                return nil, nil, nil
+            end
+            local scrolls = CraftQualityList.Lookup(etc, "MythicalScroll") or 0
+            local hearts = nil
+            for key, value in pairs(etc) do
+                if type(value) == "number" then
+                    local name = tostring(key)
+                    if name:find("Leviathan") and name:find("Heart") then
+                        hearts = value
+                        break
+                    end
+                end
+            end
+            EnchantView.Scrolls, EnchantView.Hearts = scrolls, hearts
+            return scrolls, hearts, etc
+        end
+        local function WantedEnchantLookup()
+            local wanted = {}
+            for _, name in ipairs(_G.EnchantWanted or {}) do
+                wanted[tostring(name):lower()] = true
+            end
+            if next(wanted) == nil and type(_G.EnchantWanted) == "table" then
+                for name, enabled in pairs(_G.EnchantWanted) do
+                    if type(name) == "string" and enabled then
+                        wanted[name:lower()] = true
+                    end
+                end
+            end
+            wanted.reaper = true
+            wanted["curse of the reaper"] = true
+            return wanted
+        end
+        local function DescribeEnchantResult(modifiers)
+            local parts, matched = {}, false
+            local wanted = WantedEnchantLookup()
+            for _, modifier in pairs(modifiers or {}) do
+                if type(modifier) == "table" and modifier.Name then
+                    local name = tostring(modifier.Name)
+                    parts[#parts + 1] = name .. (modifier.Level and (" " .. tostring(modifier.Level)) or "")
+                    if wanted[name:lower()] then
+                        matched = true
+                    end
+                end
+            end
+            table.sort(parts)
+            return (#parts > 0 and table.concat(parts, ", ") or T("enchant.none")), matched
+        end
+        EnchantView.Dismissed = false
+
+        	do
+        local MaxLevels = {Agile=3, Beast=5, Deadly=5, Efficient=4, Elemental=5, Fortune=4, Lucky=4, Natural=5, Piercing=4, Sharp=6, Siphon=3, Vampiric=3}
+		
+        		local Colors = {
+        			Background = AbyssAccent,
+        			Stroke = AbyssAmber,
+        			Text = AbyssInk,
+        			Muted = Color3.fromRGB(105, 72, 0),
+        			Curse = Color3.fromRGB(176, 24, 24),
+        			Blessing = Color3.fromRGB(0, 86, 180),
+        			Unique = Color3.fromRGB(140, 90, 0),
+        			Good = Color3.fromRGB(0, 118, 46),
+        		}
+        		local gui, title, subtitle, list, dragConn
+
+        		local function Create(className, props, parent)
+        			local instance = Instance.new(className)
+
+        			for k, v in pairs(props) do
+        				instance[k] = v
+        			end
+
+        			instance.Parent = parent
+
+        			return instance
+        		end
+
+        		local function Build()
+        			if gui and gui.Parent then
+        				return true
+        			end
+
+        			local playerGui = LocalPlayer:FindFirstChildOfClass("PlayerGui")
+
+        			if not playerGui then
+        				return false
+        			end
+
+        			local old = playerGui:FindFirstChild("Abyss_EnchantView")
+
+        			if old then
+        				old:Destroy()
+        			end
+
+        			if dragConn then
+        				dragConn:Disconnect()
+        			end
+
+        			gui = Create("ScreenGui", {
+        				Name = "Abyss_EnchantView",
+        				ResetOnSpawn = false,
+        				ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+        				Enabled = false,
+        			}, playerGui)
+
+        			local frame = Create("Frame", {
+        				AutomaticSize = Enum.AutomaticSize.Y,
+        				Size = UDim2.new(0, 210, 0, 0),
+        				Position = UDim2.new(1, -226, 0.5, -60),
+        				BackgroundColor3 = Colors.Background,
+        				BackgroundTransparency = 0.15,
+        				BorderSizePixel = 0,
+        				Active = true,
+        			}, gui)
+
+        			Create("UICorner", { CornerRadius = UDim.new(0, 8) }, frame)
+        			Create("UIStroke", { Color = Colors.Stroke, Thickness = 1, Transparency = 0.3 }, frame)
+        			Create("UIPadding", {
+        				PaddingTop = UDim.new(0, 8),
+        				PaddingBottom = UDim.new(0, 8),
+        				PaddingLeft = UDim.new(0, 10),
+        				PaddingRight = UDim.new(0, 8),
+        			}, frame)
+        			Create("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 3) }, frame)
+
+        			local header = Create("Frame", { LayoutOrder = 1, Size = UDim2.new(1, 0, 0, 16), BackgroundTransparency = 1 }, frame)
+
+        			title = Create("TextLabel", {
+        				Size = UDim2.new(1, -20, 1, 0),
+        				BackgroundTransparency = 1,
+        				Font = Enum.Font.GothamBold,
+        				TextSize = 13,
+        				TextColor3 = Colors.Text,
+        				TextXAlignment = Enum.TextXAlignment.Left,
+        				TextTruncate = Enum.TextTruncate.AtEnd,
+        				Text = "",
+        			}, header)
+
+        			local close = Create("TextButton", {
+        				AnchorPoint = Vector2.new(1, 0),
+        				Position = UDim2.new(1, 0, 0, 0),
+        				Size = UDim2.new(0, 16, 0, 16),
+        				BackgroundTransparency = 1,
+        				Font = Enum.Font.GothamBold,
+        				TextSize = 12,
+        				TextColor3 = Colors.Muted,
+        				Text = "X",
+        			}, header)
+
+        			close.MouseButton1Click:Connect(function()
+        				EnchantView.Dismissed = true
+        				gui.Enabled = false
+        			end)
+
+        			subtitle = Create("TextLabel", {
+        				LayoutOrder = 2,
+        				Size = UDim2.new(1, 0, 0, 0),
+        					AutomaticSize = Enum.AutomaticSize.Y,
+        					TextWrapped = true,
+        				BackgroundTransparency = 1,
+        				Font = Enum.Font.GothamMedium,
+        				TextSize = 11,
+        				TextColor3 = Colors.Muted,
+        				TextXAlignment = Enum.TextXAlignment.Left,
+				
+        				Text = "",
+        			}, frame)
+
+        			Create("Frame", { LayoutOrder = 3, Size = UDim2.new(1, 0, 0, 1), BackgroundColor3 = Colors.Stroke, BorderSizePixel = 0 }, frame)
+
+        			list = Create("Frame", {
+        				LayoutOrder = 4,
+        				AutomaticSize = Enum.AutomaticSize.Y,
+        				Size = UDim2.new(1, 0, 0, 0),
+        				BackgroundTransparency = 1,
+        			}, frame)
+
+        			Create("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 1) }, list)
+
+        			local dragging, dragStart, startPos
+
+        			frame.InputBegan:Connect(function(input)
+        				if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        					dragging, dragStart, startPos = true, input.Position, frame.Position
+
+        					input.Changed:Connect(function()
+        						if input.UserInputState == Enum.UserInputState.End then
+        							dragging = false
+        						end
+        					end)
+        				end
+        			end)
+
+        			dragConn = InputService.InputChanged:Connect(function(input)
+        				if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        					local delta = input.Position - dragStart
+        					frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        				end
+        			end)
+
+        			return true
+        		end
+
+        		local function AddRow(order, name, tag, color, matched)
+        			local row = Create("Frame", { LayoutOrder = order, Size = UDim2.new(1, 0, 0, 16), BackgroundTransparency = 1 }, list)
+
+        			if matched then
+        				Create("Frame", {
+        					Position = UDim2.new(0, 0, 0.5, -5),
+        					Size = UDim2.new(0, 2, 0, 10),
+        					BackgroundColor3 = Colors.Good,
+        					BorderSizePixel = 0,
+        				}, row)
+        			end
+
+        			Create("TextLabel", {
+        				Position = UDim2.new(0, 7, 0, 0),
+        				Size = UDim2.new(1, -67, 1, 0),
+        				BackgroundTransparency = 1,
+        				Font = Enum.Font.GothamMedium,
+        				TextSize = 12,
+        				TextColor3 = color,
+        				TextXAlignment = Enum.TextXAlignment.Left,
+        				TextTruncate = Enum.TextTruncate.AtEnd,
+        				Text = name,
+        			}, row)
+
+        			Create("TextLabel", {
+        				AnchorPoint = Vector2.new(1, 0),
+        				Position = UDim2.new(1, 0, 0, 0),
+        				Size = UDim2.new(0, 60, 1, 0),
+        				BackgroundTransparency = 1,
+        				Font = Enum.Font.GothamBold,
+        				TextSize = 10,
+        				TextColor3 = color,
+        				TextTransparency = 0.2,
+        				TextXAlignment = Enum.TextXAlignment.Right,
+        				Text = tag,
+        			}, row)
+        		end
+
+        		EnchantView.Update = function(weaponName, mods, note)
+        			if EnchantView.Dismissed or not Build() then
+        				return
+        			end
+
+        			title.Text = weaponName
+        			subtitle.Text = note or ""
+
+        			for _, child in ipairs(list:GetChildren()) do
+        				if child:IsA("Frame") then
+        					child:Destroy()
+        				end
+        			end
+
+        			local rules = WantedEnchantLookup()
+        			local entries = {}
+
+        			for _, mod in pairs(mods or {}) do
+        					if type(mod) ~= "table" or not mod.Name then continue end
+        					local name = tostring(mod.Name)
+        				local entry = { Name = name }
+
+        				if mod.Curse then
+        					entry.Rank, entry.Color, entry.Tag = 4, Colors.Curse, "CURSE"
+        				elseif mod.Blessing then
+        					entry.Rank, entry.Color, entry.Tag, entry.Matched = 1, Colors.Blessing, "BLESSING", rules[name:lower()]
+        				elseif mod.Unique then
+        					entry.Rank, entry.Color, entry.Tag, entry.Matched = 2, Colors.Unique, "UNIQUE", rules[name:lower()]
+        				else
+        					local level, max = tonumber(mod.Level) or 0, MaxLevels[name]
+
+        					entry.Rank = 3
+        					entry.Tag = max and (tostring(level) .. "/" .. tostring(max)) or ("Lv " .. tostring(level))
+        					entry.Color = (max and level >= max) and Colors.Good or Colors.Text
+        					entry.Matched = rules[name:lower()] == true
+        				end
+
+        				table.insert(entries, entry)
+        			end
+
+        			table.sort(entries, function(a, b)
+        				if a.Rank ~= b.Rank then
+        					return a.Rank < b.Rank
+        				end
+
+        				return a.Name < b.Name
+        			end)
+
+        			if #entries == 0 then
+        				AddRow(1, EnchantView.HasRead and "No enchants" or "Not read yet", "", Colors.Muted)
+        			end
+
+        			for i, entry in ipairs(entries) do
+        				AddRow(i, entry.Name, entry.Tag, entry.Color, entry.Matched)
+        			end
+
+        			gui.Enabled = true
+        		end
+
+        		EnchantView.Hide = function()
+        			if gui then
+        				gui.Enabled = false
+        			end
+        		end
+        	end
+
+        EnchantView.Note = function()
+            return "Mythical Scroll: " .. tostring(EnchantView.Scrolls or "?")
+                .. " | #" .. tostring(EnchantView.Rolls) .. "\n"
+                .. (EnchantView.LastOutcome and (EnchantView.LastOutcome .. "\n") or "") .. EnchantView.Status
+        end
+        EnchantView.Show = function(weaponName, modifiers)
+            EnchantView.Serial += 1
+            EnchantView.Weapon, EnchantView.Modifiers, EnchantView.HasRead = weaponName, modifiers or {}, true
+            EnchantView.Update(weaponName, EnchantView.Modifiers, EnchantView.Note())
+        end
+        EnchantView.Refresh = function()
+            local selected = tostring(_G.EnchantWeaponName or "")
+            if selected ~= EnchantView.Weapon then
+                EnchantView.Weapon, EnchantView.Modifiers, EnchantView.HasRead = selected, {}, false
+            end
+            EnchantView.Update(selected ~= "" and selected or "Auto Enchant", EnchantView.Modifiers or {}, EnchantView.Note())
+        end
+        local function FindEnchantWeapon()
+            local wantedName = tostring(_G.EnchantWeaponName or "")
+            local wantedType = (_G.EnchantWeaponType == "Gun") and "Gun" or "Sword"
+            local containers = {}
+            if LocalPlayer.Character then table.insert(containers, LocalPlayer.Character) end
+            local backpack = LocalPlayer:FindFirstChildOfClass("Backpack")
+            if backpack then table.insert(containers, backpack) end
+            for _, container in ipairs(containers) do
+                for _, item in ipairs(container:GetChildren()) do
+                    if item:IsA("Tool") and item.Name == wantedName
+                        and item:GetAttribute("WeaponType") == wantedType then
+                        return item
+                    end
+                end
+            end
+            return nil
+        end
+        local function EnchantEligibilityIssue(info)
+            if type(info) ~= "table" then return nil end
+            local grade = tonumber(info.Upgrades)
+            local entry = type(info.Scrolls) == "table" and info.Scrolls[ENCHANT_SCROLL] or nil
+            local need = type(entry) == "table" and tonumber(entry[3]) or nil
+            local available = type(entry) == "table" and tonumber(entry[1]) or nil
+            if available then EnchantView.Scrolls = available end
+            if type(info.Scrolls) == "table" and (entry == nil or (available and available <= 0)) then
+                EnchantView.Scrolls = 0
+                return "No mythic scrolls available, skipping this cycle and returning control; waiting for scrolls"
+            end
+            if grade and grade <= 0 then
+                return "Selected weapon is not upgraded, skipping auto enchant; waiting until it can be enchanted"
+            end
+            if grade and need and grade < need then
+                return "Selected weapon Grade " .. tostring(grade) .. ", mythic scroll requires Grade >= "
+                    .. tostring(need) .. "; waiting until the weapon can be enchanted"
+            end
+        end
+        local function EnchantCanUseScroll(info, scrollName)
+            if type(info) ~= "table" then
+                return false, "Could not read weapon enchant data"
+            end
+            local entry = type(info.Scrolls) == "table" and info.Scrolls[scrollName] or nil
+            if type(entry) ~= "table" then
+                local inventory = tonumber((ReadEnchantInventory()))
+                if inventory and inventory > 0 then
+                    return true
+                end
+                return false, "No " .. tostring(scrollName)
+            end
+            local count = tonumber(entry[1]) or 0
+            local need = tonumber(entry[3]) or 0
+            local grade = tonumber(info.Upgrades) or 0
+            if count <= 0 then
+                return false, "No " .. tostring(scrollName)
+            end
+            if need > grade then
+                return false, tostring(scrollName) .. " requires weapon Grade >= "
+                    .. tostring(need) .. " (current " .. tostring(grade) .. "), using it would break the weapon"
+            end
+            return true
+        end
+        local function InvokeEnchantAction(flags, enchantRemote, commF, action, tool, scroll)
+            if flags and flags.ENCHANT_USES_NEW_SERVICE and enchantRemote then
+                if scroll ~= nil then
+                    return enchantRemote:InvokeServer(action, tool, scroll)
+                end
+                return enchantRemote:InvokeServer(action, tool)
+            end
+            if not commF then
+                error("Enchant remote unavailable")
+            end
+            if scroll ~= nil then
+                return commF:InvokeServer("EnchantItem", action, tool, scroll)
+            end
+            return commF:InvokeServer("EnchantItem", action, tool)
+        end
+        local function ReadEnchantWeaponInfo(tool)
+            local flags = require(RS.Modules.Flags)
+            local net = RS:FindFirstChild("Modules") and RS.Modules:FindFirstChild("Net")
+            local enchantRemote = net and net:FindFirstChild("RF/EnchantInvoke")
+            if not enchantRemote and net then enchantRemote = net:WaitForChild("RF/EnchantInvoke", 10) end
+            local remotes = RS:FindFirstChild("Remotes")
+            local commF = remotes and remotes:FindFirstChild("CommF_")
+            return InvokeEnchantAction(flags, enchantRemote, commF, "Check", tool)
+        end
+        local function SendEnchantWebhook(weaponName, scrollName, resultText, hit, modifiers)
+            if not (_G.WebhookSendEnchantResult and _G.WebhookURL and _G.WebhookURL ~= "") then return end
+            local main, minor = {}, {}
+            for _, modifier in pairs(modifiers or {}) do
+                if type(modifier) == "table" and modifier.Name then
+                    local name = tostring(modifier.Name)
+                    local label = name .. (modifier.Level and (" " .. tostring(modifier.Level)) or "")
+                    if modifier.Curse then
+                        main[#main + 1] = "**CURSE** " .. label
+                    elseif modifier.Blessing then
+                        main[#main + 1] = "**BLESSING** " .. label
+                    elseif modifier.Unique then
+                        main[#main + 1] = "**UNIQUE** " .. label
+                    else
+                        minor[#minor + 1] = label
+                    end
+                end
+            end
+            table.sort(main)
+            table.sort(minor)
+            local headline = #main > 0 and table.concat(main, " · ")
+                or (type(modifiers) == "table" and "—" or tostring(resultText))
+            local colors = {burning=0xFF8C00, rot=0x32CD32, storm=0x153E90,
+                frozen=0x87CEFA, reaper=0xE53935, thief=0x9B59B6}
+            local color = 0xB388FF
+            for word in tostring(resultText):lower():gmatch("%a+") do
+                if colors[word] then color = colors[word]; break end
+            end
+            EnchantWebhookQueue[#EnchantWebhookQueue + 1] = {
+                color = color,
+                details = #minor > 0 and table.concat(minor, " · ") or nil,
+                content = T("wh.enchant.weapon") .. ": " .. tostring(weaponName)
+                .. "\n" .. T("wh.enchant.scroll") .. ": " .. tostring(scrollName)
+                .. "\n" .. T("wh.enchant.result") .. ": " .. headline
+                .. "\n" .. T("wh.enchant.hit") .. ": " .. T(hit and "wh.enchant.yes" or "wh.enchant.no")
+            }
+            if EnchantWebhookWorker then return end
+            EnchantWebhookWorker = true
+            task.spawn(function()
+                while #EnchantWebhookQueue > 0 do
+                    while WebhookSendLock do task.wait(0.15) end
+                    local content = table.remove(EnchantWebhookQueue, 1)
+                    SendWebhookUI(content.content, T("wh.title.enchant"), false, content.color, content.details)
+                    while WebhookSendLock do task.wait(0.15) end
+                    task.wait(0.15)
+                end
+                EnchantWebhookWorker = false
+            end)
+        end
+        local function TakeEnchantControl(token)
+            local currentChar = select(1, GetCharacterParts())
+            if EnchantHandoff.claimed and currentChar ~= EnchantHandoff.character then
+                EnchantHandoff.claimed = false
+            end
+            if not EnchantHandoff.claimed then
+                EnchantHandoff.requested = true
+                local deadline = os.clock() + 300
+                while _G.AutoEnchantOnHeart and token == EnchantRunToken and _G.AutoLeviathanFull do
+                    local role = (_G.Mode == "Capitán") and "captain" or "follower"
+                    local running
+                    if role == "captain" then running = CaptainRunning else running = FollowerRunning end
+                    if EnchantHandoff.parked[role] or not running then break end
+                    EnchantBeatAt = os.clock()
+                    SetEnchantStatus("Waiting for the main flow to finish its current step and pause")
+                    if os.clock() >= deadline then
+                        EnchantHandoff.Release()
+                        return false
+                    end
+                    task.wait(0.2)
+                end
+                if not _G.AutoEnchantOnHeart or token ~= EnchantRunToken then
+                    EnchantHandoff.Release()
+                    return false
+                end
+                local char, _, hum = GetCharacterParts()
+                if not char or not hum or hum.Health <= 0 then
+                    EnchantHandoff.Release()
+                    return false
+                end
+                local seat = hum and hum.SeatPart
+                local boat = seat
+                while boat and not (boat.Parent and boat.Parent.Name == "Boats") do boat = boat.Parent end
+                if not boat then
+                    if _G.Mode == "Capitán" then boat = GetOwnBoat() else boat = GetCaptainBoat() end
+                    seat = boat and boat:FindFirstChild("VehicleSeat")
+                end
+                EnchantHandoff.boat, EnchantHandoff.seat = boat, seat
+                EnchantHandoff.character = char
+                EnchantHandoff.claimed = true
+            end
+            if NavigationOwner ~= nil and NavigationOwner ~= "enchant" then
+                EnchantHandoff.Release()
+                return false
+            end
+            NavigationOwner = "enchant"
+            EnchantLockAt, EnchantBeatAt = os.clock(), os.clock()
+            if CurrentTween then pcall(function() CurrentTween:Cancel() end); CurrentTween = nil end
+            ClearHover()
+            return true
+        end
+        local function ReturnEnchantControl(token)
+            if not EnchantHandoff.claimed or EnchantHandoff.returning then return end
+            if not _G.AutoLeviathanFull or not _G.AutoEnchantOnHeart then return end
+            local char, _, hum = GetCharacterParts()
+            if char ~= EnchantHandoff.character or not hum or hum.Health <= 0 then return end
+            EnchantHandoff.returning = true
+            local savedSeat, savedBoat = EnchantHandoff.seat, EnchantHandoff.boat
+            local function destination()
+                if savedBoat and savedBoat.Parent and savedSeat and savedSeat.Parent
+                    and savedSeat:IsDescendantOf(savedBoat) then
+                    return savedSeat.CFrame + Vector3.new(0, 3, 0)
+                end
+                return BoatDealerCF
+            end
+            local arrived = false
+            for attempt = 1, 3 do
+                if token ~= EnchantRunToken or not _G.AutoEnchantOnHeart or not _G.AutoLeviathanFull then break end
+                local currentChar, root, currentHum = GetCharacterParts()
+                if currentChar ~= EnchantHandoff.character or not root or not currentHum or currentHum.Health <= 0 then break end
+                EnchantBeatAt = os.clock()
+                SetEnchantStatus("Enchant cycle done, returning to boat/dealer then resuming main flow")
+                local ok = pcall(function()
+                    _tp(destination, function()
+                        EnchantBeatAt = os.clock()
+                        return token ~= EnchantRunToken or not _G.AutoEnchantOnHeart or not _G.AutoLeviathanFull
+                    end, true)
+                end)
+                local _, afterRoot = GetCharacterParts()
+                local target = destination()
+                arrived = ok and afterRoot and target and (afterRoot.Position - target.Position).Magnitude <= 40
+                if arrived then break end
+                task.wait(0.5)
+            end
+            EnchantHandoff.returning = false
+            if token == EnchantRunToken and not arrived and _G.AutoLeviathanFull and _G.AutoEnchantOnHeart then
+                SetEnchantStatus("Enchant cycle done, return not confirmed; releasing navigation to main flow")
+            end
+        end
+        local function StopAutoEnchant(statusText)
+            local token = EnchantRunToken
+            SetBusy(false)
+            if EnchantHandoff.claimed and _G.AutoEnchantOnHeart then
+                pcall(ReturnEnchantControl, token)
+            end
+            if token ~= EnchantRunToken then return end
+            EnchantPending = false
+            EnchantRetryAt = 0
+            EnchantArmedHeart = nil
+            EnchantBeatAt = 0
+            EnchantLockAt = 0
+            SaveConfig()
+            SetBusy(false)
+            pcall(ClearHover)
+            if NavigationOwner == "enchant" then
+                NavigationOwner = nil
+            end
+            EnchantHandoff.Release()
+            if statusText ~= nil then
+                SetEnchantStatus(statusText)
+            end
+        end
+        local function StopAutoEnchantOnHit(displayOnly)
+            EnchantView.Checked, EnchantView.Hit, EnchantView.NeedsRefresh = true, true, false
+            local resultText = DescribeEnchantResult(EnchantView.Modifiers)
+            EnchantView.LastOutcome = "Target enchant already present (" .. resultText .. "); auto enchant paused, click refresh to re-read"
+            if displayOnly and not EnchantPending and NavigationOwner ~= "enchant" then
+                EnchantArmedHeart = nil
+                SetEnchantStatus(EnchantView.LastOutcome)
+                return
+            end
+            StopAutoEnchant(EnchantView.LastOutcome)
+        end
+        local function StopAutoEnchantOnNoScroll()
+            StopAutoEnchant("Mythic scrolls used up, returning control to main flow; waiting for 10 scrolls and the next heart")
+        end
+        local function PauseAutoEnchant(statusText)
+            EnchantPending = true
+            EnchantRetryAt = os.clock() + 30
+            EnchantBeatAt = 0
+            EnchantLockAt = 0
+            SetBusy(false)
+            pcall(ClearHover)
+            if EnchantHandoff.claimed then
+                NavigationOwner = "enchant"
+            else
+                EnchantHandoff.Release()
+                if NavigationOwner == "enchant" then NavigationOwner = nil end
+            end
+            if statusText then SetEnchantStatus(statusText) end
+        end
+        local function SkipUnavailableEnchant(reason)
+            EnchantView.EligibilityBlocked = true
+            EnchantView.EligibilityRetryAt = os.clock() + 15
+            StopAutoEnchant(reason)
+        end
+        EnchantView.CancelRead = function()
+            EnchantView.ReadEpoch += 1
+            EnchantView.Reading = false
+        end
+        EnchantView.SelectionChanged = function()
+            EnchantView.CancelRead()
+            EnchantView.Checked, EnchantView.Hit, EnchantView.NeedsRefresh = false, false, true
+            EnchantView.EligibilityBlocked, EnchantView.EligibilityRetryAt = false, 0
+            EnchantView.LastOutcome = nil
+            SetEnchantStatus("Weapon or target changed, click refresh weapon to re-read")
+        end
+        EnchantView.ReadCurrent = function(force)
+            if EnchantRunning then return end
+            if not force and EnchantView.NeedsRefresh then
+                SetEnchantStatus("Click refresh weapon to re-read the current enchant")
+                return
+            end
+            if not force and EnchantView.Hit then
+                SetEnchantStatus(EnchantView.LastOutcome or "Target enchant already present, click refresh weapon to re-read")
+                return
+            end
+            EnchantView.CancelRead()
+            local epoch = EnchantView.ReadEpoch
+            EnchantView.Reading, EnchantView.Checked = true, false
+            SetEnchantStatus("Reading the current enchant of the selected weapon")
+            task.spawn(function()
+                local tool = FindEnchantWeapon()
+                local ok, info = pcall(function()
+                    if not tool then error("Selected weapon not found") end
+                    return ReadEnchantWeaponInfo(tool)
+                end)
+                if epoch ~= EnchantView.ReadEpoch then return end
+                EnchantView.Reading = false
+                if not ok or type(info) ~= "table" or tool ~= FindEnchantWeapon() then
+                    EnchantView.NeedsRefresh = not EnchantView.EligibilityBlocked
+                    SetEnchantStatus(EnchantView.EligibilityBlocked and "Enchant conditions unavailable, will check again later"
+                        or "Failed to read current enchant, click refresh weapon to retry")
+                    return
+                end
+                EnchantView.Checked, EnchantView.NeedsRefresh = true, false
+                pcall(EnchantView.Show, tool.Name, info.Modifiers)
+                local _, hit = DescribeEnchantResult(info.Modifiers)
+                EnchantView.Hit = hit
+                local upgradeIssue = EnchantEligibilityIssue(info)
+                EnchantView.EligibilityBlocked = not hit and upgradeIssue ~= nil
+                EnchantView.EligibilityRetryAt = os.clock() + 15
+                if hit then
+                    StopAutoEnchantOnHit(true)
+                elseif upgradeIssue then
+                    EnchantArmedHeart = nil
+                    SetEnchantStatus(upgradeIssue)
+                else
+                    EnchantView.LastOutcome = nil
+                    SetEnchantStatus(EnchantPending and "Target not hit, this enchant cycle will continue"
+                        or "Target not hit; waiting for 10 mythic scrolls and the next heart")
+                end
+            end)
+        end
+        local function RunEnchantAfterHeart(token)
+            local function Cancelled()
+                return not _G.AutoEnchantOnHeart or token ~= EnchantRunToken
+            end
+            local function StopAndReturn(statusText)
+                if token ~= EnchantRunToken then return end
+                if _G.AutoEnchantOnHeart then
+                    PauseAutoEnchant(statusText)
+                else
+                    StopAutoEnchant(statusText)
+                end
+                EnchantRunning = false
+            end
+
+            local preflightTool = FindEnchantWeapon()
+            local readOK, info = pcall(function()
+                if not preflightTool then error("Selected weapon not found") end
+                return ReadEnchantWeaponInfo(preflightTool)
+            end)
+            if Cancelled() then return end
+            if not readOK or type(info) ~= "table" or preflightTool ~= FindEnchantWeapon() then
+                StopAndReturn("Failed to read weapon before departure; keeping this cycle, retrying in 30s")
+                return
+            end
+            local upgradeIssue = EnchantEligibilityIssue(info)
+            if upgradeIssue then
+                SkipUnavailableEnchant(upgradeIssue)
+                EnchantRunning = false
+                return
+            end
+            EnchantLockAt = os.clock()
+            EnchantBeatAt = os.clock()
+            if not TakeEnchantControl(token) then
+                StopAndReturn("Main flow has not finished pausing yet; keeping this cycle, retrying in 30s")
+                return
+            end
+            if next(WantedEnchantLookup()) == nil then
+                StopAndReturn("Select at least one target enchant first; keeping this cycle, retrying in 30s")
+                return
+            end
+            SetEnchantStatus("Heart settled, heading to Dragon Claw Sage")
+            local arrived = false
+            local tpTries = 0
+            while not Cancelled() and not arrived and tpTries < ENCHANT_MAX_TELEPORT_TRIES do
+                tpTries = tpTries + 1
+                EnchantBeatAt = os.clock()
+                local ok, result = pcall(function()
+                    return _tp(ENCHANT_TARGET, function()
+                        return not _G.AutoEnchantOnHeart or token ~= EnchantRunToken
+                    end, true)
+                end)
+                local _, root = GetCharacterParts()
+                arrived = ok and result and root and (root.Position - ENCHANT_TARGET).Magnitude <= 20
+                if not arrived and not Cancelled() then
+                    SetEnchantStatus("Failed to reach Dragon Claw Sage, retrying ("
+                        .. tpTries .. "/" .. ENCHANT_MAX_TELEPORT_TRIES .. ")")
+                    task.wait(3)
+                end
+            end
+            if Cancelled() then
+                StopAndReturn(nil)
+                return
+            end
+            if not arrived then
+                StopAndReturn("Cannot reach Dragon Claw Sage (" .. ENCHANT_MAX_TELEPORT_TRIES .. " tries); keeping this cycle, retrying in 30s")
+                return
+            end
+            local flags
+            pcall(function() flags = require(RS.Modules.Flags) end)
+            local net = RS:FindFirstChild("Modules") and RS.Modules:FindFirstChild("Net")
+            local enchantRemote = net and net:FindFirstChild("RF/EnchantInvoke")
+            if not enchantRemote and net then
+                pcall(function() enchantRemote = net:WaitForChild("RF/EnchantInvoke", 10) end)
+            end
+            local remotes = RS:FindFirstChild("Remotes")
+            local commF = remotes and remotes:FindFirstChild("CommF_")
+            if not enchantRemote and not commF then
+                StopAndReturn("Enchant remote unavailable; keeping this cycle, retrying in 30s")
+                return
+            end
+            local weaponWaits, checkFails, rollFails = 0, 0, 0
+            while not Cancelled() do
+                EnchantBeatAt = os.clock()
+                local scrollCount = tonumber((ReadEnchantInventory()))
+                if Cancelled() then return end
+                if scrollCount == nil then
+                    StopAndReturn("Failed to read scroll inventory; keeping this cycle, retrying in 30s")
+                    return
+                end
+                if scrollCount <= 0 then
+                    task.wait(0.5)
+                    local confirmed = tonumber((ReadEnchantInventory()))
+                    if Cancelled() then return end
+                    if confirmed == nil then
+                        StopAndReturn("Cannot confirm scroll count; keeping this cycle, retrying in 30s")
+                        return
+                    elseif confirmed <= 0 then
+                        StopAutoEnchantOnNoScroll()
+                        EnchantRunning = false
+                        return
+                    end
+                    scrollCount = confirmed
+                end
+                local tool = FindEnchantWeapon()
+                if not tool then
+                    weaponWaits = weaponWaits + 1
+                    if weaponWaits > ENCHANT_MAX_WEAPON_WAITS then
+                        StopAndReturn("Selected weapon not found (" .. tostring(_G.EnchantWeaponName)
+                            .. "); keeping this cycle, retrying in 30s")
+                        return
+                    end
+                    SetEnchantStatus("Selected weapon not found, waiting for it to be available ("
+                        .. weaponWaits .. "/" .. ENCHANT_MAX_WEAPON_WAITS .. ")")
+                    task.wait(5)
+                else
+                    local checked, before = pcall(function()
+                        return InvokeEnchantAction(flags, enchantRemote, commF, "Check", tool)
+                    end)
+                    if Cancelled() then return end
+                    if not checked or type(before) ~= "table" then
+                        checkFails = checkFails + 1
+                        if checkFails > ENCHANT_MAX_CHECK_FAILS then
+                            StopAndReturn("Failed to read weapon enchant data (" .. ENCHANT_MAX_CHECK_FAILS
+                                .. " tries); keeping this cycle, retrying in 30s")
+                            return
+                        end
+                        SetEnchantStatus("Failed to read weapon enchant, retrying ("
+                            .. checkFails .. "/" .. ENCHANT_MAX_CHECK_FAILS .. ")")
+                        task.wait(3)
+                    else
+                        checkFails = 0
+                        pcall(EnchantView.Show, tool.Name, before.Modifiers)
+                        local _, beforeHit = DescribeEnchantResult(before.Modifiers)
+                        if beforeHit then
+                            StopAutoEnchantOnHit()
+                            EnchantRunning = false
+                            return
+                        end
+                        local beforeIssue = EnchantEligibilityIssue(before)
+                        if beforeIssue then
+                            SkipUnavailableEnchant(beforeIssue)
+                            EnchantRunning = false
+                            return
+                        end
+                        local canRoll, whyNot = EnchantCanUseScroll(before, ENCHANT_SCROLL)
+                        if Cancelled() then return end
+                        if not canRoll then
+                            StopAndReturn(tostring(whyNot) .. "; keeping this cycle, retrying in 30s")
+                            return
+                        end
+                        SetEnchantStatus("Enchanting with mythic scroll on " .. tool.Name)
+                        local beforeScrolls = scrollCount
+                        SetBusy(true)
+                        local rolled, rollResult = pcall(function()
+                            return InvokeEnchantAction(flags, enchantRemote, commF, "Enchant", tool, ENCHANT_SCROLL)
+                        end)
+                        if Cancelled() then return end
+                        SetBusy(false)
+                        local consumed = false
+                        for _ = 1, 8 do
+                            task.wait(0.5)
+                            if Cancelled() then return end
+                            local currentScrolls = tonumber((ReadEnchantInventory()))
+                            if Cancelled() then return end
+                            if currentScrolls and currentScrolls < beforeScrolls then
+                                consumed = true
+                                break
+                            end
+                        end
+                        local resultMods = type(rollResult) == "table" and rollResult.Modifiers or nil
+                        if type(resultMods) ~= "table" or next(resultMods) == nil then
+                            local checkOK, afterInfo = pcall(function()
+                                return InvokeEnchantAction(flags, enchantRemote, commF, "Check", tool)
+                            end)
+                            if Cancelled() then return end
+                            if checkOK and type(afterInfo) == "table" then
+                                resultMods = afterInfo.Modifiers
+                            end
+                        end
+                        if type(resultMods) == "table" then pcall(EnchantView.Show, tool.Name, resultMods) end
+                        local resultText, hit = DescribeEnchantResult(resultMods)
+                        if not rolled then
+                            resultText = "Enchant request returned an error: " .. tostring(rollResult) .. "; " .. resultText
+                        end
+                        if consumed then
+                            EnchantView.Rolls += 1
+                            pcall(EnchantView.Refresh)
+                            rollFails = 0
+                            EnchantBeatAt = os.clock()
+                            SendEnchantWebhook(tool.Name, ENCHANT_SCROLL, resultText, hit, resultMods)
+                            if hit then
+                                StopAutoEnchantOnHit()
+                                EnchantRunning = false
+                                return
+                            end
+                        else
+                            rollFails = rollFails + 1
+                            if rollFails > ENCHANT_MAX_ROLL_FAILS then
+                                StopAndReturn("Enchant failed repeatedly (scroll not consumed); keeping this cycle, retrying in 30s")
+                                return
+                            end
+                            if not rolled then
+                                SetEnchantStatus("Enchant request failed and scroll was not consumed, retrying ("
+                                    .. rollFails .. "/" .. ENCHANT_MAX_ROLL_FAILS .. ")")
+                            else
+                                SetEnchantStatus("Server has not confirmed scroll consumption yet, retrying ("
+                                    .. rollFails .. "/" .. ENCHANT_MAX_ROLL_FAILS .. ")")
+                            end
+                            task.wait(3)
+                        end
+                        task.wait(0.5)
+                    end
+                end
+            end
+            StopAndReturn(nil)
+        end
+        local function StartEnchantRun()
+            EnchantRunning = true
+            EnchantRunToken += 1
+            EnchantLockAt = os.clock()
+            EnchantBeatAt = EnchantLockAt
+            local token = EnchantRunToken
+            task.spawn(function()
+                local ok, err = xpcall(function()
+                    RunEnchantAfterHeart(token)
+                end, function(message)
+                    return tostring(message)
+                end)
+                if token ~= EnchantRunToken then return end
+                if not ok then
+                    if _G.AutoEnchantOnHeart then
+                        PauseAutoEnchant("Enchant flow error: " .. tostring(err) .. "; keeping this cycle, retrying in 30s")
+                    else
+                        StopAutoEnchant(nil)
+                    end
+                end
+                if not EnchantPending and NavigationOwner == "enchant" then NavigationOwner = nil end
+                pcall(ClearHover)
+                EnchantRunning = false
+            end)
+        end
+        task.spawn(function()
+            while true do
+                task.wait(2)
+                if not _G.AutoEnchantOnHeart then
+                    if EnchantRunning or EnchantPending then
+                        EnchantRunToken += 1
+                        StopAutoEnchant(nil)
+                        EnchantRunning = false
+                    end
+                    EnchantArmedHeart = nil
+                    EnchantHandoff.Release()
+                elseif EnchantView.EligibilityBlocked and not EnchantRunning then
+                    if not EnchantView.Reading and not EnchantView.NeedsRefresh
+                        and os.clock() >= (EnchantView.EligibilityRetryAt or 0) then
+                        EnchantView.EligibilityRetryAt = os.clock() + 15
+                        EnchantView.ReadCurrent(true)
+                    end
+                elseif not EnchantView.Checked or EnchantView.Reading or EnchantView.NeedsRefresh or EnchantView.Hit then
+                elseif not EnchantRunning then
+                    pcall(function()
+                        local scrollCount, heartCount = ReadEnchantInventory()
+                        if scrollCount == nil or heartCount == nil then return end
+                        if not EnchantPending then
+                            if EnchantArmedHeart == nil then
+                                if scrollCount >= 10 then
+                                    EnchantArmedHeart = heartCount
+                                    SetEnchantStatus("Holding 10 mythic scrolls, waiting for the next heart")
+                                else
+                                    SetEnchantStatus("Waiting for mythic scrolls to reach 10")
+                                end
+                                return
+                            elseif heartCount > EnchantArmedHeart then
+                                EnchantArmedHeart = heartCount
+                                EnchantPending = true
+                                EnchantRetryAt = 0
+                                EnchantView.Rolls = 0
+                            else
+                                return
+                            end
+                        end
+                        if os.clock() < EnchantRetryAt then return end
+                        if next(WantedEnchantLookup()) == nil then
+                            SetEnchantStatus("Select at least one target enchant first; this cycle is pending")
+                            EnchantRetryAt = os.clock() + 5
+                        elseif NavigationOwner ~= nil and NavigationOwner ~= "home-return" and NavigationOwner ~= "enchant" then
+                            SetEnchantStatus("Navigation is busy (" .. tostring(NavigationOwner) .. "); this cycle is pending")
+                            EnchantRetryAt = os.clock() + 5
+                        elseif not FindEnchantWeapon() then
+                            SetEnchantStatus("Selected weapon not found (" .. tostring(_G.EnchantWeaponName) .. "); this cycle is pending")
+                            EnchantRetryAt = os.clock() + 5
+                        else
+                            StartEnchantRun()
+                        end
+                    end)
+                end
+            end
+        end)
+        task.spawn(function()
+            while true do
+                task.wait(5)
+                if NavigationOwner == "enchant" then
+                    local lastBeat = EnchantBeatAt
+                    if lastBeat <= 0 then lastBeat = EnchantLockAt end
+                    if lastBeat > 0 and os.clock() - lastBeat > ENCHANT_LOCK_TIMEOUT then
+                        EnchantRunToken += 1
+                        PauseAutoEnchant("Enchant flow timed out (" .. ENCHANT_LOCK_TIMEOUT
+                            .. "s without progress); keeping this cycle, retrying in 30s")
+                        EnchantRunning = false
+                    end
+                else
+                    EnchantBeatAt = 0
+                    EnchantLockAt = 0
+                end
+            end
+        end)
+        if _G.AutoEnchantOnHeart then EnchantView.ReadCurrent(false) end
+    end
+    task.spawn(function()
+        local PrevBribeReady = nil
+        local PrevLeviathan = false
+        local PrevHeartSpawn = false
+        local PrevHeartGot = false
+        local PrevLowPlayers = false
+        local PrevHeartCount = nil
+        local PrevScrolls = nil
+        while true do
+            task.wait(1)
+            if _G.WebhookURL and _G.WebhookURL ~= "" then
+                pcall(function()
+                    if _G.WebhookSendBribeReady then
+                        local S = GetBribeStatus()
+                        local Ready = S ~= nil and S ~= -1 and S ~= 5
+                        if Ready and PrevBribeReady == false then
+                            SendWebhookUI(TranslateStatus("[Abyss] Soborno disponible - progreso " .. tostring(S) .. "/5"), T("wh.title.bribe"))
+                        end
+                        PrevBribeReady = Ready
+                    end
+                    if _G.WebhookSendLeviathan then
+                        local NowLV = SeaAPI.Leviathan_SegmentsExist()
+                        if NowLV and not PrevLeviathan then
+                            SendWebhookUI(T("wh.msg.leviathan"), T("wh.title.leviathan"))
+                        end
+                        PrevLeviathan = NowLV
+                    end
+                    if _G.WebhookSendHeartSpawn then
+                        local Map = workspace:FindFirstChild("Map")
+                        local Heart = Map and Map:FindFirstChild("FrozenHeart")
+                        local NowSpawn = Heart ~= nil
+                        if NowSpawn and not PrevHeartSpawn then
+                            SendWebhookUI(T("wh.msg.heartspawn"), T("wh.title.heartspawn"))
+                        end
+                        PrevHeartSpawn = NowSpawn
+                    end
+                    if _G.WebhookSendHeartGot then
+                        local Map = workspace:FindFirstChild("Map")
+                        local Heart = Map and Map:FindFirstChild("FrozenHeart")
+                        local HP = Heart and GetHeartPos(Heart)
+                        local Got = HP ~= nil and IsFrozenHeartHarpooned()
+                        if Got and not PrevHeartGot then
+                            SendWebhookUI(T("wh.msg.heartgot"), T("wh.title.heartgot"))
+                        end
+                        PrevHeartGot = Got
+                    end
+                    if _G.WebhookSendLowPlayers then
+                        local N = #Players:GetPlayers()
+                        local Low = N < 5
+                        if Low and not PrevLowPlayers then
+                            SendWebhookUI(T("wh.lowplayers.msg") .. tostring(N) .. "\n" .. BuildProgressMsg(), T("wh.title.lowplayers"), true)
+                        end
+                        PrevLowPlayers = Low
+                    end
+                    if _G.WebhookSendHeartGain then
+                        local NowHeart = GetHeartCount()
+                        if NowHeart ~= nil then
+                            if PrevHeartCount ~= nil and NowHeart > PrevHeartCount then
+                                print("[Webhook] Heart obtained, sending...")
+                                SendWebhookUI(
+                                    T("wh.msg.heartgain")
+                                        .. "\nLeviathan Heart: " .. tostring(NowHeart)
+                                        .. " (+" .. tostring(NowHeart - PrevHeartCount) .. ")",
+                                    T("wh.title.heartgain"))
+                            end
+                            PrevHeartCount = NowHeart
+                        end
+                    end
+                    if _G.WebhookSendScrollGain then
+                        local NowScrolls = GetScrollCounts()
+                        if NowScrolls ~= nil then
+                            if PrevScrolls ~= nil then
+                                local Gained = {}
+                                for k, v in pairs(NowScrolls) do
+                                    local Old = PrevScrolls[k] or 0
+                                    if v > Old then
+                                        Gained[#Gained + 1] = tostring(k) .. ": " .. tostring(v)
+                                            .. " (+" .. tostring(v - Old) .. ")"
+                                    end
+                                end
+                                if #Gained > 0 then
+                                    table.sort(Gained)
+                                    print("[Webhook] Scroll obtained, sending...")
+                                    SendWebhookUI(
+                                        T("wh.msg.scrollgain") .. "\n" .. table.concat(Gained, "\n"),
+                                        T("wh.title.scrollgain"))
+                                end
+                            end
+                            PrevScrolls = NowScrolls
+                        end
+                    end
+                end)
+            end
+        end
+    end)
+end
+do
+    local LanguageSection = Tabs.Config:AddSection(T("language"))
+    SectionKeys[#SectionKeys + 1] = { element = LanguageSection, key = "language" }
+    local LanguageDropdown
+    local function SetLanguage(normalized)
+        if not normalized or normalized == _G.Language then
+            return false
+        end
+        _G.Language = normalized
+        if getgenv then
+            getgenv().language = normalized
+        end
+        pcall(function()
+            if LanguageDropdown then
+                LanguageDropdown:SetValue(normalized)
+            end
+        end)
+        SaveConfig()
+        ApplyLanguage()
+        SendNotify(T("notify.title"), T("notify.lang.changed") .. ": " .. normalized)
+        return true
+    end
+    if getgenv and not getgenv().language then
+        getgenv().language = _G.Language
+    end
+    LanguageDropdown = LanguageSection:AddDropdown("language", {
+        Title = T("language"),
+        Description = T("language.desc"),
+        Values = LANGUAGE_LABELS,
+        Default = _G.Language,
+        Multi = false,
+        Callback = function(Value)
+            SetLanguage(NormalizeLanguage(Value))
+        end,
+    })
+    task.spawn(function()
+        while task.wait(0.5) do
+            if getgenv then
+                local wanted = NormalizeLanguage(getgenv().language)
+                if wanted and wanted ~= _G.Language then
+                    SetLanguage(wanted)
+                end
+            end
+        end
+    end)
+    pcall(function()
+        SaveManager:SetLibrary(Fluent)
+        InterfaceManager:SetLibrary(Fluent)
+        SaveManager:IgnoreThemeSettings()
+        SaveManager:SetIgnoreIndexes({})
+        InterfaceManager.Settings.MenuKeybind = "G"
+        InterfaceManager:SetFolder("Abyss")
+        SaveManager:SetFolder("Abyss/configs")
+        InterfaceManager:BuildInterfaceSection(Tabs.Config)
+        SaveManager:BuildConfigSection(Tabs.Config)
+        SaveManager:LoadAutoloadConfig()
+    end)
+    Tabs.Config:AddToggle("ui.floatingball", {
+        Title = T("ui.floatingball"),
+        Description = T("ui.floatingball.desc"),
+        Default = _G.Abyss_FloatingBall ~= false,
+        Callback = function(Value)
+            _G.Abyss_FloatingBall = Value
+            SaveConfig()
+            if _G.Abyss_SetFloatingBall then
+                pcall(_G.Abyss_SetFloatingBall, Value)
+            end
+        end,
+    })
+end
+do
+    Tabs.Announce:AddParagraph({
+        Title = T("ann.dc"),
+        Content = "https://discord.gg/TavMcMGamR",
+    })
+    local CopyButton = Tabs.Announce:AddButton({
+        Title = T("ann.copy"),
+        Callback = function()
+            pcall(setclipboard, "https://discord.gg/TavMcMGamR")
+            SendNotify(T("notify.title"), T("ann.copied"))
+        end,
+    })
+    ButtonKeys[#ButtonKeys + 1] = { element = CopyButton, key = "ann.copy" }
+end
+ApplyLanguage = function()
+    for _, item in ipairs(TabKeys) do
+        pcall(SetTabTitle, item.tab, item.key)
+    end
+    for _, item in ipairs(SectionKeys) do
+        pcall(SetSectionTitle, item.element, item.key)
+    end
+    for idx, element in pairs(Fluent.Options) do
+        if T(idx) ~= idx then
+            pcall(function()
+                element:SetTitle(T(idx))
+            end)
+            local descKey = idx .. ".desc"
+            if T(descKey) ~= descKey then
+                pcall(function()
+                    element:SetDesc(T(descKey))
+                end)
+            end
+        end
+    end
+    for _, item in ipairs(ParagraphKeys) do
+        pcall(function()
+            item.element:SetTitle(T(item.title))
+        end)
+    end
+    for _, item in ipairs(ButtonKeys) do
+        pcall(function()
+            item.element:SetTitle(T(item.key))
+        end)
+    end
+    if ModeDropdown then
+        pcall(function()
+            SuppressModeNotify = true
+            ModeDropdown:SetValues({ T("mode.captain"), T("mode.follower") })
+            ModeDropdown:SetValue(_G.Mode == "Capitán" and T("mode.captain") or T("mode.follower"))
+            SuppressModeNotify = false
+        end)
+    end
+    if ReturnModeDropdown then
+        pcall(function()
+            ReturnModeDropdown:SetValues({ T("return.home"), T("return.boat") })
+            ReturnModeDropdown:SetValue((_G.ReturnMode == "Home") and T("return.home") or T("return.boat"))
+        end)
+    end
+    if DestinationDropdown then
+        pcall(function()
+            DestinationDropdown:SetValues({ T("destination.tiki"), T("destination.hydra") })
+            DestinationDropdown:SetValue((_G.LeviathanDestination == "Hydra") and T("destination.hydra") or T("destination.tiki"))
+        end)
+    end
+    if SoloSeaBoatDropdown then
+        pcall(function()
+            SoloSeaBoatDropdown:SetValues(SoloSeaBoatOptions)
+            SoloSeaBoatDropdown:SetValue(_G.SoloSeaBoat)
+        end)
+    end
+    pcall(function()
+        if _G.Abyss_RefreshStatus then
+            _G.Abyss_RefreshStatus()
+        end
+    end)
+end
+local BANANA_CAT_B64 = "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"
+    .. "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"
+    .. "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"
+    .. "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"
+    .. "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"
+    .. "XQ8aCaL4Q5QsWS1GLGYFi8WIyykR6pHw2GUG9woOSMzQq4OCBt72rR7Kl3bo6kBVZEoW1mj0pkzbBhK93pL5oIuof5eY/ZHMpaVGku6GEx1pZMDb5YBq+DKsvDqtknZW5ujPdipEOfnl44ocG/0Ge0dW4/i4Wlye3ZiLsxpwUUT7sol/eVZzTk9uwN3FbXixpjMv1nQhfp3Q2d2J29Cd+I1diN3Ug4Tzy0i5d4zkW3tIur33b0cAQCf+/YN/Ej/7ZDw6Svqjw6Td30PG8+Nkxp0lK+EcvlcX8MefI+vJflLPzSJ5Z29StnYmaVsPkrZ2JWVrVxKFOtjYgVWf1qFU7hCGtrBycImDjGSRFVQhUJj01NZUKuZk4Vd2ki+5OfSdwuaZNpZPtPPLIjO7fzKxZ7mFHyaZGNJTo1Njlfd7i4nkVppUtdK1kYnvvrYw+WNVv9dvVFBwWTWqlFWpVkEmMlTG41D18vwaZU0k6zEdB7d2W1n8mcSg9tlS4MoaiWTRRo2DER96dQ7WVCNmsxG7w4hLjHZxGAkPUZk9RYh7MbXDwJ3bTrp2EyXdwTn94vlRESpVSpn1PoBOjRX6t1X4qIfGF/1l5g6TubdVjGEpQKVSZtq2FYMl6uHPtOitXnHHFDIumZgz3MGQt/Kwe2Q1Do16k7OTgxLgovD3ZzXmQo4KmNVMf7z7fWuerezAM5HZW92JWGHsCVtgxzskXlxO0q3fSL61998EwL9G/L8B4fFxiD8NWVcg6yq8vgjplyHrGoHEC6TdWUfS7gEk6gDoQtJGEYlsx4sV7eBYP7g8lK+6Vqd5fgvxF+zgFwOmCpKV2YZ6Vb1894UCT6xcWqGyZarG1/0sdKyrMqS7hW+GOPTawE6NxaRRMyN6WZk6wszPkzXWzlCY+olCz7ckmtdWqVDErI/gyRWuULWsmfAQWT95IhSK5NY48WswiPfwsJOlo40M7pRdI3B7g0bac2G5O+nQLpuTxYgSkxGbzYjHbSTEbaBMMRPPn+Yi7bWbl89D6NZJjGUVLqEBq1nB61IJc6lEhqg0rKLRp6XKQDHps63GZz3M7FxkJSvJBP7CtGnkoEY14Q+3g4CF5HNmHv2q8PiAiRVTHLSpkIvfPq3P7+Nqc2G68ACacHFGUy7MaMq5mU30c3ZmE24sbMmLNcLqb0fsmna8WN2Bxys68XRNWxKOTiPp3lESb+4h8VbwCKKLxxzRn/MoQJD2VxXwUHD+QdIfHYX0q8Te3sf08SNo0uBN3qhegS7tm7Fs0XgyX50mkHSZ9HtbSdnVn5RtIhDVjrg17Xi9tStP13ViSPsKdK8exo1NLkgUU0aMkJEfPx2oXSWUb94XJep2bm6QuLxO4dRyjT5NTIwfbGHxWI0tC0xsW6iye4nM9u9EAYjK+tkqs0eq+iTVDk1kqpQQXdcmqpUw0KWekb7NVIpFG8gVatT7DB1mhUUzBQA8PP7dxaqvjXzQORsAdzebyEoQ6Vw3dWoFASBKvUW9v9D/TkdQBYjRJc0auKlfx0ux/FZC3GYkWdFVhcthwesy4bTJlCvhYES/CLq2sNChnsTiiSFsnh/C4/N2XothDZnRDOrtoXD+vKSnD9UlT9plldg9Goe+s1K+kIWy0Q6alY9hSNPiXJ/TlPPTG3FuemP9nJ2RfWY24d6Strxc157YVW2IXd1WP49/bsmLAxNIuPILr67vIvHmb7zKPjnEF8TOAUCOGhA/ywFBmq4CDkHyBX6YP4E8URHExORn2LCPKVmqTHbMQ7SwtyIz8QJZ8WdJPTWL58ubE7euPclbu5Pxa3du/dSaTrUK0aZGBMvHOsl4nA2A9Lz6cozalSP4dIAoQHXzcLvKke9UTq02sfALO1vm2FkxSWXvEpndPyhs/lZm1QyFxWMtjOxvpWJRjbxRMpVLqxSIVMgbLjH7q4Jkxtbl5a3yfD7ISYFcMhEeA5osMf7LoAp4cSmEDRMlhvfMVgEPd1rxp4aSke6iWIlgjF8MehC9fxazjM2s6O3JEV4Jr8tAqNuAy2IkKpeJ6DwOXe/brRohLgsFclvo2jIX9SrY6NzYwtolTnzpdhIfu7l/zEZqgpj1F8aMbyLx2D08fChGv0SQdstM3AGZZ/tMnFomWqJt1CuZmxVDq+hG4NlpjTgzPXjOzhCnCednNeHZsg4kCO5f24VnG3vxdGNvHq7pyfPD3/Hq9n5eXtrGq+u/knBjt34ECIQUEAQXhP+nHZBzBBBIvsg3o4f+Qew7t+7qTasbN27842fi7NywEJLOk3pjK883dCVxaxdSdvbi1S9d4Vh/+P1DutUoxLh37fheWeC1EdKi8Qc68WblCL4a4uDV1QjOLJU4udTEzOEWZn5sY910E3M/NvLjVwp7fpTYMFdmRD+VcoWsFMlrIV9uDafdgM2qUCTGTO2yMqcOluO3VYX4bV1hTu8pQvFoAy6rAVU28snQYKg//oaH7SIW0Dc7GPRktxWyIniV4CZ/XlEDILhf0o9wAVVZwmExEBVh0IcY5cklExNlolABB7kjbTisClaTkbwxIXg9TlSjQovaFs4fCQVfsH4w4Zmd1Fd2AgFhAdvZuSkS2aCw/4DY3lmTlMduEg4ZiT8hEXdQxLydtC6fh8fz6nB2SkPOTm3I6WmN9COIf25WEy7PbcrV79rw9JePeLr7Gx7/NoWnR78j4fx6Eq/sJPHmLuKv/Ur8tZ1/kwA5568ACHoCgvhCMhwk8OIU+7Z9/0c5nCzLDPtoGEuXLqV06dJ/A8CcSZ9D5jV8L8+QfnIsqdu78vrXXmTt6cWTDV1pUjE/X/WxQ7LoGzThTwwCIDOzKxVKu/lqWAxJl0ry20yNuZ+aGNnbypCONno2s/BZX5UlX2tsnqeyZLxM27omvHaFUkUUyhSTKBQjkTtSo0ZZCzVLSuz9pQCj+tlYsbAImxYXIk+oAbNo4JHEeL2gp5d0z8NvsxXGDMj2BJ7uEdZ8BM+fecgTlS0BsgGgqOLLG/C4JGKiZMLcEuWLu/Q6ebtZxWaWiQzX9FHvIS4ViyY6g73MGhvBsV/D2b8llNTkYFQw4Bfl0cHWsStn3Pq07Lnz+ur7/9JeliThiJGXRyW9HvDw9zaKRpj4oU9Jbs5pqgPgzPTG+jk3s6luCJ5b0JELqz/m8cG5JP6+iIxLy+HlUYg7Q/r9AyTe2K0T+tVfiP5PAPz9HOL1vSOk3D0CCRfo1aX13wj9b52tq+fqRmFWwgUyzs4idUcX0nb2wHekH2eWtqdgVAg/fe2E16reSKIDID0fyUkdKZDLxlcj8kFsMQ4t0Bja2UjvtySGdrJRu5xMizfNjOxn5YPuGr1aWylTUCNPqKKP38ufRyZ/bon8UaIq20iJPAaO7izM5JFhnNhVnA+7OPA6DfoAD5NsoF+34EiZlEdu9s+X9XoCHQCx+4UvH8WTRx5yRZj14M/fAWAkIkwmKkKheGEbtauFkje3ifx5FApFy+TNJaaDWfHYHXRuHcG65aGc3Ofm7eZ2Lpy0EvArOuHFCfgE2EwkxDqJdBjo2auuvrfXl1KdxOMyL49IvDimcnmFhZoVLBQI9XJqakPOC50/rTFnhS0wrRGXFnTh4rpRPNw1jXPrv+bH8QMY/UF3xn72PktmfMHVA6vgxXFS7h0k4fpu4oUt8A8A/NUbEBIg5e5h/QgQEH+eVk3q6QSWjKL7OXgMIrJmNKKp+kweSpUsweuXp/DH/U5G3DkyLi4idWcXUn/thf9AX7L29eHHEeWJ+92mdw8FXqv4EiXwFeLR4+a4LUamjS0NT4qyZ66BSe/JDO0q07OJTO8WJga0d9CoqsIbZVVyhclEeBV9bkC4V9PT7pGhYrycSoVCBqYM8fL8diOG9XRw92I5xn7gplCkUZ9DbFKM9O0i7r2D1488HJgn/RkNDAIgD48feYiM0P4GABEMMlskVMlAlYoWOrePpGRhLwXyyBTNL1G2mBhxZqZqBQ8TxkRydE8Udy5HMGaIk4ung40kviz5"
+    .. "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"
+    .. "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"
+    .. "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"
+    .. "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"
+    .. "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"
+    .. "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"
+    .. "tYJGpfIaFcvLuFaVSsEWqgSbqVhKIbiEQjk/hfrVnQxOCmH7O625eUuQ/oxxrF27UIMTO0uzd7GZN6cprBirMC1VJb2XxnMdNLr8kWz73xKGdFOZlKyxeKTOaxNV3put8NEKKyd2BpB7JpSiQvEhRACxXM3pyuG9kWxeVoP1MwJYm6mxdYpC7i4rRbclelaWIspQkF+G84cc7MxyZ2Ifi9EgWbi6SwuNyCekYtZMizoi1hUaP67QoIpC3VBBumaUu9eoqFKtokrlR1QqllMILqUY7VlqVdAICTLR9skAhg+pydub25CT0xGQ1YaCu/W58GVFDm/yYsdcjdcnioKnMz1FZWRvjaTOKrH/ze7c3xNSu8tMW52sNI01E1TenamyJ0vn0w0enDtQjryLNaBI9IRooBf38hP4/kIc579oxYV9Idy7WgkKQyiiAlfP+bE1U2FlusrCITqzBukMilLoF6GQ0E4x3M+RTRWeaazQorZCwyoKYRUUqpVXqFpWoWqQQmiQQs1KJpqEufNs67Kkp4SxbuWTfH7kWe7ldwW6AK2Mmsnc06Ec31GK/S/ZeGu6wupxkq6lM3WAyoieGsmdFLq3/ZMreL8WDOyiM7qPzozBZpZl6Lw2WWXLLIX9S3W+fMPJhY8CuXaqIndvSFJqK+DZH5HRlcLCKAp5hrzLzTm+qy5HtlUj++PKbFpQjhdHl2DhSF8WjvJibKIXwxOcDO3pQ3JcCZLiyvN8j2DSk0OZNq4hyxa24O032nH4YDcuXoyniL5AD6C9cTTdvR7G5eOPcmyrP3uXuRlIl7kDkp49e6hrOndqrE5iBynS/Avx/y9I6mhlaA+dsYk6M1I1lo1V2ThNRcbc7M5S+XiFlS83OznzUUkun6pA3ndVDcRQIP4FqWCS1rKS5SsriqKiGAoK4ijIjyEvL47r12O5eTOO27e7UVAkyO0p2YOAVBJ1N+x1UUYpaMiN76pw4WgwJ3aV5PBrcrRYeHOKzpoMlcUjNWYN0cjsp5LWQ6V/tE7P9ioxv0eu3p8RurdVSYwyk9LdxOhEnamDNKSl3YpMnQ1TNN6doSK9jvctNvPJajvH3vQme4cv5z8O4NKXZbh6ugJ5FytxMzeEO1drcPdaTQpu1CL/Ri3uXn+cO1ercisnhOsXKvL96Ypc/KKs4aP4epsvn2908uFyO9vnmQzTbW2GwkvDFeakKYZfQyRVajedvp1UurdTiQ5XifhnzZj/gl8HYlprxEeqDIhReSFeZ2ySiempZrKG6ywbrbNynMa6CZJhpPH2NFEoVSM8vWehiX2LTex/ycSHL+t8tNzCh8ssfLDEzN5FJvZkaeyaL0eNyqbJCusnKKwap7B8tMaidI1ZQzXjPB/Tx9Vxe0AXjT5RGnFtdaKaa7Rt+hfSfxcQBEg9XP/OKoNjpVGSTnq8RkaixqRk1dC+5UyeO0y6d5gM54uI7CWyhqssHaGzOF1j3gsqs1JVpEuaWCRj+qrGPqnddcNRI0Oce7d3uWk7hUsy5n9RStZf8HOIDdfp9rRmTMZIiFTpG6XSr5MMYtYZGKcxuKvkI+qkxpkY2k1HIpcypDmxo2YQU3ykRrd2KiJtOrfUDA5/+Bl/Bvgf15u+jc++ZBQAAAAASUVORK5CYII="
+local function BananaCatBytes()
+    local decoders = {
+        function(data)
+            return base64decode(data)
+        end,
+        function(data)
+            return crypt and crypt.base64decode and crypt.base64decode(data)
+        end,
+        function(data)
+            return game:GetService("HttpService"):Base64Decode(data)
+        end,
+    }
+    local errors = {}
+    for _, decoder in ipairs(decoders) do
+        local ok, raw = pcall(decoder, BANANA_CAT_B64)
+        if ok and type(raw) == "string" and #raw > 100 then
+            return raw
+        end
+        errors[#errors + 1] = tostring(raw)
+    end
+    _G.BananaCatDebug = "decode: " .. table.concat(errors, " | ")
+    return nil
+end
+local function GetBananaCatAsset()
+    if type(writefile) ~= "function" or type(getcustomasset) ~= "function" then
+        _G.BananaCatDebug = "sin writefile/getcustomasset"
+        return nil, nil
+    end
+    local raw = BananaCatBytes()
+    if not raw then
+        return nil, nil
+    end
+    pcall(function()
+        if type(isfolder) == "function" and type(makefolder) == "function" and not isfolder("Abyss") then
+            makefolder("Abyss")
+        end
+    end)
+    local errors = {}
+    for _, path in ipairs({ "banana_cat.png", "Abyss/banana_cat.png" }) do
+        local okWrite, writeErr = pcall(writefile, path, raw)
+        if okWrite then
+            local okAsset, asset = pcall(getcustomasset, path)
+            if okAsset and type(asset) == "string" and asset ~= "" then
+                _G.BananaCatDebug = "ok " .. path
+                return asset, raw
+            end
+            errors[#errors + 1] = path .. ": " .. tostring(asset)
+        else
+            errors[#errors + 1] = path .. " write: " .. tostring(writeErr)
+        end
+    end
+    _G.BananaCatDebug = table.concat(errors, " | ")
+    return nil, raw
+end
+do
+    task.spawn(function()
+        local UserInputService = game:GetService("UserInputService")
+        do
+            local containers = {}
+            if gethui then
+                local ok, hui = pcall(gethui)
+                if ok and hui then
+                    containers[#containers + 1] = hui
+                end
+            end
+            pcall(function()
+                containers[#containers + 1] = game:GetService("CoreGui")
+            end)
+            local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
+            if playerGui then
+                containers[#containers + 1] = playerGui
+            end
+            for _, container in ipairs(containers) do
+                local old = container:FindFirstChild("Abyss_FloatingBall")
+                if old then
+                    pcall(function()
+                        old:Destroy()
+                    end)
+                end
+            end
+        end
+        local BallGui = Instance.new("ScreenGui")
+        BallGui.Name = "Abyss_FloatingBall"
+        BallGui.ResetOnSpawn = false
+        BallGui.IgnoreGuiInset = true
+        BallGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+        BallGui.DisplayOrder = 999
+        local ballEnabled = _G.Abyss_FloatingBall
+        if ballEnabled == nil then
+            local option = Fluent.Options and Fluent.Options["ui.floatingball"]
+            ballEnabled = option and option.Value
+        end
+        BallGui.Enabled = ballEnabled ~= false
+        local Ball = Instance.new("TextButton")
+        Ball.Name = "Orb"
+        Ball.Size = UDim2.fromOffset(52, 52)
+        if _G.Abyss_BallPos then
+            Ball.Position = UDim2.fromOffset(_G.Abyss_BallPos.X, _G.Abyss_BallPos.Y)
+        else
+            Ball.Position = UDim2.new(0, 16, 0.5, -26)
+        end
+        Ball.BackgroundColor3 = AbyssAccent
+        Ball.BackgroundTransparency = 0.05
+        Ball.AutoButtonColor = false
+        Ball.Text = "A"
+        Ball.Font = Enum.Font.GothamBold
+        Ball.TextSize = 15
+        Ball.TextColor3 = AbyssInk
+        Ball.Parent = BallGui
+        local Corner = Instance.new("UICorner")
+        Corner.CornerRadius = UDim.new(1, 0)
+        Corner.Parent = Ball
+        local CatImage
+        local CatDrawing
+        if _G.Abyss_CatDrawConn then
+            pcall(function() _G.Abyss_CatDrawConn:Disconnect() end)
+            _G.Abyss_CatDrawConn = nil
+        end
+        if _G.Abyss_CatDrawing then
+            pcall(function() _G.Abyss_CatDrawing:Remove() end)
+            _G.Abyss_CatDrawing = nil
+        end
+        local CatAsset, CatBytes = GetBananaCatAsset()
+        if CatAsset then
+            Ball.TextTransparency = 1
+            CatImage = Instance.new("ImageLabel")
+            CatImage.Name = "BananaCat"
+            CatImage.AnchorPoint = Vector2.new(0.5, 0.5)
+            CatImage.Position = UDim2.fromScale(0.5, 0.5)
+            CatImage.Size = UDim2.fromScale(1, 1)
+            CatImage.BackgroundTransparency = 1
+            CatImage.Image = CatAsset
+            CatImage.ScaleType = Enum.ScaleType.Crop
+            CatImage.Parent = Ball
+            local CatCorner = Instance.new("UICorner")
+            CatCorner.CornerRadius = UDim.new(1, 0)
+            CatCorner.Parent = CatImage
+        end
+        if not CatImage and CatBytes and type(Drawing) == "table" and type(Drawing.new) == "function" then
+            local okDraw, drawingImage = pcall(Drawing.new, "Image")
+            if okDraw and drawingImage then
+                pcall(function()
+                    drawingImage.Data = CatBytes
+                    drawingImage.Size = Vector2.new(52, 52)
+                    drawingImage.Position = Ball.AbsolutePosition
+                    drawingImage.Rounding = 26
+                    drawingImage.Visible = BallGui.Enabled
+                end)
+                Ball.TextTransparency = 1
+                Ball.BackgroundTransparency = 1
+                CatDrawing = drawingImage
+                _G.Abyss_CatDrawing = drawingImage
+            end
+        end
+        if not CatImage and not CatDrawing then
+            task.defer(function()
+                pcall(function()
+                    local exec = "?"
+                    if type(identifyexecutor) == "function" then
+                        local okName, name = pcall(identifyexecutor)
+                        if okName then exec = tostring(name) end
+                    end
+                    SendNotify("BANANA CAT", "Imagen no disponible (" .. exec .. "): " .. tostring(_G.BananaCatDebug))
+                end)
+            end)
+        end
+        local Stroke = Instance.new("UIStroke")
+        Stroke.Thickness = 1.5
+        Stroke.Color = AbyssAmber
+        Stroke.Transparency = 0.2
+        Stroke.Parent = Ball
+        local parentOk = pcall(function()
+            BallGui.Parent = (gethui and gethui()) or game:GetService("CoreGui")
+        end)
+        if not parentOk or not BallGui.Parent then
+            BallGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+        end
+        local function IsMenuOpen()
+            local root = Window and Window.Root
+            return root ~= nil and root.Visible == true
+        end
+        local function SyncBall()
+            if IsMenuOpen() then
+                Stroke.Color = AbyssAmber
+                Stroke.Transparency = 0.1
+                Ball.BackgroundColor3 = AbyssAccent
+                Ball.TextColor3 = AbyssInk
+            else
+                Stroke.Color = AbyssAmber
+                Stroke.Transparency = 0.5
+                Ball.BackgroundColor3 = Color3.fromRGB(232, 182, 24)
+                Ball.TextColor3 = Color3.fromRGB(70, 48, 0)
+            end
+        end
+        local function SetMenuOpen(open)
+            local root = Window and Window.Root
+            if not root then
+                return
+            end
+            root.Visible = open
+            Window.Minimized = not open
+            SyncBall()
+        end
+        _G.Abyss_SetFloatingBall = function(enabled)
+            BallGui.Enabled = enabled == true
+            if CatDrawing then
+                pcall(function() CatDrawing.Visible = enabled == true end)
+            end
+        end
+        if CatDrawing then
+            _G.Abyss_CatDrawConn = RunService.RenderStepped:Connect(function()
+                pcall(function()
+                    CatDrawing.Position = Ball.AbsolutePosition
+                    CatDrawing.Size = Ball.AbsoluteSize
+                    CatDrawing.Visible = BallGui.Enabled
+                end)
+            end)
+        end
+        local dragging, moved, dragLast, movedDist = false, false, nil, 0
+        local function BeginDrag(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                dragging = true
+                moved = false
+                dragLast = nil
+                movedDist = 0
+            end
+        end
+        Ball.InputBegan:Connect(BeginDrag)
+        if CatImage then
+            CatImage.InputBegan:Connect(BeginDrag)
+        end
+        UserInputService.InputChanged:Connect(function(input)
+            if not dragging then
+                return
+            end
+            if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+                local now = Vector2.new(input.Position.X, input.Position.Y)
+                local step = Vector2.zero
+                if dragLast then
+                    step = now - dragLast
+                end
+                dragLast = now
+                movedDist = movedDist + step.Magnitude
+                if movedDist > 5 then
+                    moved = true
+                end
+                if step.Magnitude > 0 then
+                    local screen = BallGui.AbsoluteSize
+                    if screen.X <= 0 or screen.Y <= 0 then
+                        screen = workspace.CurrentCamera.ViewportSize
+                    end
+                    local size = Ball.AbsoluteSize
+                    local pos = Ball.Position
+                    local x = pos.X.Scale * screen.X + pos.X.Offset + step.X
+                    local y = pos.Y.Scale * screen.Y + pos.Y.Offset + step.Y
+                    Ball.Position = UDim2.fromOffset(
+                        math.clamp(x, 0, math.max(0, screen.X - size.X)),
+                        math.clamp(y, 0, math.max(0, screen.Y - size.Y))
+                    )
+                end
+            end
+        end)
+        UserInputService.InputEnded:Connect(function(input)
+            if not dragging then
+                return
+            end
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                dragging = false
+                if moved then
+                    local pos = Ball.Position
+                    _G.Abyss_BallPos = { X = pos.X.Offset, Y = pos.Y.Offset }
+                    SaveConfig()
+                else
+                    SetMenuOpen(not IsMenuOpen())
+                end
+            end
+        end)
+        task.spawn(function()
+            while BallGui.Parent do
+                SyncBall()
+                task.wait(0.25)
+            end
+        end)
+        SyncBall()
+    end)
+end
+UpdateModeLocks()
+RefreshPlayerList()
+Window:SelectTab(1)
+ApplyLanguage()
+task.defer(function()
+    if _G.SoloSeaFarm and _G.Abyss_AutoFullToggle and _G.Abyss_AutoFullToggle.Lock then
+        pcall(function()
+            _G.Abyss_AutoFullToggle:Lock()
+        end)
+    end
+    if _G.DragonGunFarm then pcall(SeaAPI.StartDragonAttack) end
+    if _G.RemoveFog then pcall(DoRemoveFog) end
+    if _G.AutoFastMode then pcall(PerformanceAPI.ApplyAutoFastMode) end
+    if _G.FPSBoost then pcall(PerformanceAPI.ApplyFPSBoost) end
+end)
+
+__env.AbyssWindow = Window
+__env.Abyss_Ready = true
+SendNotify(T("notify.title"), T("notify.ready"))
+end)()
+end, AbyssFatal)
