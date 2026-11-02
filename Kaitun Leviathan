@@ -288,7 +288,7 @@ T, ModeDisplay = (function()
         ["fast.attack.desc"] = { en = "Fast M1 attacks (not while seated)", es = "Ataques M1 rápidos (no mientras estas sentado)" },
         ["follow.player"] = { en = "Follow Player", es = "Seguir jugador" },
         ["fps.boost"] = { en = "FPS Boost", es = "Optimizacion de FPS" },
-        ["fps.boost.desc"] = { en = "Cut water waves, shadows, particles and map materials; also applies to islands streamed in later. Rejoin to restore", es = "Recorta olas, sombras, particulas y materiales del mapa; tambien se aplica a las islas que se cargan despues. Reingresa para restaurar" },
+        ["fps.boost.desc"] = { en = "Cuts water waves, terrain decoration, shadows, particles, beams, lights, post-processing and the Draco V4 aura (domain, sparks and symbol) on all players to reduce lag. Also applies to islands and effects that load later. Buffs stay active. Rejoin to restore", es = "Recorta olas, decoración del terreno, sombras, partículas, beams, luces, postprocesado y el aura de Draco V4 (dominio, chispas y símbolo) de todos los jugadores para reducir el lag. También se aplica a islas y efectos que cargan después. Los buffs siguen activos. Reingresa para restaurar" },
         ["hunt.events"] = { en = "Fight Sea Events While Hunting", es = "Atacar eventos mientras busca" },
         ["hunt.events.desc"] = { en = "Fight sea events during hunt", es = "Ataca eventos marinos mientras busca al Leviathan" },
         ["hunt.select.events"] = { en = "Select Sea Events To Fight", es = "Eventos que debe atacar" },
@@ -502,6 +502,8 @@ if _G.DragonGunLeviathan == nil then _G.DragonGunLeviathan = false end
 if _G.RemoveFog == nil then _G.RemoveFog = false end
 if _G.AutoFastMode == nil then _G.AutoFastMode = false end
 if _G.FPSBoost == nil then _G.FPSBoost = false end
+-- Quitar el aura de Draco V4 forma parte del FPS Boost.
+if _G.RemoveDracoAura == nil then _G.RemoveDracoAura = _G.FPSBoost end
 if _G.AutoV3 == nil then _G.AutoV3 = false end
 if _G.AutoV4 == nil then _G.AutoV4 = false end
 if _G.BoatLockY == nil then _G.BoatLockY = 150 end
@@ -1003,6 +1005,8 @@ local function LoadConfig()
     end
 end
 LoadConfig()
+-- El aura de Draco V4 ahora va incluida en el FPS Boost; mantiene ambos estados sincronizados.
+_G.RemoveDracoAura = _G.FPSBoost == true
 -- Previous builds saved the old default name; keep custom names but migrate that default.
 if type(_G.WebhookUsername) ~= "string" or _G.WebhookUsername == "" or _G.WebhookUsername == "Abyss" then
     _G.WebhookUsername = "Leviatan"
@@ -6198,39 +6202,111 @@ do
         end)
     end
     local FPSBoostHookDone = false
+    local FPSBoostQueue, FPSBoostQueued = {}, {}
+    local FPSBoostProcessing = false
+    local FPSBoostMapNames = { Map = true, _WorldOrigin = true, Unloaded = true }
+    local function IsFPSBoostMapObject(obj)
+        local node = obj
+        for _ = 1, 12 do
+            node = node and node.Parent
+            if not node then return false end
+            if FPSBoostMapNames[node.Name] then return true end
+        end
+        return false
+    end
     local function ApplyFPSBoostToNew(obj)
         if not _G.FPSBoost then
-            return
+            return false
         end
         local ok = pcall(function()
-            if obj:IsA("ParticleEmitter") then
+            if obj:IsA("BlurEffect") or obj:IsA("BloomEffect")
+                or obj:IsA("SunRaysEffect") or obj:IsA("DepthOfFieldEffect") then
+                obj.Enabled = false
+            elseif obj:IsA("Atmosphere") then
+                obj.Density = 0
+                obj.Glare = 0
+                obj.Haze = 0
+            elseif obj:IsA("ParticleEmitter") then
                 if obj.Parent and obj.Parent.Name ~= "ElectricFire" then
                     obj.Enabled = false
                     obj.Lifetime = NumberRange.new(0)
                 end
+            elseif obj:IsA("Sparkles") then
+                obj.Enabled = false
             elseif obj:IsA("Trail") then
                 obj.Lifetime = NumberRange.new(0)
+            elseif obj:IsA("Beam") or obj:IsA("Highlight") then
+                obj.Enabled = false
             elseif obj:IsA("Decal") or obj:IsA("Texture") then
                 obj.Transparency = 1
-            elseif obj:IsA("Fire") or obj:IsA("SpotLight") or obj:IsA("Smoke") then
+            elseif obj:IsA("Fire") or obj:IsA("Smoke")
+                or obj:IsA("PointLight") or obj:IsA("SpotLight") or obj:IsA("SurfaceLight") then
                 obj.Enabled = false
             elseif obj:IsA("Explosion") then
                 obj.BlastPressure, obj.BlastRadius = 1, 1
             elseif obj:IsA("BasePart") or obj:IsA("UnionOperation")
                 or obj:IsA("CornerWedgePart") or obj:IsA("TrussPart") then
-                obj.Material = Enum.Material.SmoothPlastic
                 obj.Reflectance = 0
+                obj.CastShadow = false
+                if IsFPSBoostMapObject(obj) then
+                    obj.Material = Enum.Material.SmoothPlastic
+                end
             end
         end)
         return ok
     end
+    local function ProcessFPSBoostQueue()
+        if FPSBoostProcessing then return end
+        FPSBoostProcessing = true
+        task.spawn(function()
+            while #FPSBoostQueue > 0 do
+                local batch = FPSBoostQueue
+                FPSBoostQueue = {}
+                for _, item in ipairs(batch) do
+                    FPSBoostQueued[item] = nil
+                    if item.Parent then
+                        pcall(ApplyFPSBoostToNew, item)
+                    end
+                end
+                task.wait()
+            end
+            FPSBoostProcessing = false
+        end)
+    end
+    local function QueueFPSBoost(obj)
+        if not _G.FPSBoost or not obj or FPSBoostQueued[obj] then return end
+        FPSBoostQueued[obj] = true
+        FPSBoostQueue[#FPSBoostQueue + 1] = obj
+        ProcessFPSBoostQueue()
+    end
+    local function InstallFPSBoostHooks()
+        if FPSBoostHookDone then return end
+        FPSBoostHookDone = true
+        pcall(function() workspace.DescendantAdded:Connect(QueueFPSBoost) end)
+        pcall(function() game:GetService("Lighting").DescendantAdded:Connect(QueueFPSBoost) end)
+        pcall(function() game:GetService("ReplicatedStorage").DescendantAdded:Connect(QueueFPSBoost) end)
+    end
     PerformanceAPI.ApplyFPSBoost = function()
         pcall(function() setfflag("RemoteEventSingleInvocationSizeLimit", "1500") end)
         task.spawn(function()
+            -- Se aplica primero para quitar el aura de Draco V4 cuanto antes.
+            pcall(function()
+                if PerformanceAPI.ApplyDracoAuraRemoval then
+                    PerformanceAPI.ApplyDracoAuraRemoval()
+                end
+            end)
+            InstallFPSBoostHooks()
             pcall(function()
                 local lighting = game:GetService("Lighting")
-                local atmosphere = lighting:FindFirstChild("BaseAtmosphere")
-                if atmosphere then atmosphere:Destroy() end
+                for _, item in ipairs(lighting:GetDescendants()) do
+                    if item:IsA("Atmosphere") then
+                        pcall(function()
+                            item.Density = 0
+                            item.Glare = 0
+                            item.Haze = 0
+                        end)
+                    end
+                end
             end)
             pcall(function() settings().Rendering.QualityLevel = "Level01" end)
             pcall(function()
@@ -6240,30 +6316,52 @@ do
                     terrain.WaterWaveSpeed = 0
                     terrain.WaterReflectance = 0
                     terrain.WaterTransparency = 0
+                    pcall(function() terrain.Decoration = false end)
                 end
             end)
             pcall(function()
                 local lighting = game:GetService("Lighting")
                 lighting.GlobalShadows = false
+                pcall(function() lighting.ShadowSoftness = 0 end)
+                pcall(function() lighting.EnvironmentDiffuseScale = 0 end)
+                pcall(function() lighting.EnvironmentSpecularScale = 0 end)
                 for _, item in ipairs(lighting:GetDescendants()) do
-                    if item:IsA("BlurEffect") then
+                    if item:IsA("BlurEffect") or item:IsA("BloomEffect")
+                        or item:IsA("SunRaysEffect") or item:IsA("DepthOfFieldEffect") then
                         item.Enabled = false
+                    elseif item:IsA("Atmosphere") then
+                        pcall(function()
+                            item.Density = 0
+                            item.Glare = 0
+                            item.Haze = 0
+                        end)
                     end
                 end
             end)
             pcall(function()
                 local sliceStarted = os.clock()
                 for _, item in ipairs(game:GetDescendants()) do
-                    if item:IsA("ParticleEmitter") or item:IsA("Trail") then
+                    if item:IsA("ParticleEmitter") then
+                        if not (item.Parent and item.Parent.Name == "ElectricFire") then
+                            item.Enabled = false
+                            item.Lifetime = NumberRange.new(0)
+                        end
+                    elseif item:IsA("Trail") then
                         item.Lifetime = NumberRange.new(0)
+                    elseif item:IsA("Sparkles") then
+                        item.Enabled = false
+                    elseif item:IsA("Beam") or item:IsA("Highlight") then
+                        item.Enabled = false
                     elseif item:IsA("Decal") or item:IsA("Texture") then
                         item.Transparency = 1
-                    elseif item:IsA("Fire") or item:IsA("SpotLight") or item:IsA("Smoke") then
+                    elseif item:IsA("Fire") or item:IsA("Smoke")
+                        or item:IsA("PointLight") or item:IsA("SpotLight") or item:IsA("SurfaceLight") then
                         item.Enabled = false
                     elseif item:IsA("Explosion") then
                         item.BlastPressure, item.BlastRadius = 1, 1
                     elseif item:IsA("BasePart") or item:IsA("UnionOperation") or item:IsA("CornerWedgePart") or item:IsA("TrussPart") then
                         item.Reflectance = 0
+                        item.CastShadow = false
                     end
                     if os.clock() - sliceStarted >= 0.0042 then task.wait(); sliceStarted = os.clock() end
                 end
@@ -6277,12 +6375,22 @@ do
                 if map then folders[#folders + 1] = map end
                 local unloaded = replicated:FindFirstChild("Unloaded")
                 if unloaded then folders[#folders + 1] = unloaded end
+                local worldOrigin = workspace:FindFirstChild("_WorldOrigin")
+                if worldOrigin then folders[#folders + 1] = worldOrigin end
                 for _, folder in ipairs(folders) do
                     for _, item in ipairs(folder:GetDescendants()) do
                         if item:IsA("BasePart") then
                             item.Material = smooth
+                            item.Reflectance = 0
+                            item.CastShadow = false
                         elseif item:IsA("Texture") and not item:GetAttribute("Offset") then
                             item:Destroy()
+                        elseif item:IsA("ParticleEmitter") or item:IsA("Trail") then
+                            item.Lifetime = NumberRange.new(0)
+                        elseif item:IsA("Sparkles") or item:IsA("Smoke") or item:IsA("Fire")
+                            or item:IsA("PointLight") or item:IsA("SpotLight") or item:IsA("SurfaceLight")
+                            or item:IsA("Beam") or item:IsA("Highlight") then
+                            item.Enabled = false
                         end
                         if os.clock() - sliceStarted >= 0.0042 then task.wait(); sliceStarted = os.clock() end
                     end
@@ -6292,26 +6400,384 @@ do
                 local optimizer = LocalPlayer.PlayerScripts:FindFirstChild("OptimizerClientActor")
                 if optimizer and optimizer.SendMessage then optimizer:SendMessage("Optimize", true) end
             end)
-            if FPSBoostHookDone then
-                return
-            end
-            FPSBoostHookDone = true
-            task.spawn(function()
-                local worldOrigin = workspace:FindFirstChild("_WorldOrigin")
-                local waited = 0
-                while not worldOrigin and waited < 60 do
-                    task.wait(1)
-                    waited = waited + 1
-                    worldOrigin = workspace:FindFirstChild("_WorldOrigin")
-                end
-                if not worldOrigin then
-                    return
-                end
-                worldOrigin.DescendantAdded:Connect(function(obj)
-                    pcall(ApplyFPSBoostToNew, obj)
-                end)
-            end)
+            InstallFPSBoostHooks()
         end)
+    end
+    local DracoAuraHooked = false
+    local DracoAuraQueue, DracoAuraQueued = {}, {}
+    local DracoAuraProcessing = false
+    local DracoAuraScanning = false
+    local DracoHidden = setmetatable({}, { __mode = "k" })
+    local DracoAuraBodyParts = {
+        Head = true,
+        Torso = true,
+        HumanoidRootPart = true,
+        UpperTorso = true,
+        LowerTorso = true,
+        LeftUpperArm = true,
+        LeftLowerArm = true,
+        LeftHand = true,
+        RightUpperArm = true,
+        RightLowerArm = true,
+        RightHand = true,
+        LeftUpperLeg = true,
+        LeftLowerLeg = true,
+        LeftFoot = true,
+        RightUpperLeg = true,
+        RightLowerLeg = true,
+        RightFoot = true,
+    }
+    local DracoAuraKeywords = {
+        "aura", "domain", "field", "sphere", "dome", "orb",
+        "vfx", "effect", "spark", "symbol", "ring", "circle",
+        "ember", "flame", "fire", "smoke", "glow", "particle",
+    }
+    local function DracoNormalizeName(name)
+        return tostring(name):lower():gsub("[%s_%-%./:]", "")
+    end
+    local function IsDracoName(name)
+        return DracoNormalizeName(name):find("draco", 1, true) ~= nil
+    end
+    local function HasDracoKeyword(name)
+        local n = DracoNormalizeName(name)
+        for _, key in ipairs(DracoAuraKeywords) do
+            if n:find(key, 1, true) then
+                return true
+            end
+        end
+        return false
+    end
+    local function IsHornWingTail(name)
+        local n = DracoNormalizeName(name)
+        return n:find("horn", 1, true) ~= nil
+            or n:find("wing", 1, true) ~= nil
+            or n:find("tail", 1, true) ~= nil
+    end
+    local function InHornWingTail(obj)
+        local node = obj
+        for _ = 1, 6 do
+            if not node then return false end
+            if IsHornWingTail(node.Name) then return true end
+            node = node.Parent
+        end
+        return false
+    end
+    local function HasDracoAncestor(obj)
+        local node = obj
+        for _ = 1, 16 do
+            if not node then return false end
+            if node:IsA("Model") and Players:GetPlayerFromCharacter(node) then
+                return false
+            end
+            if IsDracoName(node.Name) then
+                return true
+            end
+            node = node.Parent
+        end
+        return false
+    end
+    local function FindDracoCharacter(obj)
+        local node = obj
+        for _ = 1, 16 do
+            if not node then return nil end
+            if node:IsA("Model") and Players:GetPlayerFromCharacter(node) then
+                return node
+            end
+            node = node.Parent
+        end
+        return nil
+    end
+    local function HasDracoV4Marker(char)
+        if not char then return false end
+        return char:FindFirstChild("DracoV4", true) ~= nil
+            or char:FindFirstChild("DracoHornsB", true) ~= nil
+            or char:FindFirstChild("DracoTail", true) ~= nil
+            or char:FindFirstChild("DracoV4Aura", true) ~= nil
+            or char:FindFirstChild("DracoAura", true) ~= nil
+    end
+    local function IsOrangeAuraPart(obj)
+        if not obj:IsA("BasePart") then return false end
+        if DracoAuraBodyParts[obj.Name] or InHornWingTail(obj) then return false end
+        local size = obj.Size
+        if math.max(size.X, size.Y, size.Z) < 12 then return false end
+        if obj.Transparency >= 0.98 then return false end
+        local color = obj.Color
+        return color.R >= 0.55 and color.G >= 0.15 and color.G <= 0.8 and color.B <= 0.45
+    end
+    local function IsLooseAuraPart(obj)
+        if not obj:IsA("BasePart") then return false end
+        if DracoAuraBodyParts[obj.Name] or InHornWingTail(obj) then return false end
+        local size = obj.Size
+        if math.max(size.X, size.Y, size.Z) < 12 then return false end
+        return obj.Transparency < 0.98 and (obj.Transparency >= 0.2 or obj.Material == Enum.Material.Neon)
+    end
+    local function IsAuraLikePart(obj)
+        return IsOrangeAuraPart(obj) or IsLooseAuraPart(obj)
+    end
+    local function IsInsideAuraObject(obj, allowLoose)
+        local node = obj and obj.Parent
+        for _ = 1, 8 do
+            if not node then return false end
+            if IsOrangeAuraPart(node) or (allowLoose and IsLooseAuraPart(node)) then
+                return true
+            end
+            node = node.Parent
+        end
+        return false
+    end
+    local function HasActiveDracoAura(char)
+        if not char or not HasDracoV4Marker(char) then return false end
+        for _, obj in ipairs(char:GetDescendants()) do
+            if IsAuraLikePart(obj) then return true end
+        end
+        return false
+    end
+    local function IsAuraVisualEffect(obj)
+        return obj:IsA("ParticleEmitter") or obj:IsA("Sparkles")
+            or obj:IsA("Beam") or obj:IsA("Trail")
+            or obj:IsA("Fire") or obj:IsA("Smoke")
+            or obj:IsA("PointLight") or obj:IsA("SpotLight") or obj:IsA("SurfaceLight")
+            or obj:IsA("Highlight")
+    end
+    local function ShouldHideDracoObject(obj, aggressive)
+        if not obj or not obj.Parent then return false end
+        local dracoRelated = HasDracoAncestor(obj)
+        if obj:IsA("BasePart") then
+            if DracoAuraBodyParts[obj.Name] or InHornWingTail(obj) then return false end
+            if dracoRelated then return true end
+            if aggressive and HasDracoKeyword(obj.Name) then return true end
+            if aggressive and IsAuraLikePart(obj) then return true end
+            return false
+        end
+        if IsAuraVisualEffect(obj) then
+            return dracoRelated or IsInsideAuraObject(obj, aggressive)
+                or (aggressive and HasDracoKeyword(obj.Name))
+        end
+        if obj:IsA("Decal") or obj:IsA("Texture") then
+            return dracoRelated or IsInsideAuraObject(obj, aggressive)
+                or (aggressive and HasDracoKeyword(obj.Name))
+        end
+        if obj:IsA("BillboardGui") or obj:IsA("SurfaceGui") or obj:IsA("ScreenGui") then
+            return dracoRelated or IsInsideAuraObject(obj, aggressive)
+                or (aggressive and HasDracoKeyword(obj.Name))
+        end
+        return false
+    end
+    local function HideDracoVisual(obj)
+        if not obj then return end
+        DracoHidden[obj] = true
+        pcall(function()
+            if obj:IsA("BasePart") then
+                obj.LocalTransparencyModifier = 1
+                obj.Transparency = 1
+                obj.CanCollide = false
+                obj.CanTouch = false
+                obj.CanQuery = false
+                obj.CastShadow = false
+            elseif obj:IsA("ParticleEmitter") then
+                obj.Enabled = false
+                obj.Rate = 0
+                obj.Lifetime = NumberRange.new(0)
+            elseif obj:IsA("Sparkles") or obj:IsA("Fire") or obj:IsA("Smoke")
+                or obj:IsA("PointLight") or obj:IsA("SpotLight") or obj:IsA("SurfaceLight")
+                or obj:IsA("Highlight") then
+                obj.Enabled = false
+            elseif obj:IsA("Beam") or obj:IsA("Trail") then
+                obj.Enabled = false
+                pcall(function() obj.Lifetime = 0 end)
+            elseif obj:IsA("Decal") or obj:IsA("Texture") then
+                obj.Transparency = 1
+            elseif obj:IsA("BillboardGui") or obj:IsA("SurfaceGui") or obj:IsA("ScreenGui") then
+                obj.Enabled = false
+            end
+        end)
+    end
+    local function HideDracoTree(root, aggressive)
+        if not root or not _G.RemoveDracoAura then return end
+        if ShouldHideDracoObject(root, aggressive) then
+            HideDracoVisual(root)
+        end
+        local canHaveChildren = root:IsA("Model") or root:IsA("Folder")
+            or root:IsA("BasePart") or root:IsA("Attachment")
+        if not canHaveChildren then return end
+        for _, obj in ipairs(root:GetDescendants()) do
+            if not _G.RemoveDracoAura then return end
+            if ShouldHideDracoObject(obj, aggressive) then
+                HideDracoVisual(obj)
+            end
+        end
+    end
+    local function CleanDracoRoot(root, aggressive)
+        HideDracoTree(root, aggressive)
+    end
+    local function CleanDracoCharacter(char, aggressive)
+        HideDracoTree(char, aggressive)
+    end
+    local function NearDracoV4(position)
+        for _, player in ipairs(Players:GetPlayers()) do
+            local char = player.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            if hrp and HasDracoV4Marker(char) then
+                if (hrp.Position - position).Magnitude <= 120 then
+                    return true
+                end
+            end
+        end
+        return false
+    end
+    local function IsSeparateAuraPart(obj)
+        if not IsLooseAuraPart(obj) then return false end
+        if obj.Transparency < 0.2 then return false end
+        if FindDracoCharacter(obj) then return false end
+        return NearDracoV4(obj.Position)
+    end
+    local function CleanWorkspaceDracoNames()
+        if not _G.RemoveDracoAura then return end
+        for _, obj in ipairs(workspace:GetChildren()) do
+            if not _G.RemoveDracoAura then return end
+            local isPlayerCharacter = obj:IsA("Model") and Players:GetPlayerFromCharacter(obj) ~= nil
+            if not isPlayerCharacter and IsDracoName(obj.Name) then
+                pcall(CleanDracoRoot, obj, true)
+            end
+        end
+    end
+    local function NearestPartOf(obj)
+        local node = obj
+        for _ = 1, 8 do
+            if not node then return nil end
+            if node:IsA("BasePart") then return node end
+            node = node.Parent
+        end
+        return nil
+    end
+    local function ProcessDracoAuraQueue()
+        if DracoAuraProcessing then return end
+        DracoAuraProcessing = true
+        task.spawn(function()
+            while #DracoAuraQueue > 0 do
+                local batch = DracoAuraQueue
+                DracoAuraQueue = {}
+                for _, item in ipairs(batch) do
+                    DracoAuraQueued[item] = nil
+                    if _G.RemoveDracoAura and item.Parent then
+                        pcall(function()
+                            if IsDracoName(item.Name) then
+                                HideDracoTree(item, true)
+                                return
+                            end
+                            if HasDracoAncestor(item) then
+                                HideDracoTree(item, true)
+                                return
+                            end
+                            local char = FindDracoCharacter(item)
+                            if char and HasDracoV4Marker(char) then
+                                HideDracoTree(item, HasActiveDracoAura(char))
+                                return
+                            end
+                            local part = NearestPartOf(item)
+                            if part and NearDracoV4(part.Position)
+                                and (IsOrangeAuraPart(part) or IsSeparateAuraPart(part)) then
+                                HideDracoTree(part, true)
+                            end
+                        end)
+                    end
+                end
+                task.wait()
+            end
+            DracoAuraProcessing = false
+        end)
+    end
+    local function QueueDracoAura(obj)
+        if not _G.RemoveDracoAura or not obj or DracoAuraQueued[obj] then return end
+        if not IsDracoName(obj.Name) then
+            if IsFPSBoostMapObject(obj) then return end
+            local visual = obj:IsA("BasePart") or IsAuraVisualEffect(obj)
+                or obj:IsA("Decal") or obj:IsA("Texture")
+                or obj:IsA("BillboardGui") or obj:IsA("SurfaceGui")
+                or obj:IsA("Model") or obj:IsA("Folder") or obj:IsA("Attachment")
+            if not visual then return end
+        end
+        DracoAuraQueued[obj] = true
+        DracoAuraQueue[#DracoAuraQueue + 1] = obj
+        ProcessDracoAuraQueue()
+    end
+    local function HasAnyDracoMarker()
+        for _, player in ipairs(Players:GetPlayers()) do
+            if HasDracoV4Marker(player.Character) then
+                return true
+            end
+        end
+        return false
+    end
+    local function ScanWorkspaceDraco()
+        if DracoAuraScanning or not _G.RemoveDracoAura or not HasAnyDracoMarker() then return end
+        DracoAuraScanning = true
+        task.spawn(function()
+            local scanned = 0
+            for _, obj in ipairs(workspace:GetDescendants()) do
+                if not _G.RemoveDracoAura then break end
+                pcall(function()
+                    if IsDracoName(obj.Name) then
+                        local isPlayerCharacter = obj:IsA("Model") and Players:GetPlayerFromCharacter(obj) ~= nil
+                        if not isPlayerCharacter then
+                            HideDracoTree(obj, true)
+                        end
+                    elseif obj:IsA("BasePart") and NearDracoV4(obj.Position)
+                        and (IsOrangeAuraPart(obj) or IsSeparateAuraPart(obj)) then
+                        HideDracoTree(obj, true)
+                    end
+                end)
+                scanned = scanned + 1
+                if scanned % 500 == 0 then task.wait() end
+            end
+            DracoAuraScanning = false
+        end)
+    end
+    local function InstallDracoAuraHooks()
+        if DracoAuraHooked then return end
+        DracoAuraHooked = true
+        pcall(function() workspace.DescendantAdded:Connect(QueueDracoAura) end)
+        task.spawn(function()
+            while true do
+                task.wait(2)
+                if _G.RemoveDracoAura then
+                    for _, player in ipairs(Players:GetPlayers()) do
+                        local char = player.Character
+                        if char then
+                            if HasActiveDracoAura(char) then
+                                pcall(CleanDracoCharacter, char, true)
+                            elseif HasDracoV4Marker(char) then
+                                pcall(CleanDracoCharacter, char, false)
+                            end
+                        end
+                    end
+                    pcall(CleanWorkspaceDracoNames)
+                    for obj in pairs(DracoHidden) do
+                        if not obj.Parent then
+                            DracoHidden[obj] = nil
+                        else
+                            pcall(HideDracoVisual, obj)
+                        end
+                    end
+                end
+            end
+        end)
+    end
+    PerformanceAPI.ApplyDracoAuraRemoval = function()
+        InstallDracoAuraHooks()
+        if not _G.RemoveDracoAura then return end
+        for _, player in ipairs(Players:GetPlayers()) do
+            local char = player.Character
+            if char then
+                if HasActiveDracoAura(char) then
+                    pcall(CleanDracoCharacter, char, true)
+                elseif HasDracoV4Marker(char) then
+                    pcall(CleanDracoCharacter, char, false)
+                end
+            end
+        end
+        pcall(CleanWorkspaceDracoNames)
+        ScanWorkspaceDraco()
     end
 end
 local SailNoclipOn = false
@@ -8135,6 +8601,7 @@ do
         Default = _G.FPSBoost,
         Callback = function(State)
             _G.FPSBoost = State
+            _G.RemoveDracoAura = State
             SaveConfig()
             if State then
                 PerformanceAPI.ApplyFPSBoost()
