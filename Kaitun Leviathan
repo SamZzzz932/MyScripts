@@ -251,7 +251,7 @@ T, ModeDisplay = (function()
         ["craft.miss.item"] = { en = "Missing {k} ({a}/{b})", es = "Falta {k} ({a}/{b})" },
         ["craft.miss.progress"] = { en = "Missing progress {k} ({a}/{b})", es = "Falta progreso {k} ({a}/{b})" },
         ["craft.quality"] = { en = "Scroll Quality", es = "Calidad del pergamino" },
-        ["craft.quality.desc"] = { en = "Auto craft scrolls when materials ready", es = "Fabrica cuando tengas materiales y progreso" },
+        ["craft.quality.desc"] = { en = "Auto craft scrolls when materials are ready (Mythical + Legendary supported)", es = "Fabrica cuando tengas materiales y progreso (mítico + legendario incluido)" },
         ["webhook.send.fruit"] = { en = "Fruit Obtained (Legendary / Mythical)", es = "Fruta obtenida (Legendaria / Mítica)" },
         ["craft.roll"] = { en = "Auto Roll Fruit", es = "Girar fruta automáticamente" },
         ["craft.status"] = { en = "Status", es = "Estado" },
@@ -261,11 +261,11 @@ T, ModeDisplay = (function()
         ["craft.status.noRecipe"] = { en = "Recipe not found: {name}", es = "Receta no encontrada: {name}" },
         ["craft.status.none"] = { en = "Off", es = "Desactivado" },
         ["craft.store"] = { en = "Auto Store Fruits", es = "Guardar frutas automáticamente" },
-        ["craft.unlock"] = { en = "Auto Unlock Mythical Scroll", es = "Desbloquear y fabricar pergamino mítico" },
-        ["craft.unlock.desc"] = { en = "Builds only missing recipe amounts to unlock Mythical. Also enable Auto Craft for Mythical to keep crafting after the first one", es = "Fabrica solo las cantidades que faltan para desbloquear el mítico. Activa también la fabricación automática de míticos para continuar" },
-        ["craft.unlock.done"] = { en = "Mythical Scroll crafted: auto unlock stopped", es = "Pergamino mítico fabricado: desbloqueo detenido" },
+        ["craft.unlock"] = { en = "Auto Unlock Scrolls (Mythical / Legendary)", es = "Desbloquear pergaminos (mítico / legendario)" },
+        ["craft.unlock.desc"] = { en = "Builds only the missing recipe amounts to unlock the selected quality. With Mythical + Legendary it unlocks both. Also enable Auto Craft to keep crafting after the first one", es = "Fabrica solo las cantidades que faltan para desbloquear la calidad elegida. Con Mítico + Legendario desbloquea los dos. Activa tambián la fabricación automática para seguir fabricando" },
+        ["craft.unlock.done"] = { en = "Scroll crafted: auto unlock stopped", es = "Pergamino fabricado: desbloqueo detenido" },
         ["craft.unlock.retry"] = { en = "Retrying craft", es = "Reintentando fabricación" },
-        ["craft.unlock.unknown"] = { en = "Mythical craft not confirmed: auto unlock stopped", es = "Fabricación mítica sin confirmar: desbloqueo detenido" },
+        ["craft.unlock.unknown"] = { en = "Craft not confirmed: auto unlock stopped", es = "Fabricación sin confirmar: desbloqueo detenido" },
         ["craft.unlock.wait"] = { en = "Waiting for the craft result", es = "Esperando el resultado de la fabricación" },
         ["dc.popup.close"] = { en = "Close", es = "Cerrar" },
         ["dc.popup.copied"] = { en = "Copied!", es = "¡Copiado!" },
@@ -376,9 +376,15 @@ T, ModeDisplay = (function()
         ["enchant.weapon.type"] = { en = "Weapon Type", es = "Tipo de arma" },
         ["enchant.weapon"] = { en = "Weapon", es = "Arma" },
         ["enchant.refresh"] = { en = "Refresh Weapon List", es = "Actualizar lista de armas" },
-        ["enchant.wanted"] = { en = "Stop after any selected enchant", es = "Detenerse al obtener cualquier encantamiento seleccionado" },
-        ["enchant.onheart"] = { en = "After 10 Mythical Scrolls, enchant on the next heart", es = "Encantar al obtener el siguiente corazón tras tener 10 pergaminos míticos" },
-        ["enchant.onheart.desc"] = { en = "Waits for the next heart count increase, then pauses navigation and rolls until a selected enchant is hit", es = "Espera al siguiente aumento de corazones, pausa la navegación y repite hasta obtener un encantamiento elegido" },
+        ["enchant.wanted"] = { en = "Wanted enchants", es = "Encantamientos deseados" },
+        ["enchant.wanted.desc"] = { en = "Pick the curses and uniques you want. Reaper is always selected; the stop rule is chosen below", es = "Marca los curses y uniques que quieres. Reaper queda siempre seleccionado; la regla de parada se elige abajo" },
+        ["enchant.stopmode"] = { en = "Stop rule", es = "Modo de parada" },
+        ["enchant.stopmode.desc"] = { en = "Choose when the auto enchant stops rolling", es = "Elige cuándo deja de girar el auto enchant" },
+        ["enchant.stop.all"] = { en = "Curse + unique together", es = "Curse + unique juntos" },
+        ["enchant.stop.any"] = { en = "Any selected enchant", es = "Cualquiera de los marcados" },
+        ["enchant.stop.noreaper"] = { en = "Any selected except Reaper", es = "Cualquiera menos Reaper" },
+        ["enchant.onheart"] = { en = "With 10 Mythical and 20 Legendary Scrolls (both full), enchant on the next heart", es = "Encantar al obtener el siguiente corazón con 10 pergaminos míticos y 20 legendarios (ambos llenos)" },
+        ["enchant.onheart.desc"] = { en = "Waits until both stacks are full (10 Mythical and 20 Legendary Scrolls), then waits for the next heart count increase, pauses navigation and rolls until a selected enchant is hit", es = "Espera a tener ambos montones llenos (10 pergaminos míticos y 20 legendarios), luego espera al siguiente aumento de corazones, pausa la navegación y repite hasta obtener un encantamiento elegido" },
         ["enchant.go.spawn"] = { en = "Go to Tiki Spawn NPC and set spawn", es = "Ir al NPC de aparición de Tiki y establecer el punto" },
         ["enchant.spawn.done"] = { en = "Tiki spawn point confirmed", es = "Punto de aparición de Tiki confirmado" },
         ["enchant.spawn.failed"] = { en = "Could not confirm the Tiki spawn point", es = "No se pudo confirmar el punto de aparición de Tiki" },
@@ -514,6 +520,7 @@ if _G.AutoEnchantOnHeart == nil then _G.AutoEnchantOnHeart = false end
 if _G.EnchantWeaponType == nil then _G.EnchantWeaponType = "Sword" end
 if _G.EnchantWeaponName == nil then _G.EnchantWeaponName = "" end
 if _G.EnchantWanted == nil then _G.EnchantWanted = {} end
+if _G.EnchantStopMode == nil then _G.EnchantStopMode = "all" end
 if _G.AutoRandomFruit == nil then _G.AutoRandomFruit = false end
 if _G.WebhookSendFruit == nil then _G.WebhookSendFruit = true end
 if _G.AutoStoreFruits == nil then _G.AutoStoreFruits = false end
@@ -880,6 +887,7 @@ local ConfigKeys = {
     "EnchantWeaponType",
     "EnchantWeaponName",
     "EnchantWanted",
+    "EnchantStopMode",
     "AutoRandomFruit",
     "AutoStoreFruits",
     "WebhookSendFruit",
@@ -2876,7 +2884,7 @@ local function SailBoatStream(seat, speed)
         return false
     end
     local dt = RunService.Heartbeat:Wait() or (1 / 60)
-    if seat.Position.Y < 0 then
+    if (seat.Position or hrp.Position).Y < 0 then
         SetStatus("Barco hundido (Y<0): lo abandono y compro otro")
         pcall(function()
             if seat.Parent then
@@ -6664,6 +6672,7 @@ local CraftQualityList = {
     { Key = "LegendaryScroll", Label = "Legendary Scroll" },
     { Key = "MythicalScroll", Label = "Mythical Scroll" },
 }
+local AUTO_CRAFT_BOTH_LABEL = "Mythical + Legendary"
 local function CountValue(value)
     if type(value) == "table" then
         value = value.Quantity or value.Count or value.Amount or value.Value
@@ -6842,27 +6851,55 @@ task.spawn(function()
                         CraftStatus = T("craft.status.error")
                         return
                     end
-                    local target
-                    for _, c in ipairs(CraftQualityList) do
-                        if c.Label == Q then
-                            target = c
-                            break
+                    local targets = {}
+                    if Q == AUTO_CRAFT_BOTH_LABEL then
+                        local byKey = {}
+                        for _, c in ipairs(CraftQualityList) do
+                            byKey[c.Key] = c
+                        end
+                        local mythic = byKey.MythicalScroll
+                        local legendary = byKey.LegendaryScroll
+                        local mythicCount = CraftQualityList.GetCount(Prog, Etc, "MythicalScroll")
+                        local legendaryCount = CraftQualityList.GetCount(Prog, Etc, "LegendaryScroll")
+                        local mythicFull = mythicCount >= 10
+                        local legendaryFull = legendaryCount >= 20
+                        if mythicFull and legendaryFull then
+                            CraftStatus = TranslateStatus(AUTO_CRAFT_BOTH_LABEL .. ": stacks full")
+                            return
+                        end
+                        if not mythicFull then
+                            targets[1] = mythic
+                        elseif not legendaryFull then
+                            targets[1] = legendary
+                        end
+                    else
+                        for _, c in ipairs(CraftQualityList) do
+                            if c.Label == Q then
+                                targets[1] = c
+                                break
+                            end
                         end
                     end
-                    if not target then
+                    if #targets == 0 then
                         return
                     end
-                    local r = Recipes[target.Key]
-                    if not r then
-                        CraftStatus = TranslateStatus("Receta no encontrada: " .. target.Key)
-                        return
+                    local firstMiss
+                    for _, target in ipairs(targets) do
+                        local r = Recipes[target.Key]
+                        if not r then
+                            firstMiss = firstMiss or TranslateStatus("Receta no encontrada: " .. target.Key)
+                        else
+                            local okC, miss = CheckCraftRecipe(r, Etc, Prog)
+                            if okC then
+                                TryCraft(target.Key)
+                                CraftStatus = TranslateStatus(target.Label .. ": fabricado")
+                                return
+                            end
+                            firstMiss = firstMiss or TranslateStatus(target.Label .. ": " .. miss)
+                        end
                     end
-                    local okC, miss = CheckCraftRecipe(r, Etc, Prog)
-                    if okC then
-                        TryCraft(target.Key)
-                        CraftStatus = TranslateStatus(target.Label .. ": fabricado")
-                    else
-                        CraftStatus = TranslateStatus(target.Label .. ": " .. miss)
+                    if firstMiss then
+                        CraftStatus = firstMiss
                     end
                 end)
             end
@@ -6871,6 +6908,7 @@ task.spawn(function()
 end)
 local function StopAutoUnlockMythical(statusKey)
     _G.AutoUnlockMythical = false
+    CraftQualityList.UnlockStage = nil
     SaveConfig()
     if _G.Abyss_AutoUnlockMythicalToggle then
         pcall(function()
@@ -6878,6 +6916,18 @@ local function StopAutoUnlockMythical(statusKey)
         end)
     end
     CraftStatus = T(statusKey)
+end
+local function AutoUnlockTargetKey()
+    local Q = _G.CraftQuality
+    if Q == "Legendary Scroll" then
+        return "LegendaryScroll"
+    elseif Q == AUTO_CRAFT_BOTH_LABEL then
+        if CraftQualityList.UnlockStage == "Legendary" then
+            return "LegendaryScroll"
+        end
+        return "MythicalScroll"
+    end
+    return "MythicalScroll"
 end
 function AutoUnlockMythicalStep()
     local Etc, Prog = GetCraftData()
@@ -6889,12 +6939,21 @@ function AutoUnlockMythicalStep()
     if CraftQualityList.Pending then
         local pending = CraftQualityList.Pending
         local current = CraftQualityList.GetCount(Prog, Etc, pending.Key)
+        local quality = _G.CraftQuality
+        local bothSelected = quality == AUTO_CRAFT_BOTH_LABEL
         if current > pending.Before then
             CraftQualityList.Pending = nil
-            if pending.Key == "MythicalScroll" then
-                local continueMythicalCrafting = _G.AutoCraftScrolls and _G.CraftQuality == "Mythical Scroll"
+            if pending.Key == "MythicalScroll" or pending.Key == "LegendaryScroll" then
+                local pendingLabel = CraftQualityList.GetLabel(pending.Key) or pending.Key
+                if bothSelected and pending.Key == "MythicalScroll"
+                    and CraftQualityList.UnlockStage ~= "Legendary" then
+                    CraftQualityList.UnlockStage = "Legendary"
+                    CraftStatus = TranslateStatus(pendingLabel .. ": fabricado; continuando con Legendary Scroll")
+                    return
+                end
+                local keepCrafting = _G.AutoCraftScrolls and (bothSelected or quality == pendingLabel)
                 StopAutoUnlockMythical("craft.unlock.done")
-                if continueMythicalCrafting then
+                if keepCrafting then
                     _G.AutoCraftScrolls = true
                     if _G.Abyss_AutoCraftScrollsToggle then
                         pcall(function()
@@ -6911,19 +6970,38 @@ function AutoUnlockMythicalStep()
             return
         else
             CraftQualityList.Pending = nil
-            if pending.Key == "MythicalScroll" and pending.Accepted then
+            if (pending.Key == "MythicalScroll" or pending.Key == "LegendaryScroll") and pending.Accepted then
+                if bothSelected and pending.Key == "MythicalScroll"
+                    and CraftQualityList.UnlockStage ~= "Legendary" then
+                    CraftQualityList.UnlockStage = "Legendary"
+                    CraftStatus = TranslateStatus("Mythical Scroll not confirmed; continuing with Legendary Scroll")
+                    return
+                end
                 StopAutoUnlockMythical("craft.unlock.unknown")
                 return
             end
         end
     end
+    local unlockTarget = AutoUnlockTargetKey()
+    local unlockCount = CraftQualityList.GetCount(Prog, Etc, unlockTarget)
+    local unlockCap = (unlockTarget == "LegendaryScroll") and 20 or 10
+    if unlockCount >= unlockCap then
+        if _G.CraftQuality == AUTO_CRAFT_BOTH_LABEL and unlockTarget == "MythicalScroll" then
+            CraftQualityList.UnlockStage = "Legendary"
+            return
+        end
+        StopAutoUnlockMythical("craft.unlock.done")
+        return
+    end
     local craftKey, unlockError, detail, current, required =
-        CraftQualityList.GetNextUnlockKey(Recipes, CraftQualityList.GetProgressView(Prog, Etc), "MythicalScroll")
+        CraftQualityList.GetNextUnlockKey(Recipes, CraftQualityList.GetProgressView(Prog, Etc), unlockTarget)
     if not craftKey then
         if unlockError == "progress" then
             CraftStatus = TranslateStatus(
                 "Falta progreso " .. tostring(detail) .. " (" .. tostring(current) .. "/" .. tostring(required) .. ")"
             )
+        elseif unlockError == "ingredient" then
+            CraftStatus = TranslateStatus("Falta " .. tostring(detail) .. " (" .. tostring(current) .. "/" .. tostring(required) .. ")")
         elseif unlockError == "recipe" then
             CraftStatus = TranslateStatus("Receta no encontrada: " .. tostring(detail))
         else
@@ -8154,7 +8232,7 @@ do
     Tabs.Extra:AddDropdown("craft.quality", {
         Title = T("craft.quality"),
         Description = T("craft.quality.desc"),
-        Values = { "None", "Common Scroll", "Rare Scroll", "Legendary Scroll", "Mythical Scroll" },
+        Values = { "None", "Common Scroll", "Rare Scroll", "Legendary Scroll", "Mythical Scroll", AUTO_CRAFT_BOTH_LABEL },
         Default = _G.CraftQuality,
         Multi = false,
         Callback = function(Value)
@@ -8191,9 +8269,8 @@ do
         Callback = function(State)
             _G.AutoUnlockMythical = State
 
-            if not State then
-                CraftQualityList.Pending = nil
-            end
+            CraftQualityList.Pending = nil
+            CraftQualityList.UnlockStage = nil
 
             SaveConfig()
         end,
@@ -8341,13 +8418,18 @@ do
     })
     ButtonKeys[#ButtonKeys + 1] = { element = RefreshEnchantButton, key = "enchant.refresh" }
     do
+        local ENCHANT_WANTED_CHOICES = {
+            "Rot", "Burning", "Frozen", "Storm", "Reaper", "Thief",
+            "Masterpiece", "Rage", "Sharpshooter", "Strong Grip", "Unbreakable", "Unreal",
+        }
         if not table.find(_G.EnchantWanted, "Reaper") then
             table.insert(_G.EnchantWanted, "Reaper")
         end
         local restoringReaper = false
         local WantedDropdown = Tabs.Enchant:AddDropdown("enchant.wanted", {
             Title = T("enchant.wanted"),
-            Values = { "Rot", "Burning", "Frozen", "Storm", "Reaper", "Thief" },
+            Description = T("enchant.wanted.desc"),
+            Values = ENCHANT_WANTED_CHOICES,
             Default = table.clone(_G.EnchantWanted),
             Multi = true,
         })
@@ -8361,7 +8443,7 @@ do
             end
             local selected = { "Reaper" }
             if type(Value) == "table" then
-                for _, name in ipairs({ "Rot", "Burning", "Frozen", "Storm", "Reaper", "Thief" }) do
+                for _, name in ipairs(ENCHANT_WANTED_CHOICES) do
                     if name ~= "Reaper" and Value[name] == true then table.insert(selected, name) end
                 end
             end
@@ -8370,6 +8452,38 @@ do
             SaveConfig()
             if _G.Abyss_EnchantViewer then pcall(_G.Abyss_EnchantViewer.SelectionChanged) end
         end)
+        local function EnchantStopModeLabel(mode)
+            if mode == "any" then
+                return T("enchant.stop.any")
+            elseif mode == "noreaper" then
+                return T("enchant.stop.noreaper")
+            end
+            return T("enchant.stop.all")
+        end
+        local StopModeDropdown = Tabs.Enchant:AddDropdown("enchant.stopmode", {
+            Title = T("enchant.stopmode"),
+            Description = T("enchant.stopmode.desc"),
+            Values = {
+                T("enchant.stop.all"),
+                T("enchant.stop.any"),
+                T("enchant.stop.noreaper"),
+            },
+            Default = EnchantStopModeLabel(_G.EnchantStopMode),
+            Multi = false,
+            Callback = function(Value)
+                if Value == T("enchant.stop.any") then
+                    _G.EnchantStopMode = "any"
+                elseif Value == T("enchant.stop.noreaper") then
+                    _G.EnchantStopMode = "noreaper"
+                else
+                    _G.EnchantStopMode = "all"
+                end
+                SaveConfig()
+                if _G.Abyss_EnchantViewer then pcall(_G.Abyss_EnchantViewer.SelectionChanged) end
+            end,
+        })
+        _G.Abyss_EnchantStopModeDropdown = StopModeDropdown
+        _G.Abyss_EnchantStopModeLabel = EnchantStopModeLabel
     end
     _G.Abyss_AutoEnchantOnHeartToggle = Tabs.Enchant:AddToggle("enchant.onheart", {
         Title = T("enchant.onheart"),
@@ -9067,10 +9181,15 @@ do
     do
         local ENCHANT_TARGET = Vector3.new(-15906.6494, 483.391998, 945.215027)
         local ENCHANT_SCROLL = "Mythical Scroll"
+        local ENCHANT_SCROLL_LEGENDARY = "Legendary Scroll"
+        local ENCHANT_MYTHICAL_REQUIRED = 10
+        local ENCHANT_LEGENDARY_REQUIRED = 20
         local EnchantView = { Dismissed = false, Serial = 0, Rolls = 0, Status = "", HasRead = false,
             Checked = false, Hit = false, Reading = false, NeedsRefresh = false, ReadEpoch = 0 }
         _G.Abyss_EnchantViewer = EnchantView
         local EnchantArmedHeart = nil
+        local EnchantArmedScroll = nil
+        local EnchantActiveScroll = nil
         local EnchantRunning = false
         local EnchantPending = false
         local EnchantRetryAt = 0
@@ -9108,6 +9227,7 @@ do
                 return nil, nil, nil
             end
             local scrolls = CraftQualityList.Lookup(etc, "MythicalScroll") or 0
+            local legendary = CraftQualityList.Lookup(etc, "LegendaryScroll") or 0
             local hearts = nil
             for key, value in pairs(etc) do
                 if type(value) == "number" then
@@ -9119,37 +9239,161 @@ do
                 end
             end
             EnchantView.Scrolls, EnchantView.Hearts = scrolls, hearts
-            return scrolls, hearts, etc
+            EnchantView.LegendaryScrolls = legendary
+            return scrolls, hearts, etc, legendary
         end
-        local function WantedEnchantLookup()
-            local wanted = {}
-            for _, name in ipairs(_G.EnchantWanted or {}) do
-                wanted[tostring(name):lower()] = true
+        local function ReadScrollCount(scrollName)
+            local etc = GetCraftData()
+            if type(etc) ~= "table" or next(etc) == nil then
+                return nil
             end
-            if next(wanted) == nil and type(_G.EnchantWanted) == "table" then
-                for name, enabled in pairs(_G.EnchantWanted) do
+            local key = (scrollName == ENCHANT_SCROLL_LEGENDARY) and "LegendaryScroll" or "MythicalScroll"
+            return CraftQualityList.Lookup(etc, key) or 0
+        end
+        local function PickEnchantScroll()
+            local mythic = ReadScrollCount(ENCHANT_SCROLL)
+            if mythic and mythic >= ENCHANT_MYTHICAL_REQUIRED then
+                return ENCHANT_SCROLL, mythic, ENCHANT_MYTHICAL_REQUIRED
+            end
+            local legendary = ReadScrollCount(ENCHANT_SCROLL_LEGENDARY)
+            if legendary and legendary >= ENCHANT_LEGENDARY_REQUIRED then
+                return ENCHANT_SCROLL_LEGENDARY, legendary, ENCHANT_LEGENDARY_REQUIRED
+            end
+            return ENCHANT_SCROLL, mythic, ENCHANT_MYTHICAL_REQUIRED
+        end
+        local function NextEnchantScroll(current)
+            if current ~= ENCHANT_SCROLL_LEGENDARY then
+                local legendary = ReadScrollCount(ENCHANT_SCROLL_LEGENDARY)
+                if legendary and legendary >= ENCHANT_LEGENDARY_REQUIRED then
+                    return ENCHANT_SCROLL_LEGENDARY
+                end
+            end
+            if current ~= ENCHANT_SCROLL then
+                local mythic = ReadScrollCount(ENCHANT_SCROLL)
+                if mythic and mythic >= ENCHANT_MYTHICAL_REQUIRED then
+                    return ENCHANT_SCROLL
+                end
+            end
+            return nil
+        end
+        local function EnchantNameKey(name)
+            return (tostring(name):lower():gsub("[%s_%-']", ""))
+        end
+        local ENCHANT_NAME_GROUPS = {}
+        for _, name in ipairs({ "reaper", "thief", "curse of the reaper", "curse of the thief" }) do
+            ENCHANT_NAME_GROUPS[EnchantNameKey(name)] = "curse"
+        end
+        for _, name in ipairs({ "rot", "burning", "frozen", "storm" }) do
+            ENCHANT_NAME_GROUPS[EnchantNameKey(name)] = "blessing"
+        end
+        for _, name in ipairs({ "masterpiece", "rage", "sharpshooter", "strong grip", "unbreakable", "unreal" }) do
+            ENCHANT_NAME_GROUPS[EnchantNameKey(name)] = "unique"
+        end
+        local function EnchantSelectedKeys()
+            local keys = {}
+            local source = _G.EnchantWanted
+            if type(source) ~= "table" then
+                return keys
+            end
+            for _, name in ipairs(source) do
+                if type(name) == "string" then
+                    keys[EnchantNameKey(name)] = true
+                end
+            end
+            if next(keys) == nil then
+                for name, enabled in pairs(source) do
                     if type(name) == "string" and enabled then
-                        wanted[name:lower()] = true
+                        keys[EnchantNameKey(name)] = true
                     end
                 end
             end
-            wanted.reaper = true
-            wanted["curse of the reaper"] = true
+            return keys
+        end
+        local function WantedEnchantLookup()
+            local wanted = EnchantSelectedKeys()
+            wanted[EnchantNameKey("reaper")] = true
+            wanted[EnchantNameKey("curse of the reaper")] = true
+            local thiefKey = EnchantNameKey("thief")
+            local thiefCurseKey = EnchantNameKey("curse of the thief")
+            if wanted[thiefKey] or wanted[thiefCurseKey] then
+                wanted[thiefKey] = true
+                wanted[thiefCurseKey] = true
+            end
             return wanted
         end
+        local function EnchantSelectionGroups()
+            local groups = { curse = {}, blessing = {}, unique = {} }
+            for key in pairs(EnchantSelectedKeys()) do
+                local group = ENCHANT_NAME_GROUPS[key]
+                if group then
+                    groups[group][key] = true
+                end
+            end
+            groups.curse[EnchantNameKey("reaper")] = true
+            groups.curse[EnchantNameKey("curse of the reaper")] = true
+            local thiefKey = EnchantNameKey("thief")
+            local thiefCurseKey = EnchantNameKey("curse of the thief")
+            if groups.curse[thiefKey] or groups.curse[thiefCurseKey] then
+                groups.curse[thiefKey] = true
+                groups.curse[thiefCurseKey] = true
+            end
+            return groups
+        end
         local function DescribeEnchantResult(modifiers)
-            local parts, matched = {}, false
+            local parts = {}
             local wanted = WantedEnchantLookup()
+            local groups = EnchantSelectionGroups()
+            local mode = _G.EnchantStopMode
+            if mode ~= "any" and mode ~= "noreaper" then mode = "all" end
+            local reaperKey = EnchantNameKey("reaper")
+            local reaperCurseKey = EnchantNameKey("curse of the reaper")
+            local selected = EnchantSelectedKeys()
+            local hasNonReaper = false
+            for key in pairs(selected) do
+                if key ~= reaperKey and key ~= reaperCurseKey then
+                    hasNonReaper = true
+                end
+            end
+            local present, required, satisfied = {}, 0, 0
+            for group, keys in pairs(groups) do
+                if next(keys) ~= nil then
+                    required = required + 1
+                    present[group] = false
+                end
+            end
+            local anyHit, nonReaperHit = false, false
             for _, modifier in pairs(modifiers or {}) do
                 if type(modifier) == "table" and modifier.Name then
                     local name = tostring(modifier.Name)
                     parts[#parts + 1] = name .. (modifier.Level and (" " .. tostring(modifier.Level)) or "")
-                    if wanted[name:lower()] then
-                        matched = true
+                    local key = EnchantNameKey(name)
+                    if wanted[key] then
+                        anyHit = true
+                        if key ~= reaperKey and key ~= reaperCurseKey then
+                            nonReaperHit = true
+                        end
+                        for group, keys in pairs(groups) do
+                            if keys[key] then
+                                present[group] = true
+                            end
+                        end
                     end
                 end
             end
+            for group in pairs(groups) do
+                if present[group] then
+                    satisfied = satisfied + 1
+                end
+            end
             table.sort(parts)
+            local matched
+            if mode == "any" then
+                matched = anyHit
+            elseif mode == "noreaper" then
+                matched = nonReaperHit or (not hasNonReaper and anyHit)
+            else
+                matched = required > 0 and satisfied >= required
+            end
             return (#parts > 0 and table.concat(parts, ", ") or T("enchant.none")), matched
         end
         EnchantView.Dismissed = false
@@ -9368,18 +9612,18 @@ do
         				local entry = { Name = name }
 
         				if mod.Curse then
-        					entry.Rank, entry.Color, entry.Tag = 4, Colors.Curse, "CURSE"
+        					entry.Rank, entry.Color, entry.Tag, entry.Matched = 4, Colors.Curse, "CURSE", rules[EnchantNameKey(name)] == true
         				elseif mod.Blessing then
-        					entry.Rank, entry.Color, entry.Tag, entry.Matched = 1, Colors.Blessing, "BLESSING", rules[name:lower()]
+        					entry.Rank, entry.Color, entry.Tag, entry.Matched = 1, Colors.Blessing, "BLESSING", rules[EnchantNameKey(name)] == true
         				elseif mod.Unique then
-        					entry.Rank, entry.Color, entry.Tag, entry.Matched = 2, Colors.Unique, "UNIQUE", rules[name:lower()]
+        					entry.Rank, entry.Color, entry.Tag, entry.Matched = 2, Colors.Unique, "UNIQUE", rules[EnchantNameKey(name)] == true
         				else
         					local level, max = tonumber(mod.Level) or 0, MaxLevels[name]
 
         					entry.Rank = 3
         					entry.Tag = max and (tostring(level) .. "/" .. tostring(max)) or ("Lv " .. tostring(level))
         					entry.Color = (max and level >= max) and Colors.Good or Colors.Text
-        					entry.Matched = rules[name:lower()] == true
+        					entry.Matched = rules[EnchantNameKey(name)] == true
         				end
 
         				table.insert(entries, entry)
@@ -9412,7 +9656,8 @@ do
         	end
 
         EnchantView.Note = function()
-            return "Mythical Scroll: " .. tostring(EnchantView.Scrolls or "?")
+            local scrollLabel = EnchantActiveScroll or EnchantArmedScroll or ENCHANT_SCROLL
+            return scrollLabel .. ": " .. tostring(EnchantView.Scrolls or "?")
                 .. " | #" .. tostring(EnchantView.Rolls) .. "\n"
                 .. (EnchantView.LastOutcome and (EnchantView.LastOutcome .. "\n") or "") .. EnchantView.Status
         end
@@ -9445,22 +9690,24 @@ do
             end
             return nil
         end
-        local function EnchantEligibilityIssue(info)
+        local function EnchantEligibilityIssue(info, scrollName)
             if type(info) ~= "table" then return nil end
+            scrollName = scrollName or EnchantActiveScroll or ENCHANT_SCROLL
+            local scrollLower = tostring(scrollName):lower()
             local grade = tonumber(info.Upgrades)
-            local entry = type(info.Scrolls) == "table" and info.Scrolls[ENCHANT_SCROLL] or nil
+            local entry = type(info.Scrolls) == "table" and info.Scrolls[scrollName] or nil
             local need = type(entry) == "table" and tonumber(entry[3]) or nil
             local available = type(entry) == "table" and tonumber(entry[1]) or nil
             if available then EnchantView.Scrolls = available end
             if type(info.Scrolls) == "table" and (entry == nil or (available and available <= 0)) then
                 EnchantView.Scrolls = 0
-                return "No mythic scrolls available, skipping this cycle and returning control; waiting for scrolls"
+                return "No " .. scrollLower .. "s available, skipping this cycle and returning control; waiting for scrolls"
             end
             if grade and grade <= 0 then
                 return "Selected weapon is not upgraded, skipping auto enchant; waiting until it can be enchanted"
             end
             if grade and need and grade < need then
-                return "Selected weapon Grade " .. tostring(grade) .. ", mythic scroll requires Grade >= "
+                return "Selected weapon Grade " .. tostring(grade) .. ", " .. scrollLower .. " requires Grade >= "
                     .. tostring(need) .. "; waiting until the weapon can be enchanted"
             end
         end
@@ -9470,7 +9717,7 @@ do
             end
             local entry = type(info.Scrolls) == "table" and info.Scrolls[scrollName] or nil
             if type(entry) ~= "table" then
-                local inventory = tonumber((ReadEnchantInventory()))
+                local inventory = tonumber((ReadScrollCount(scrollName)))
                 if inventory and inventory > 0 then
                     return true
                 end
@@ -9660,6 +9907,8 @@ do
             EnchantPending = false
             EnchantRetryAt = 0
             EnchantArmedHeart = nil
+            EnchantArmedScroll = nil
+            EnchantActiveScroll = nil
             EnchantBeatAt = 0
             EnchantLockAt = 0
             SaveConfig()
@@ -9679,13 +9928,17 @@ do
             EnchantView.LastOutcome = "Target enchant already present (" .. resultText .. "); auto enchant paused, click refresh to re-read"
             if displayOnly and not EnchantPending and NavigationOwner ~= "enchant" then
                 EnchantArmedHeart = nil
+                EnchantArmedScroll = nil
+                EnchantActiveScroll = nil
                 SetEnchantStatus(EnchantView.LastOutcome)
                 return
             end
             StopAutoEnchant(EnchantView.LastOutcome)
         end
-        local function StopAutoEnchantOnNoScroll()
-            StopAutoEnchant("Mythic scrolls used up, returning control to main flow; waiting for 10 scrolls and the next heart")
+        local function StopAutoEnchantOnNoScroll(scrollName)
+            scrollName = scrollName or EnchantActiveScroll or ENCHANT_SCROLL
+            StopAutoEnchant(tostring(scrollName) .. "s used up, returning control to main flow; waiting for both "
+                .. "10 mythic + 20 legendary scrolls and the next heart")
         end
         local function PauseAutoEnchant(statusText)
             EnchantPending = true
@@ -9750,18 +10003,21 @@ do
                 pcall(EnchantView.Show, tool.Name, info.Modifiers)
                 local _, hit = DescribeEnchantResult(info.Modifiers)
                 EnchantView.Hit = hit
-                local upgradeIssue = EnchantEligibilityIssue(info)
+                local previewScroll = EnchantActiveScroll or EnchantArmedScroll or PickEnchantScroll()
+                local upgradeIssue = EnchantEligibilityIssue(info, previewScroll)
                 EnchantView.EligibilityBlocked = not hit and upgradeIssue ~= nil
                 EnchantView.EligibilityRetryAt = os.clock() + 15
                 if hit then
                     StopAutoEnchantOnHit(true)
                 elseif upgradeIssue then
                     EnchantArmedHeart = nil
+                    EnchantArmedScroll = nil
+                    EnchantActiveScroll = nil
                     SetEnchantStatus(upgradeIssue)
                 else
                     EnchantView.LastOutcome = nil
                     SetEnchantStatus(EnchantPending and "Target not hit, this enchant cycle will continue"
-                        or "Target not hit; waiting for 10 mythic scrolls and the next heart")
+                        or "Target not hit; waiting for scrolls and the next heart")
                 end
             end)
         end
@@ -9778,6 +10034,7 @@ do
                 end
                 EnchantRunning = false
             end
+            local scrollName = EnchantActiveScroll or EnchantArmedScroll or ENCHANT_SCROLL
 
             local preflightTool = FindEnchantWeapon()
             local readOK, info = pcall(function()
@@ -9789,7 +10046,7 @@ do
                 StopAndReturn("Failed to read weapon before departure; keeping this cycle, retrying in 30s")
                 return
             end
-            local upgradeIssue = EnchantEligibilityIssue(info)
+            local upgradeIssue = EnchantEligibilityIssue(info, scrollName)
             if upgradeIssue then
                 SkipUnavailableEnchant(upgradeIssue)
                 EnchantRunning = false
@@ -9805,7 +10062,7 @@ do
                 StopAndReturn("Select at least one target enchant first; keeping this cycle, retrying in 30s")
                 return
             end
-            SetEnchantStatus("Heart settled, heading to Dragon Claw Sage")
+            SetEnchantStatus("Heart settled; using mythic scrolls first, then legendary (heading to Dragon Claw Sage)")
             local arrived = false
             local tpTries = 0
             while not Cancelled() and not arrived and tpTries < ENCHANT_MAX_TELEPORT_TRIES do
@@ -9848,7 +10105,7 @@ do
             local weaponWaits, checkFails, rollFails = 0, 0, 0
             while not Cancelled() do
                 EnchantBeatAt = os.clock()
-                local scrollCount = tonumber((ReadEnchantInventory()))
+                local scrollCount = tonumber((ReadScrollCount(scrollName)))
                 if Cancelled() then return end
                 if scrollCount == nil then
                     StopAndReturn("Failed to read scroll inventory; keeping this cycle, retrying in 30s")
@@ -9856,15 +10113,35 @@ do
                 end
                 if scrollCount <= 0 then
                     task.wait(0.5)
-                    local confirmed = tonumber((ReadEnchantInventory()))
+                    local confirmed = tonumber((ReadScrollCount(scrollName)))
                     if Cancelled() then return end
                     if confirmed == nil then
                         StopAndReturn("Cannot confirm scroll count; keeping this cycle, retrying in 30s")
                         return
                     elseif confirmed <= 0 then
-                        StopAutoEnchantOnNoScroll()
-                        EnchantRunning = false
-                        return
+                        local nextScroll = NextEnchantScroll(scrollName)
+                        if not nextScroll then
+                            StopAutoEnchantOnNoScroll(scrollName)
+                            EnchantRunning = false
+                            return
+                        end
+                        SetEnchantStatus("Out of " .. scrollName:lower() .. "s; switching to "
+                            .. nextScroll:lower() .. "s and keeping this cycle")
+                        scrollName = nextScroll
+                        EnchantActiveScroll = nextScroll
+                        task.wait(0.5)
+                        confirmed = tonumber((ReadScrollCount(scrollName)))
+                        if Cancelled() then return end
+                        if confirmed == nil then
+                            StopAndReturn("Cannot confirm scroll count; keeping this cycle, retrying in 30s")
+                            return
+                        end
+                        EnchantView.Scrolls = confirmed
+                        if confirmed <= 0 then
+                            StopAutoEnchantOnNoScroll(scrollName)
+                            EnchantRunning = false
+                            return
+                        end
                     end
                     scrollCount = confirmed
                 end
@@ -9903,23 +10180,23 @@ do
                             EnchantRunning = false
                             return
                         end
-                        local beforeIssue = EnchantEligibilityIssue(before)
+                        local beforeIssue = EnchantEligibilityIssue(before, scrollName)
                         if beforeIssue then
                             SkipUnavailableEnchant(beforeIssue)
                             EnchantRunning = false
                             return
                         end
-                        local canRoll, whyNot = EnchantCanUseScroll(before, ENCHANT_SCROLL)
+                        local canRoll, whyNot = EnchantCanUseScroll(before, scrollName)
                         if Cancelled() then return end
                         if not canRoll then
                             StopAndReturn(tostring(whyNot) .. "; keeping this cycle, retrying in 30s")
                             return
                         end
-                        SetEnchantStatus("Enchanting with mythic scroll on " .. tool.Name)
+                        SetEnchantStatus("Enchanting with " .. scrollName:lower() .. " on " .. tool.Name)
                         local beforeScrolls = scrollCount
                         SetBusy(true)
                         local rolled, rollResult = pcall(function()
-                            return InvokeEnchantAction(flags, enchantRemote, commF, "Enchant", tool, ENCHANT_SCROLL)
+                            return InvokeEnchantAction(flags, enchantRemote, commF, "Enchant", tool, scrollName)
                         end)
                         if Cancelled() then return end
                         SetBusy(false)
@@ -9927,7 +10204,7 @@ do
                         for _ = 1, 8 do
                             task.wait(0.5)
                             if Cancelled() then return end
-                            local currentScrolls = tonumber((ReadEnchantInventory()))
+                            local currentScrolls = tonumber((ReadScrollCount(scrollName)))
                             if Cancelled() then return end
                             if currentScrolls and currentScrolls < beforeScrolls then
                                 consumed = true
@@ -9954,7 +10231,7 @@ do
                             pcall(EnchantView.Refresh)
                             rollFails = 0
                             EnchantBeatAt = os.clock()
-                            SendEnchantWebhook(tool.Name, ENCHANT_SCROLL, resultText, hit, resultMods)
+                            SendEnchantWebhook(tool.Name, scrollName, resultText, hit, resultMods)
                             if hit then
                                 StopAutoEnchantOnHit()
                                 EnchantRunning = false
@@ -10016,6 +10293,8 @@ do
                         EnchantRunning = false
                     end
                     EnchantArmedHeart = nil
+                    EnchantArmedScroll = nil
+                    EnchantActiveScroll = nil
                     EnchantHandoff.Release()
                 elseif EnchantView.EligibilityBlocked and not EnchantRunning then
                     if not EnchantView.Reading and not EnchantView.NeedsRefresh
@@ -10026,20 +10305,26 @@ do
                 elseif not EnchantView.Checked or EnchantView.Reading or EnchantView.NeedsRefresh or EnchantView.Hit then
                 elseif not EnchantRunning then
                     pcall(function()
-                        local scrollCount, heartCount = ReadEnchantInventory()
+                        local scrollCount, heartCount, _, legendaryCount = ReadEnchantInventory()
                         if scrollCount == nil or heartCount == nil then return end
                         if not EnchantPending then
                             if EnchantArmedHeart == nil then
-                                if scrollCount >= 10 then
+                                local mythicReady = scrollCount >= ENCHANT_MYTHICAL_REQUIRED
+                                local legendaryReady = legendaryCount ~= nil
+                                    and legendaryCount >= ENCHANT_LEGENDARY_REQUIRED
+                                if mythicReady and legendaryReady then
                                     EnchantArmedHeart = heartCount
-                                    SetEnchantStatus("Holding 10 mythic scrolls, waiting for the next heart")
+                                    EnchantArmedScroll = ENCHANT_SCROLL
+                                    SetEnchantStatus("Both stacks full (10 mythic + 20 legendary), waiting for the next heart")
                                 else
-                                    SetEnchantStatus("Waiting for mythic scrolls to reach 10")
+                                    SetEnchantStatus("Waiting for both stacks: " .. tostring(scrollCount) .. "/10 mythic, "
+                                        .. tostring(legendaryCount or "?") .. "/20 legendary")
                                 end
                                 return
                             elseif heartCount > EnchantArmedHeart then
                                 EnchantArmedHeart = heartCount
                                 EnchantPending = true
+                                EnchantActiveScroll = EnchantArmedScroll or ENCHANT_SCROLL
                                 EnchantRetryAt = 0
                                 EnchantView.Rolls = 0
                             else
@@ -10317,6 +10602,18 @@ ApplyLanguage = function()
         pcall(function()
             SoloSeaBoatDropdown:SetValues(SoloSeaBoatOptions)
             SoloSeaBoatDropdown:SetValue(_G.SoloSeaBoat)
+        end)
+    end
+    if _G.Abyss_EnchantStopModeDropdown then
+        pcall(function()
+            _G.Abyss_EnchantStopModeDropdown:SetValues({
+                T("enchant.stop.all"),
+                T("enchant.stop.any"),
+                T("enchant.stop.noreaper"),
+            })
+            local label = _G.Abyss_EnchantStopModeLabel and _G.Abyss_EnchantStopModeLabel(_G.EnchantStopMode)
+                or T("enchant.stop.all")
+            _G.Abyss_EnchantStopModeDropdown:SetValue(label)
         end)
     end
     pcall(function()
