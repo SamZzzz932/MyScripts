@@ -280,6 +280,8 @@ T, ModeDisplay = (function()
         ["detail.not.seated"] = { en = "Not seated", es = "Sin asiento" },
         ["detail.seat"] = { en = "Current Seat", es = "Asiento actual" },
         ["detail.teammates"] = { en = "Teammates On Board", es = "Compañeros a bordo" },
+        ["draco.aura"] = { en = "Remove Draco V4 Aura", es = "Quitar aura de Draco V4" },
+        ["draco.aura.desc"] = { en = "Hides the orange Draco V4 domain, sparks and symbol on all players to reduce lag. Buffs stay active. Rejoin to restore", es = "Oculta el dominio naranja, las chispas y el símbolo de Draco V4 de todos los jugadores para reducir el lag. Los buffs siguen activos. Reingresa para restaurar" },
         ["dragon.farm"] = { en = "Dragonstorm for Farming", es = "Usar Dragonstorm al farmear" },
         ["dragon.farm.desc"] = { en = "Use Dragonstorm for sea events (not Leviathan)", es = "Usa Dragonstorm en los eventos marinos (no en el Leviathan)" },
         ["dragon.leviathan"] = { en = "Dragonstorm vs Leviathan", es = "Dragonstorm contra el Leviathan" },
@@ -288,7 +290,7 @@ T, ModeDisplay = (function()
         ["fast.attack.desc"] = { en = "Fast M1 attacks (not while seated)", es = "Ataques M1 rápidos (no mientras estas sentado)" },
         ["follow.player"] = { en = "Follow Player", es = "Seguir jugador" },
         ["fps.boost"] = { en = "FPS Boost", es = "Optimizacion de FPS" },
-        ["fps.boost.desc"] = { en = "Cuts water waves, terrain decoration, shadows, particles, beams, lights, post-processing and the Draco V4 aura (domain, sparks and symbol) on all players to reduce lag. Also applies to islands and effects that load later. Buffs stay active. Rejoin to restore", es = "Recorta olas, decoración del terreno, sombras, partículas, beams, luces, postprocesado y el aura de Draco V4 (dominio, chispas y símbolo) de todos los jugadores para reducir el lag. También se aplica a islas y efectos que cargan después. Los buffs siguen activos. Reingresa para restaurar" },
+        ["fps.boost.desc"] = { en = "Cuts water waves, terrain decoration, shadows, particles, beams, lights and post-processing; also applies to islands and effects that load later. Rejoin to restore", es = "Recorta olas, decoración del terreno, sombras, partículas, beams, luces y efectos de postprocesado; también se aplica a islas y efectos que cargan después. Reingresa para restaurar" },
         ["hunt.events"] = { en = "Fight Sea Events While Hunting", es = "Atacar eventos mientras busca" },
         ["hunt.events.desc"] = { en = "Fight sea events during hunt", es = "Ataca eventos marinos mientras busca al Leviathan" },
         ["hunt.select.events"] = { en = "Select Sea Events To Fight", es = "Eventos que debe atacar" },
@@ -502,8 +504,7 @@ if _G.DragonGunLeviathan == nil then _G.DragonGunLeviathan = false end
 if _G.RemoveFog == nil then _G.RemoveFog = false end
 if _G.AutoFastMode == nil then _G.AutoFastMode = false end
 if _G.FPSBoost == nil then _G.FPSBoost = false end
--- Quitar el aura de Draco V4 forma parte del FPS Boost.
-if _G.RemoveDracoAura == nil then _G.RemoveDracoAura = _G.FPSBoost end
+if _G.RemoveDracoAura == nil then _G.RemoveDracoAura = true end
 if _G.AutoV3 == nil then _G.AutoV3 = false end
 if _G.AutoV4 == nil then _G.AutoV4 = false end
 if _G.BoatLockY == nil then _G.BoatLockY = 150 end
@@ -871,6 +872,7 @@ local ConfigKeys = {
     "RemoveFog",
     "AutoFastMode",
     "FPSBoost",
+    "RemoveDracoAura",
     "AutoBuso",
     "AutoKen",
     "AutoV3",
@@ -1005,8 +1007,6 @@ local function LoadConfig()
     end
 end
 LoadConfig()
--- El aura de Draco V4 ahora va incluida en el FPS Boost; mantiene ambos estados sincronizados.
-_G.RemoveDracoAura = _G.FPSBoost == true
 -- Previous builds saved the old default name; keep custom names but migrate that default.
 if type(_G.WebhookUsername) ~= "string" or _G.WebhookUsername == "" or _G.WebhookUsername == "Abyss" then
     _G.WebhookUsername = "Leviatan"
@@ -1212,6 +1212,7 @@ local function StandUpFromSeat(seat, hum, hrp)
     end
     return true
 end
+local function __AbyssPart2()
 local function _tp(targetPos, abortCheck, allowNavigationOwner)
     if NavigationOwner and not allowNavigationOwner then
         return false
@@ -2870,6 +2871,7 @@ local function RebuyBoatAndBoard()
 end
 local LastSailAt = 0
 local CruiseCheckPos = nil
+local function __AbyssPart3()
 local CruiseCheckAt = 0
 local CruiseStalls = 0
 local CruiseToB = true
@@ -6289,12 +6291,6 @@ do
     PerformanceAPI.ApplyFPSBoost = function()
         pcall(function() setfflag("RemoteEventSingleInvocationSizeLimit", "1500") end)
         task.spawn(function()
-            -- Se aplica primero para quitar el aura de Draco V4 cuanto antes.
-            pcall(function()
-                if PerformanceAPI.ApplyDracoAuraRemoval then
-                    PerformanceAPI.ApplyDracoAuraRemoval()
-                end
-            end)
             InstallFPSBoostHooks()
             pcall(function()
                 local lighting = game:GetService("Lighting")
@@ -6431,6 +6427,7 @@ do
         "aura", "domain", "field", "sphere", "dome", "orb",
         "vfx", "effect", "spark", "symbol", "ring", "circle",
         "ember", "flame", "fire", "smoke", "glow", "particle",
+        "trail", "beam", "highlight", "light", "flash",
     }
     local function DracoNormalizeName(name)
         return tostring(name):lower():gsub("[%s_%-%./:]", "")
@@ -6628,7 +6625,7 @@ do
     local function IsSeparateAuraPart(obj)
         if not IsLooseAuraPart(obj) then return false end
         if obj.Transparency < 0.2 then return false end
-        if FindDracoCharacter(obj) then return false end
+        if FindDracoCharacter(obj) or IsFPSBoostMapObject(obj) then return false end
         return NearDracoV4(obj.Position)
     end
     local function CleanWorkspaceDracoNames()
@@ -6636,7 +6633,7 @@ do
         for _, obj in ipairs(workspace:GetChildren()) do
             if not _G.RemoveDracoAura then return end
             local isPlayerCharacter = obj:IsA("Model") and Players:GetPlayerFromCharacter(obj) ~= nil
-            if not isPlayerCharacter and IsDracoName(obj.Name) then
+            if not isPlayerCharacter and not IsFPSBoostMapObject(obj) and IsDracoName(obj.Name) then
                 pcall(CleanDracoRoot, obj, true)
             end
         end
@@ -6717,6 +6714,9 @@ do
             for _, obj in ipairs(workspace:GetDescendants()) do
                 if not _G.RemoveDracoAura then break end
                 pcall(function()
+                    if IsFPSBoostMapObject(obj) then
+                        return
+                    end
                     if IsDracoName(obj.Name) then
                         local isPlayerCharacter = obj:IsA("Model") and Players:GetPlayerFromCharacter(obj) ~= nil
                         if not isPlayerCharacter then
@@ -8601,10 +8601,21 @@ do
         Default = _G.FPSBoost,
         Callback = function(State)
             _G.FPSBoost = State
-            _G.RemoveDracoAura = State
             SaveConfig()
             if State then
                 PerformanceAPI.ApplyFPSBoost()
+            end
+        end,
+    })
+    PerfSection:AddToggle("draco.aura", {
+        Title = T("draco.aura"),
+        Description = T("draco.aura.desc"),
+        Default = _G.RemoveDracoAura,
+        Callback = function(State)
+            _G.RemoveDracoAura = State
+            SaveConfig()
+            if State then
+                PerformanceAPI.ApplyDracoAuraRemoval()
             end
         end,
     })
@@ -11402,10 +11413,15 @@ task.defer(function()
     if _G.RemoveFog then pcall(DoRemoveFog) end
     if _G.AutoFastMode then pcall(PerformanceAPI.ApplyAutoFastMode) end
     if _G.FPSBoost then pcall(PerformanceAPI.ApplyFPSBoost) end
+    if _G.RemoveDracoAura then pcall(PerformanceAPI.ApplyDracoAuraRemoval) end
 end)
 
 __env.AbyssWindow = Window
 __env.Abyss_Ready = true
 SendNotify(T("notify.title"), T("notify.ready"))
 end)()
+end
+__AbyssPart3()
+end
+__AbyssPart2()
 end, AbyssFatal)
