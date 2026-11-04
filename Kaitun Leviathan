@@ -290,7 +290,7 @@ T, ModeDisplay = (function()
         ["fast.attack.desc"] = { en = "Fast M1 attacks (not while seated)", es = "Ataques M1 rápidos (no mientras estas sentado)" },
         ["follow.player"] = { en = "Follow Player", es = "Seguir jugador" },
         ["fps.boost"] = { en = "FPS Boost", es = "Optimizacion de FPS" },
-        ["fps.boost.desc"] = { en = "Cuts water waves, terrain decoration, shadows, particles, beams, lights and post-processing; also applies to islands and effects that load later. Rejoin to restore", es = "Recorta olas, decoración del terreno, sombras, partículas, beams, luces y efectos de postprocesado; también se aplica a islas y efectos que cargan después. Reingresa para restaurar" },
+        ["fps.boost.desc"] = { en = "Aggressive FPS boost: cuts water waves, terrain decoration, shadows, fog, particles, beams, lights, textures/materials and post-processing; also applies to objects that load later. Enabled automatically on every run. Rejoin to restore", es = "Optimización agresiva de FPS: recorta olas, decoración del terreno, sombras, niebla, partículas, beams, luces, texturas/materiales y postprocesado; también se aplica a objetos que cargan después. Se activa automáticamente en cada ejecución. Reingresa para restaurar" },
         ["hunt.events"] = { en = "Fight Sea Events While Hunting", es = "Atacar eventos mientras busca" },
         ["hunt.events.desc"] = { en = "Fight sea events during hunt", es = "Ataca eventos marinos mientras busca al Leviathan" },
         ["hunt.select.events"] = { en = "Select Sea Events To Fight", es = "Eventos que debe atacar" },
@@ -505,7 +505,7 @@ if _G.DragonGunFarm == nil then _G.DragonGunFarm = false end
 if _G.DragonGunLeviathan == nil then _G.DragonGunLeviathan = false end
 if _G.RemoveFog == nil then _G.RemoveFog = false end
 if _G.AutoFastMode == nil then _G.AutoFastMode = false end
-if _G.FPSBoost == nil then _G.FPSBoost = false end
+if _G.FPSBoost == nil then _G.FPSBoost = true end
 if _G.RemoveDracoAura == nil then _G.RemoveDracoAura = true end
 if _G.AutoV3 == nil then _G.AutoV3 = false end
 if _G.AutoV4 == nil then _G.AutoV4 = false end
@@ -1011,6 +1011,8 @@ local function LoadConfig()
     end
 end
 LoadConfig()
+-- FPS Boost is always enabled when the script starts (still toggleable in the UI).
+_G.FPSBoost = true
 -- Previous builds saved the old default name; keep custom names but migrate that default.
 if type(_G.WebhookUsername) ~= "string" or _G.WebhookUsername == "" or _G.WebhookUsername == "Abyss" then
     _G.WebhookUsername = "Leviatan"
@@ -6220,6 +6222,15 @@ do
         end
         return false
     end
+    local function IsInsideWorldOrigin(obj)
+        local node = obj
+        for _ = 1, 12 do
+            node = node and node.Parent
+            if not node then return false end
+            if node.Name == "_WorldOrigin" then return true end
+        end
+        return false
+    end
     local function ApplyFPSBoostToNew(obj)
         if not _G.FPSBoost then
             return false
@@ -6233,14 +6244,17 @@ do
                 obj.Glare = 0
                 obj.Haze = 0
             elseif obj:IsA("ParticleEmitter") then
-                if obj.Parent and obj.Parent.Name ~= "ElectricFire" then
+                if obj.Parent and obj.Parent.Name ~= "ElectricFire" and obj.Parent.Name ~= "RelicFire" then
                     obj.Enabled = false
                     obj.Lifetime = NumberRange.new(0)
                 end
             elseif obj:IsA("Sparkles") then
                 obj.Enabled = false
             elseif obj:IsA("Trail") then
-                obj.Lifetime = NumberRange.new(0)
+                if not (obj.Parent and obj.Parent.Name == "RelicFire") then
+                    obj.Enabled = false
+                    obj.Lifetime = NumberRange.new(0)
+                end
             elseif obj:IsA("Beam") or obj:IsA("Highlight") then
                 obj.Enabled = false
             elseif obj:IsA("Decal") or obj:IsA("Texture") then
@@ -6249,13 +6263,18 @@ do
                 or obj:IsA("PointLight") or obj:IsA("SpotLight") or obj:IsA("SurfaceLight") then
                 obj.Enabled = false
             elseif obj:IsA("Explosion") then
+                obj.Enabled = false
                 obj.BlastPressure, obj.BlastRadius = 1, 1
             elseif obj:IsA("BasePart") or obj:IsA("UnionOperation")
                 or obj:IsA("CornerWedgePart") or obj:IsA("TrussPart") then
                 obj.Reflectance = 0
                 obj.CastShadow = false
-                if IsFPSBoostMapObject(obj) then
-                    obj.Material = Enum.Material.SmoothPlastic
+                obj.Material = IsFPSBoostMapObject(obj) and Enum.Material.SmoothPlastic or Enum.Material.Plastic
+                if IsInsideWorldOrigin(obj) then
+                    obj.Transparency = 1
+                end
+                if obj:IsA("MeshPart") then
+                    pcall(function() obj.TextureID = "rbxassetid://10385902758728956" end)
                 end
             end
         end)
@@ -6325,6 +6344,8 @@ do
                 pcall(function() lighting.ShadowSoftness = 0 end)
                 pcall(function() lighting.EnvironmentDiffuseScale = 0 end)
                 pcall(function() lighting.EnvironmentSpecularScale = 0 end)
+                pcall(function() lighting.FogEnd = 9000000000 end)
+                pcall(function() lighting.Brightness = 0 end)
                 for _, item in ipairs(lighting:GetDescendants()) do
                     if item:IsA("BlurEffect") or item:IsA("BloomEffect")
                         or item:IsA("SunRaysEffect") or item:IsA("DepthOfFieldEffect") then
@@ -6342,12 +6363,15 @@ do
                 local sliceStarted = os.clock()
                 for _, item in ipairs(game:GetDescendants()) do
                     if item:IsA("ParticleEmitter") then
-                        if not (item.Parent and item.Parent.Name == "ElectricFire") then
+                        if not (item.Parent and (item.Parent.Name == "ElectricFire" or item.Parent.Name == "RelicFire")) then
                             item.Enabled = false
                             item.Lifetime = NumberRange.new(0)
                         end
                     elseif item:IsA("Trail") then
-                        item.Lifetime = NumberRange.new(0)
+                        if not (item.Parent and item.Parent.Name == "RelicFire") then
+                            item.Enabled = false
+                            item.Lifetime = NumberRange.new(0)
+                        end
                     elseif item:IsA("Sparkles") then
                         item.Enabled = false
                     elseif item:IsA("Beam") or item:IsA("Highlight") then
@@ -6358,10 +6382,15 @@ do
                         or item:IsA("PointLight") or item:IsA("SpotLight") or item:IsA("SurfaceLight") then
                         item.Enabled = false
                     elseif item:IsA("Explosion") then
+                        item.Enabled = false
                         item.BlastPressure, item.BlastRadius = 1, 1
                     elseif item:IsA("BasePart") or item:IsA("UnionOperation") or item:IsA("CornerWedgePart") or item:IsA("TrussPart") then
                         item.Reflectance = 0
                         item.CastShadow = false
+                        item.Material = Enum.Material.Plastic
+                        if item:IsA("MeshPart") then
+                            pcall(function() item.TextureID = "rbxassetid://10385902758728956" end)
+                        end
                     end
                     if os.clock() - sliceStarted >= 0.0042 then task.wait(); sliceStarted = os.clock() end
                 end
