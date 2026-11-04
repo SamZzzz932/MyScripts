@@ -387,6 +387,8 @@ T, ModeDisplay = (function()
         ["enchant.stop.noreaper"] = { en = "Any selected except Reaper", es = "Cualquiera menos Reaper" },
         ["enchant.onheart"] = { en = "With 10 Mythical and 20 Legendary Scrolls (both full), enchant on the next heart", es = "Encantar al obtener el siguiente corazón con 10 pergaminos míticos y 20 legendarios (ambos llenos)" },
         ["enchant.onheart.desc"] = { en = "Waits until both stacks are full (10 Mythical and 20 Legendary Scrolls), then waits for the next heart count increase, pauses navigation and rolls until a selected enchant is hit", es = "Espera a tener ambos montones llenos (10 pergaminos míticos y 20 legendarios), luego espera al siguiente aumento de corazones, pausa la navegación y repite hasta obtener un encantamiento elegido" },
+        ["enchant.autorefresh"] = { en = "Auto Refresh Enchant (AFK)", es = "Auto refrescar encantamiento (AFK)" },
+        ["enchant.autorefresh.desc"] = { en = "Checks the selected weapon automatically after every roll and every few seconds. Stops at the selected enchant without using another scroll", es = "Comprueba el arma sola después de cada tirada y cada pocos segundos. Se detiene en el encantamiento seleccionado sin gastar otro pergamino" },
         ["enchant.go.spawn"] = { en = "Go to Tiki Spawn NPC and set spawn", es = "Ir al NPC de aparición de Tiki y establecer el punto" },
         ["enchant.spawn.done"] = { en = "Tiki spawn point confirmed", es = "Punto de aparición de Tiki confirmado" },
         ["enchant.spawn.failed"] = { en = "Could not confirm the Tiki spawn point", es = "No se pudo confirmar el punto de aparición de Tiki" },
@@ -520,6 +522,7 @@ if _G.AutoCraftScrolls == nil then _G.AutoCraftScrolls = false end
 if _G.CraftQuality == nil then _G.CraftQuality = "None" end
 if _G.AutoUnlockMythical == nil then _G.AutoUnlockMythical = false end
 if _G.AutoEnchantOnHeart == nil then _G.AutoEnchantOnHeart = false end
+if _G.AutoRefreshEnchant == nil then _G.AutoRefreshEnchant = true end
 if _G.EnchantWeaponType == nil then _G.EnchantWeaponType = "Sword" end
 if _G.EnchantWeaponName == nil then _G.EnchantWeaponName = "" end
 if _G.EnchantWanted == nil then _G.EnchantWanted = {} end
@@ -888,6 +891,7 @@ local ConfigKeys = {
     "CraftQuality",
     "AutoUnlockMythical",
     "AutoEnchantOnHeart",
+    "AutoRefreshEnchant",
     "EnchantWeaponType",
     "EnchantWeaponName",
     "EnchantWanted",
@@ -8991,6 +8995,18 @@ do
             SaveConfig()
         end,
     })
+    _G.Abyss_AutoRefreshEnchantToggle = Tabs.Enchant:AddToggle("enchant.autorefresh", {
+        Title = T("enchant.autorefresh"),
+        Description = T("enchant.autorefresh.desc"),
+        Default = _G.AutoRefreshEnchant,
+        Callback = function(State)
+            _G.AutoRefreshEnchant = State and true or false
+            if _G.AutoRefreshEnchant and _G.Abyss_EnchantViewer then
+                pcall(_G.Abyss_EnchantViewer.ReadCurrent, true)
+            end
+            SaveConfig()
+        end,
+    })
     local SetSpawnRunning = false
     local SetSpawnButton = Tabs.Enchant:AddButton({
         Title = T("enchant.go.spawn"),
@@ -9679,6 +9695,7 @@ do
         local EnchantRunning = false
         local EnchantPending = false
         local EnchantRetryAt = 0
+        local EnchantAutoRefreshAt = 0
         local EnchantRunToken = 0
         local EnchantWebhookQueue = {}
         local EnchantWebhookWorker = false
@@ -9809,14 +9826,28 @@ do
         end
         local function EnchantSelectionGroups()
             local groups = { curse = {}, blessing = {}, unique = {} }
+            local reaperKey = EnchantNameKey("reaper")
+            local reaperCurseKey = EnchantNameKey("curse of the reaper")
+            local hasNonReaper = false
             for key in pairs(EnchantSelectedKeys()) do
+                if key ~= reaperKey and key ~= reaperCurseKey then
+                    hasNonReaper = true
+                end
                 local group = ENCHANT_NAME_GROUPS[key]
                 if group then
                     groups[group][key] = true
                 end
             end
-            groups.curse[EnchantNameKey("reaper")] = true
-            groups.curse[EnchantNameKey("curse of the reaper")] = true
+            -- Reaper is always present in the selector, but it must only be a hard
+            -- requirement when it is the only target. Otherwise it would block
+            -- stopping on a unique/blessing the user actually picked.
+            if hasNonReaper then
+                groups.curse[reaperKey] = nil
+                groups.curse[reaperCurseKey] = nil
+            else
+                groups.curse[reaperKey] = true
+                groups.curse[reaperCurseKey] = true
+            end
             local thiefKey = EnchantNameKey("thief")
             local thiefCurseKey = EnchantNameKey("curse of the thief")
             if groups.curse[thiefKey] or groups.curse[thiefCurseKey] then
@@ -10408,10 +10439,16 @@ do
                 SetEnchantStatus(statusText)
             end
         end
-        local function StopAutoEnchantOnHit(displayOnly)
+        local function StopAutoEnchantOnHit(displayOnly, modifiers, weaponName)
+            local mods = type(modifiers) == "table" and modifiers or EnchantView.Modifiers
+            if type(mods) == "table" and next(mods) ~= nil then
+                EnchantView.Modifiers = mods
+                if weaponName then pcall(EnchantView.Show, weaponName, mods) end
+            end
             EnchantView.Checked, EnchantView.Hit, EnchantView.NeedsRefresh = true, true, false
-            local resultText = DescribeEnchantResult(EnchantView.Modifiers)
-            EnchantView.LastOutcome = "Target enchant already present (" .. resultText .. "); auto enchant paused, click refresh to re-read"
+            EnchantView.EligibilityBlocked, EnchantView.EligibilityRetryAt = false, 0
+            local resultText = DescribeEnchantResult(mods)
+            EnchantView.LastOutcome = "Target enchant already present (" .. resultText .. "); auto enchant paused without using more scrolls"
             if displayOnly and not EnchantPending and NavigationOwner ~= "enchant" then
                 EnchantArmedHeart = nil
                 EnchantArmedScroll = nil
@@ -10455,16 +10492,19 @@ do
             EnchantView.Checked, EnchantView.Hit, EnchantView.NeedsRefresh = false, false, true
             EnchantView.EligibilityBlocked, EnchantView.EligibilityRetryAt = false, 0
             EnchantView.LastOutcome = nil
-            SetEnchantStatus("Weapon or target changed, click refresh weapon to re-read")
+            SetEnchantStatus(_G.AutoRefreshEnchant and "Weapon or target changed, refreshing the current enchant automatically"
+                or "Weapon or target changed, click refresh weapon to re-read")
         end
         EnchantView.ReadCurrent = function(force)
             if EnchantRunning then return end
             if not force and EnchantView.NeedsRefresh then
-                SetEnchantStatus("Click refresh weapon to re-read the current enchant")
+                SetEnchantStatus(_G.AutoRefreshEnchant and "Refreshing the current enchant automatically"
+                    or "Click refresh weapon to re-read the current enchant")
                 return
             end
             if not force and EnchantView.Hit then
-                SetEnchantStatus(EnchantView.LastOutcome or "Target enchant already present, click refresh weapon to re-read")
+                SetEnchantStatus(EnchantView.LastOutcome
+                    or "Target enchant already present; auto enchant is paused and will not use more scrolls")
                 return
             end
             EnchantView.CancelRead()
@@ -10482,7 +10522,8 @@ do
                 if not ok or type(info) ~= "table" or tool ~= FindEnchantWeapon() then
                     EnchantView.NeedsRefresh = not EnchantView.EligibilityBlocked
                     SetEnchantStatus(EnchantView.EligibilityBlocked and "Enchant conditions unavailable, will check again later"
-                        or "Failed to read current enchant, click refresh weapon to retry")
+                        or (_G.AutoRefreshEnchant and "Failed to read current enchant, retrying automatically"
+                            or "Failed to read current enchant, click refresh weapon to retry"))
                     return
                 end
                 EnchantView.Checked, EnchantView.NeedsRefresh = true, false
@@ -10698,7 +10739,29 @@ do
                             end
                         end
                         local resultMods = type(rollResult) == "table" and rollResult.Modifiers or nil
-                        if type(resultMods) ~= "table" or next(resultMods) == nil then
+                        if consumed then
+                            -- Always confirm the real result with an authoritative Check.
+                            -- The roll payload can be stale or incomplete and hide a hit,
+                            -- which would keep spending scrolls after the target appeared.
+                            local confirmed = false
+                            for _ = 1, 4 do
+                                local checkOK, afterInfo = pcall(function()
+                                    return InvokeEnchantAction(flags, enchantRemote, commF, "Check", tool)
+                                end)
+                                if Cancelled() then return end
+                                if checkOK and type(afterInfo) == "table"
+                                    and type(afterInfo.Modifiers) == "table" and next(afterInfo.Modifiers) ~= nil then
+                                    resultMods = afterInfo.Modifiers
+                                    confirmed = true
+                                    break
+                                end
+                                task.wait(1)
+                            end
+                            if not confirmed and (type(resultMods) ~= "table" or next(resultMods) == nil) then
+                                StopAndReturn("Scroll used but the enchant result could not be confirmed; keeping this cycle, retrying in 30s")
+                                return
+                            end
+                        elseif type(resultMods) ~= "table" or next(resultMods) == nil then
                             local checkOK, afterInfo = pcall(function()
                                 return InvokeEnchantAction(flags, enchantRemote, commF, "Check", tool)
                             end)
@@ -10719,7 +10782,7 @@ do
                             EnchantBeatAt = os.clock()
                             SendEnchantWebhook(tool.Name, scrollName, resultText, hit, resultMods)
                             if hit then
-                                StopAutoEnchantOnHit()
+                                StopAutoEnchantOnHit(nil, resultMods, tool.Name)
                                 EnchantRunning = false
                                 return
                             end
@@ -10788,6 +10851,15 @@ do
                         EnchantView.EligibilityRetryAt = os.clock() + 15
                         EnchantView.ReadCurrent(true)
                     end
+                elseif _G.AutoRefreshEnchant and not EnchantRunning and not EnchantView.Reading
+                    and not EnchantView.Hit and not EnchantView.EligibilityBlocked
+                    and (EnchantView.NeedsRefresh or not EnchantView.Checked)
+                    and os.clock() >= EnchantAutoRefreshAt then
+                    -- AFK refresh: keep the selected weapon checked without pressing
+                    -- the refresh button. Never clears a confirmed hit, so the chosen
+                    -- enchant is preserved and no more scrolls are spent.
+                    EnchantAutoRefreshAt = os.clock() + 5
+                    EnchantView.ReadCurrent(true)
                 elseif not EnchantView.Checked or EnchantView.Reading or EnchantView.NeedsRefresh or EnchantView.Hit then
                 elseif not EnchantRunning then
                     pcall(function()
@@ -10852,7 +10924,9 @@ do
                 end
             end
         end)
-        if _G.AutoEnchantOnHeart then EnchantView.ReadCurrent(false) end
+        if _G.AutoEnchantOnHeart then
+            EnchantView.ReadCurrent(_G.AutoRefreshEnchant and true or false)
+        end
     end
     task.spawn(function()
         local PrevBribeReady = nil
