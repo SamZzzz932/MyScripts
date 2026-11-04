@@ -7187,6 +7187,14 @@ function CraftQualityList.GetCount(Prog, Etc, Key)
     end
     return value or 0
 end
+function CraftQualityList.GetInventoryCount(Etc, Key)
+    -- Cuenta real de pergaminos en el inventario (EtcItems). Nunca usa la progresion
+    -- (CraftProgression), que acumula lo fabricado y daba 10/20 sin tenerlos.
+    if type(Etc) ~= "table" then
+        return 0
+    end
+    return CraftQualityList.Lookup(Etc, Key) or 0
+end
 function CraftQualityList.GetProgressView(Prog, Etc)
     local view = {}
     for key, value in pairs(Prog or {}) do
@@ -7325,8 +7333,8 @@ task.spawn(function()
                         end
                         local mythic = byKey.MythicalScroll
                         local legendary = byKey.LegendaryScroll
-                        local mythicCount = CraftQualityList.GetCount(Prog, Etc, "MythicalScroll")
-                        local legendaryCount = CraftQualityList.GetCount(Prog, Etc, "LegendaryScroll")
+                        local mythicCount = CraftQualityList.GetInventoryCount(Etc, "MythicalScroll")
+                        local legendaryCount = CraftQualityList.GetInventoryCount(Etc, "LegendaryScroll")
                         local mythicFull = mythicCount >= 10
                         local legendaryFull = legendaryCount >= 20
                         if mythicFull and legendaryFull then
@@ -7449,7 +7457,7 @@ function AutoUnlockMythicalStep()
         end
     end
     local unlockTarget = AutoUnlockTargetKey()
-    local unlockCount = CraftQualityList.GetCount(Prog, Etc, unlockTarget)
+    local unlockCount = CraftQualityList.GetInventoryCount(Etc, unlockTarget)
     local unlockCap = (unlockTarget == "LegendaryScroll") and 20 or 10
     if unlockCount >= unlockCap then
         if _G.CraftQuality == AUTO_CRAFT_BOTH_LABEL and unlockTarget == "MythicalScroll" then
