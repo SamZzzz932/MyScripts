@@ -1309,6 +1309,7 @@ local function _tp(targetPos, abortCheck, allowNavigationOwner)
     local arrived = false
     local seatedStop = false
     local nextAbortAt = 0
+    local nextCollideAt = 0
     local connection
     connection = RunService.Stepped:Connect(function(_, deltaTime)
         local dt = deltaTime or (1 / 60)
@@ -1355,9 +1356,13 @@ local function _tp(targetPos, abortCheck, allowNavigationOwner)
                 if not aborted then
                     curHRP.CFrame = part.CFrame
                     curHRP.AssemblyLinearVelocity = Vector3.zero
-                    for _, p in ipairs(curChar:GetDescendants()) do
-                        if p:IsA("BasePart") then
-                            p.CanCollide = false
+                    local collideNow = os.clock()
+                    if collideNow >= nextCollideAt then
+                        nextCollideAt = collideNow + 0.1
+                        for _, p in ipairs(curChar:GetDescendants()) do
+                            if p:IsA("BasePart") then
+                                p.CanCollide = false
+                            end
                         end
                     end
                 end
@@ -1422,6 +1427,10 @@ local function ClearHover()
 end
 RunService.Heartbeat:Connect(function(dt)
     if _G.StopTween or NavigationOwner == "set-spawn" or NavigationOwner == "home-return" then
+        return
+    end
+    -- Nothing to hover: skip the per-frame character lookup entirely.
+    if not AttackModel and not LiveHoldFn and not HoldCFrame then
         return
     end
     local _, hrp, hum = GetCharacterParts()
@@ -6280,18 +6289,47 @@ do
         end)
         return ok
     end
+    -- Only these classes can actually be optimised; skip folders/models/scripts early
+    -- so big map loads do not flood the queue.
+    local FPSBoostEffectClasses = {
+        ParticleEmitter = true, Trail = true, Beam = true, Highlight = true,
+        Decal = true, Texture = true, Sparkles = true, Fire = true, Smoke = true,
+        PointLight = true, SpotLight = true, SurfaceLight = true, Explosion = true,
+        BlurEffect = true, BloomEffect = true, SunRaysEffect = true, DepthOfFieldEffect = true,
+        Atmosphere = true,
+    }
+    local function IsFPSBoostCandidate(obj)
+        if FPSBoostEffectClasses[obj.ClassName] then return true end
+        return obj:IsA("BasePart")
+    end
     local function ProcessFPSBoostQueue()
         if FPSBoostProcessing then return end
         FPSBoostProcessing = true
         task.spawn(function()
             while #FPSBoostQueue > 0 do
-                local batch = FPSBoostQueue
-                FPSBoostQueue = {}
-                for _, item in ipairs(batch) do
+                local started = os.clock()
+                local total = #FPSBoostQueue
+                local head = 1
+                while head <= total do
+                    local item = FPSBoostQueue[head]
+                    FPSBoostQueue[head] = nil
+                    head = head + 1
                     FPSBoostQueued[item] = nil
                     if item.Parent then
                         pcall(ApplyFPSBoostToNew, item)
                     end
+                    if os.clock() - started >= 0.004 then break end
+                end
+                if head > total then
+                    FPSBoostQueue = {}
+                else
+                    local rest = table.create(total - head + 1)
+                    local r = 0
+                    for i = head, total do
+                        r = r + 1
+                        rest[r] = FPSBoostQueue[i]
+                    end
+                    FPSBoostQueue = rest
                 end
                 task.wait()
             end
@@ -6300,6 +6338,7 @@ do
     end
     local function QueueFPSBoost(obj)
         if not _G.FPSBoost or not obj or FPSBoostQueued[obj] then return end
+        if not IsFPSBoostCandidate(obj) then return end
         FPSBoostQueued[obj] = true
         FPSBoostQueue[#FPSBoostQueue + 1] = obj
         ProcessFPSBoostQueue()
@@ -6361,38 +6400,47 @@ do
             end)
             pcall(function()
                 local sliceStarted = os.clock()
-                for _, item in ipairs(game:GetDescendants()) do
-                    if item:IsA("ParticleEmitter") then
-                        if not (item.Parent and (item.Parent.Name == "ElectricFire" or item.Parent.Name == "RelicFire")) then
+                -- Scan only the containers that actually hold visual objects instead of
+                -- every descendant of `game` (Players, Teams, services, etc.).
+                local containers = { workspace }
+                local replicated = game:GetService("ReplicatedStorage")
+                if replicated then containers[#containers + 1] = replicated end
+                local lighting = game:GetService("Lighting")
+                if lighting then containers[#containers + 1] = lighting end
+                for _, container in ipairs(containers) do
+                    for _, item in ipairs(container:GetDescendants()) do
+                        if item:IsA("ParticleEmitter") then
+                            if not (item.Parent and (item.Parent.Name == "ElectricFire" or item.Parent.Name == "RelicFire")) then
+                                item.Enabled = false
+                                item.Lifetime = NumberRange.new(0)
+                            end
+                        elseif item:IsA("Trail") then
+                            if not (item.Parent and item.Parent.Name == "RelicFire") then
+                                item.Enabled = false
+                                item.Lifetime = NumberRange.new(0)
+                            end
+                        elseif item:IsA("Sparkles") then
                             item.Enabled = false
-                            item.Lifetime = NumberRange.new(0)
-                        end
-                    elseif item:IsA("Trail") then
-                        if not (item.Parent and item.Parent.Name == "RelicFire") then
+                        elseif item:IsA("Beam") or item:IsA("Highlight") then
                             item.Enabled = false
-                            item.Lifetime = NumberRange.new(0)
+                        elseif item:IsA("Decal") or item:IsA("Texture") then
+                            item.Transparency = 1
+                        elseif item:IsA("Fire") or item:IsA("Smoke")
+                            or item:IsA("PointLight") or item:IsA("SpotLight") or item:IsA("SurfaceLight") then
+                            item.Enabled = false
+                        elseif item:IsA("Explosion") then
+                            item.Enabled = false
+                            item.BlastPressure, item.BlastRadius = 1, 1
+                        elseif item:IsA("BasePart") or item:IsA("UnionOperation") or item:IsA("CornerWedgePart") or item:IsA("TrussPart") then
+                            item.Reflectance = 0
+                            item.CastShadow = false
+                            item.Material = Enum.Material.Plastic
+                            if item:IsA("MeshPart") then
+                                pcall(function() item.TextureID = "rbxassetid://10385902758728956" end)
+                            end
                         end
-                    elseif item:IsA("Sparkles") then
-                        item.Enabled = false
-                    elseif item:IsA("Beam") or item:IsA("Highlight") then
-                        item.Enabled = false
-                    elseif item:IsA("Decal") or item:IsA("Texture") then
-                        item.Transparency = 1
-                    elseif item:IsA("Fire") or item:IsA("Smoke")
-                        or item:IsA("PointLight") or item:IsA("SpotLight") or item:IsA("SurfaceLight") then
-                        item.Enabled = false
-                    elseif item:IsA("Explosion") then
-                        item.Enabled = false
-                        item.BlastPressure, item.BlastRadius = 1, 1
-                    elseif item:IsA("BasePart") or item:IsA("UnionOperation") or item:IsA("CornerWedgePart") or item:IsA("TrussPart") then
-                        item.Reflectance = 0
-                        item.CastShadow = false
-                        item.Material = Enum.Material.Plastic
-                        if item:IsA("MeshPart") then
-                            pcall(function() item.TextureID = "rbxassetid://10385902758728956" end)
-                        end
+                        if os.clock() - sliceStarted >= 0.0042 then task.wait(); sliceStarted = os.clock() end
                     end
-                    if os.clock() - sliceStarted >= 0.0042 then task.wait(); sliceStarted = os.clock() end
                 end
             end)
             pcall(function()
@@ -6517,13 +6565,17 @@ do
         end
         return nil
     end
+    local DracoMarkerNames = {
+        DracoV4 = true, DracoHornsB = true, DracoTail = true,
+        DracoV4Aura = true, DracoAura = true,
+    }
     local function HasDracoV4Marker(char)
         if not char then return false end
-        return char:FindFirstChild("DracoV4", true) ~= nil
-            or char:FindFirstChild("DracoHornsB", true) ~= nil
-            or char:FindFirstChild("DracoTail", true) ~= nil
-            or char:FindFirstChild("DracoV4Aura", true) ~= nil
-            or char:FindFirstChild("DracoAura", true) ~= nil
+        -- One traversal instead of five recursive FindFirstChild calls.
+        for _, desc in ipairs(char:GetDescendants()) do
+            if DracoMarkerNames[desc.Name] then return true end
+        end
+        return false
     end
     local function IsOrangeAuraPart(obj)
         if not obj:IsA("BasePart") then return false end
@@ -6555,12 +6607,27 @@ do
         end
         return false
     end
-    local function HasActiveDracoAura(char)
-        if not char or not HasDracoV4Marker(char) then return false end
+    local function HasActiveDracoAura(char, markerKnown)
+        if not char then return false end
+        if not markerKnown and not HasDracoV4Marker(char) then return false end
         for _, obj in ipairs(char:GetDescendants()) do
             if IsAuraLikePart(obj) then return true end
         end
         return false
+    end
+    -- Cache per-character Draco state briefly so processing hundreds of queued
+    -- parts does not re-scan the whole character every time.
+    local DracoCharState = setmetatable({}, { __mode = "k" })
+    local function GetDracoCharState(char)
+        local now = os.clock()
+        local cached = DracoCharState[char]
+        if cached and now - cached.at < 1 then
+            return cached.marker, cached.active
+        end
+        local marker = HasDracoV4Marker(char)
+        local active = marker and HasActiveDracoAura(char, true) or false
+        DracoCharState[char] = { at = now, marker = marker, active = active }
+        return marker, active
     end
     local function IsAuraVisualEffect(obj)
         return obj:IsA("ParticleEmitter") or obj:IsA("Sparkles")
@@ -6598,27 +6665,39 @@ do
         DracoHidden[obj] = true
         pcall(function()
             if obj:IsA("BasePart") then
-                obj.LocalTransparencyModifier = 1
-                obj.Transparency = 1
-                obj.CanCollide = false
-                obj.CanTouch = false
-                obj.CanQuery = false
-                obj.CastShadow = false
+                -- Guarded writes: this runs again every 2 s over every hidden
+                -- object, so skip properties that are already set.
+                if obj.LocalTransparencyModifier ~= 1 then obj.LocalTransparencyModifier = 1 end
+                if obj.Transparency ~= 1 then obj.Transparency = 1 end
+                if obj.CanCollide then obj.CanCollide = false end
+                if obj.CanTouch then obj.CanTouch = false end
+                if obj.CanQuery then obj.CanQuery = false end
+                if obj.CastShadow then obj.CastShadow = false end
             elseif obj:IsA("ParticleEmitter") then
-                obj.Enabled = false
-                obj.Rate = 0
-                obj.Lifetime = NumberRange.new(0)
+                if obj.Enabled then obj.Enabled = false end
+                if obj.Rate ~= 0 then obj.Rate = 0 end
+                local lifetime = obj.Lifetime
+                if lifetime.Min ~= 0 or lifetime.Max ~= 0 then
+                    obj.Lifetime = NumberRange.new(0)
+                end
             elseif obj:IsA("Sparkles") or obj:IsA("Fire") or obj:IsA("Smoke")
                 or obj:IsA("PointLight") or obj:IsA("SpotLight") or obj:IsA("SurfaceLight")
                 or obj:IsA("Highlight") then
-                obj.Enabled = false
+                if obj.Enabled then obj.Enabled = false end
             elseif obj:IsA("Beam") or obj:IsA("Trail") then
-                obj.Enabled = false
-                pcall(function() obj.Lifetime = 0 end)
+                if obj.Enabled then obj.Enabled = false end
+                if obj:IsA("Trail") then
+                    local lifetime = obj.Lifetime
+                    if lifetime.Min ~= 0 or lifetime.Max ~= 0 then
+                        obj.Lifetime = NumberRange.new(0)
+                    end
+                elseif obj.Lifetime ~= 0 then
+                    obj.Lifetime = 0
+                end
             elseif obj:IsA("Decal") or obj:IsA("Texture") then
-                obj.Transparency = 1
+                if obj.Transparency ~= 1 then obj.Transparency = 1 end
             elseif obj:IsA("BillboardGui") or obj:IsA("SurfaceGui") or obj:IsA("ScreenGui") then
-                obj.Enabled = false
+                if obj.Enabled then obj.Enabled = false end
             end
         end)
     end
@@ -6643,7 +6722,16 @@ do
     local function CleanDracoCharacter(char, aggressive)
         HideDracoTree(char, aggressive)
     end
-    local function NearDracoV4(position)
+    local function NearDracoV4(position, ctx)
+        if ctx then
+            local positions = ctx.positions
+            for i = 1, #positions do
+                if (positions[i] - position).Magnitude <= 120 then
+                    return true
+                end
+            end
+            return false
+        end
         for _, player in ipairs(Players:GetPlayers()) do
             local char = player.Character
             local hrp = char and char:FindFirstChild("HumanoidRootPart")
@@ -6655,19 +6743,34 @@ do
         end
         return false
     end
-    local function IsSeparateAuraPart(obj)
+    -- Build the Draco marker positions once per scan instead of re-checking every
+    -- player for every workspace part.
+    local function BuildDracoScanContext()
+        local positions = {}
+        for _, player in ipairs(Players:GetPlayers()) do
+            local char = player.Character
+            if char and HasDracoV4Marker(char) then
+                local hrp = char:FindFirstChild("HumanoidRootPart")
+                if hrp then positions[#positions + 1] = hrp.Position end
+            end
+        end
+        return { positions = positions }
+    end
+    local function IsSeparateAuraPart(obj, ctx)
         if not IsLooseAuraPart(obj) then return false end
         if obj.Transparency < 0.2 then return false end
         if FindDracoCharacter(obj) or IsFPSBoostMapObject(obj) then return false end
-        return NearDracoV4(obj.Position)
+        return NearDracoV4(obj.Position, ctx)
     end
     local function CleanWorkspaceDracoNames()
         if not _G.RemoveDracoAura then return end
         for _, obj in ipairs(workspace:GetChildren()) do
             if not _G.RemoveDracoAura then return end
-            local isPlayerCharacter = obj:IsA("Model") and Players:GetPlayerFromCharacter(obj) ~= nil
-            if not isPlayerCharacter and not IsFPSBoostMapObject(obj) and IsDracoName(obj.Name) then
-                pcall(CleanDracoRoot, obj, true)
+            if IsDracoName(obj.Name) then
+                local isPlayerCharacter = obj:IsA("Model") and Players:GetPlayerFromCharacter(obj) ~= nil
+                if not isPlayerCharacter and not IsFPSBoostMapObject(obj) then
+                    pcall(CleanDracoRoot, obj, true)
+                end
             end
         end
     end
@@ -6685,9 +6788,14 @@ do
         DracoAuraProcessing = true
         task.spawn(function()
             while #DracoAuraQueue > 0 do
-                local batch = DracoAuraQueue
-                DracoAuraQueue = {}
-                for _, item in ipairs(batch) do
+                local started = os.clock()
+                local total = #DracoAuraQueue
+                local head = 1
+                local ctx = nil
+                while head <= total do
+                    local item = DracoAuraQueue[head]
+                    DracoAuraQueue[head] = nil
+                    head = head + 1
                     DracoAuraQueued[item] = nil
                     if _G.RemoveDracoAura and item.Parent then
                         pcall(function()
@@ -6700,32 +6808,55 @@ do
                                 return
                             end
                             local char = FindDracoCharacter(item)
-                            if char and HasDracoV4Marker(char) then
-                                HideDracoTree(item, HasActiveDracoAura(char))
-                                return
+                            if char then
+                                local marker, active = GetDracoCharState(char)
+                                if marker then
+                                    HideDracoTree(item, active)
+                                    return
+                                end
                             end
                             local part = NearestPartOf(item)
-                            if part and NearDracoV4(part.Position)
-                                and (IsOrangeAuraPart(part) or IsSeparateAuraPart(part)) then
-                                HideDracoTree(part, true)
+                            if part then
+                                ctx = ctx or BuildDracoScanContext()
+                                if #ctx.positions > 0 and NearDracoV4(part.Position, ctx)
+                                    and (IsOrangeAuraPart(part) or IsSeparateAuraPart(part, ctx)) then
+                                    HideDracoTree(part, true)
+                                end
                             end
                         end)
                     end
+                    if os.clock() - started >= 0.004 then break end
+                end
+                if head > total then
+                    DracoAuraQueue = {}
+                else
+                    local rest = table.create(total - head + 1)
+                    local r = 0
+                    for i = head, total do
+                        r = r + 1
+                        rest[r] = DracoAuraQueue[i]
+                    end
+                    DracoAuraQueue = rest
                 end
                 task.wait()
             end
             DracoAuraProcessing = false
         end)
     end
+    local DracoActiveNow
     local function QueueDracoAura(obj)
         if not _G.RemoveDracoAura or not obj or DracoAuraQueued[obj] then return end
-        if not IsDracoName(obj.Name) then
-            if IsFPSBoostMapObject(obj) then return end
+        local dracoName = IsDracoName(obj.Name)
+        if not dracoName then
+            -- Fast bail while nobody has Draco equipped: avoids touching every
+            -- object the map streams in.
+            if not (DracoActiveNow and DracoActiveNow()) then return end
             local visual = obj:IsA("BasePart") or IsAuraVisualEffect(obj)
                 or obj:IsA("Decal") or obj:IsA("Texture")
                 or obj:IsA("BillboardGui") or obj:IsA("SurfaceGui")
                 or obj:IsA("Model") or obj:IsA("Folder") or obj:IsA("Attachment")
             if not visual then return end
+            if IsFPSBoostMapObject(obj) then return end
         end
         DracoAuraQueued[obj] = true
         DracoAuraQueue[#DracoAuraQueue + 1] = obj
@@ -6739,29 +6870,44 @@ do
         end
         return false
     end
+    local DracoPresenceAt, DracoPresenceValue = 0, false
+    DracoActiveNow = function()
+        local now = os.clock()
+        if now - DracoPresenceAt < 1 then return DracoPresenceValue end
+        DracoPresenceAt = now
+        DracoPresenceValue = HasAnyDracoMarker()
+        return DracoPresenceValue
+    end
     local function ScanWorkspaceDraco()
-        if DracoAuraScanning or not _G.RemoveDracoAura or not HasAnyDracoMarker() then return end
+        if DracoAuraScanning or not _G.RemoveDracoAura then return end
+        local ctx = BuildDracoScanContext()
+        if #ctx.positions == 0 then return end
         DracoAuraScanning = true
         task.spawn(function()
-            local scanned = 0
+            local sliceStarted = os.clock()
             for _, obj in ipairs(workspace:GetDescendants()) do
                 if not _G.RemoveDracoAura then break end
-                pcall(function()
-                    if IsFPSBoostMapObject(obj) then
-                        return
-                    end
-                    if IsDracoName(obj.Name) then
-                        local isPlayerCharacter = obj:IsA("Model") and Players:GetPlayerFromCharacter(obj) ~= nil
-                        if not isPlayerCharacter then
+                -- Only draco-named objects or base parts can be hidden here;
+                -- everything else is skipped without any ancestry checks.
+                local dracoName = IsDracoName(obj.Name)
+                if dracoName or obj:IsA("BasePart") then
+                    pcall(function()
+                        if IsFPSBoostMapObject(obj) then return end
+                        if dracoName then
+                            local isPlayerCharacter = obj:IsA("Model") and Players:GetPlayerFromCharacter(obj) ~= nil
+                            if not isPlayerCharacter then
+                                HideDracoTree(obj, true)
+                            end
+                        elseif NearDracoV4(obj.Position, ctx)
+                            and (IsOrangeAuraPart(obj) or IsSeparateAuraPart(obj, ctx)) then
                             HideDracoTree(obj, true)
                         end
-                    elseif obj:IsA("BasePart") and NearDracoV4(obj.Position)
-                        and (IsOrangeAuraPart(obj) or IsSeparateAuraPart(obj)) then
-                        HideDracoTree(obj, true)
-                    end
-                end)
-                scanned = scanned + 1
-                if scanned % 500 == 0 then task.wait() end
+                    end)
+                end
+                if os.clock() - sliceStarted >= 0.004 then
+                    task.wait()
+                    sliceStarted = os.clock()
+                end
             end
             DracoAuraScanning = false
         end)
@@ -6771,19 +6917,29 @@ do
         DracoAuraHooked = true
         pcall(function() workspace.DescendantAdded:Connect(QueueDracoAura) end)
         task.spawn(function()
+            local wasPresent = false
             while true do
                 task.wait(2)
                 if _G.RemoveDracoAura then
+                    local present = false
                     for _, player in ipairs(Players:GetPlayers()) do
                         local char = player.Character
                         if char then
-                            if HasActiveDracoAura(char) then
+                            local marker, active = GetDracoCharState(char)
+                            if marker then present = true end
+                            if active then
                                 pcall(CleanDracoCharacter, char, true)
-                            elseif HasDracoV4Marker(char) then
+                            elseif marker then
                                 pcall(CleanDracoCharacter, char, false)
                             end
                         end
                     end
+                    -- When Draco first appears, sweep whatever the map already
+                    -- streamed in before the marker existed.
+                    if present and not wasPresent then
+                        pcall(ScanWorkspaceDraco)
+                    end
+                    wasPresent = present
                     pcall(CleanWorkspaceDracoNames)
                     for obj in pairs(DracoHidden) do
                         if not obj.Parent then
@@ -6818,9 +6974,10 @@ local function ApplySailNoclip(on)
     local boats = workspace:FindFirstChild("Boats")
     if boats then
         for _, boat in ipairs(boats:GetChildren()) do
+            local target = not on
             for _, d in ipairs(boat:GetDescendants()) do
-                if d:IsA("BasePart") then
-                    d.CanCollide = not on
+                if d:IsA("BasePart") and d.CanCollide ~= target then
+                    d.CanCollide = target
                 end
             end
         end
@@ -6830,12 +6987,16 @@ local function ApplySailNoclip(on)
         if char then
             for _, d in ipairs(char:GetDescendants()) do
                 if d:IsA("BasePart") then
+                    local target
                     if on then
-                        d.CanCollide = false
+                        target = false
                     else
-                        d.CanCollide = d.Name == "HumanoidRootPart"
+                        target = d.Name == "HumanoidRootPart"
                             or d.Name:find("LowerTorso") ~= nil
                             or d.Name:find("UpperTorso") ~= nil
+                    end
+                    if d.CanCollide ~= target then
+                        d.CanCollide = target
                     end
                 end
             end
@@ -6850,10 +7011,18 @@ _G.Abyss_ResetMapNoclipState = function()
     RestoreWallClip()
 end
 task.spawn(function()
+    local lastApplied, lastApplyAt = nil, 0
     while task.wait(0.1) do
         local on = (os.clock() - LastSailAt) < 0.5
         if on or SailNoclipOn then
-            pcall(ApplySailNoclip, on)
+            local now = os.clock()
+            -- Re-apply only on state change or every 0.5 s while sailing.
+            if on ~= lastApplied or now - lastApplyAt >= 0.5 then
+                pcall(ApplySailNoclip, on)
+                lastApplied, lastApplyAt = on, now
+            end
+        else
+            lastApplied = nil
         end
         SailNoclipOn = on
     end
@@ -7896,11 +8065,11 @@ do
         end
     end
     local function sweep()
+        -- Root.Parent contains Root, so one traversal is enough.
+        local root = Window and Window.Root
+        local container = (root and root.Parent) or root
         pcall(function()
-            recolor(Window and Window.Root)
-        end)
-        pcall(function()
-            recolor(Window and Window.Root and Window.Root.Parent)
+            recolor(container)
         end)
         local parent = (gethui and gethui()) or game:GetService("CoreGui")
         for _, name in ipairs({ "AbyssInfo", "Abyss_FloatingBall", "Abyss_EnchantView", "Abyss_Error", "Abyss_Boot" }) do
@@ -11434,12 +11603,27 @@ do
             end
         end
         if CatDrawing then
+            local lastPos, lastSize = nil, nil
             _G.Abyss_CatDrawConn = RunService.RenderStepped:Connect(function()
-                pcall(function()
-                    CatDrawing.Position = Ball.AbsolutePosition
-                    CatDrawing.Size = Ball.AbsoluteSize
-                    CatDrawing.Visible = BallGui.Enabled
-                end)
+                -- Cheap early out while the floating orb is hidden.
+                if not BallGui.Enabled then
+                    if CatDrawing.Visible then
+                        pcall(function() CatDrawing.Visible = false end)
+                    end
+                    return
+                end
+                local pos = Ball.AbsolutePosition
+                local size = Ball.AbsoluteSize
+                if pos ~= lastPos or size ~= lastSize then
+                    lastPos, lastSize = pos, size
+                    pcall(function()
+                        CatDrawing.Position = pos
+                        CatDrawing.Size = size
+                    end)
+                end
+                if not CatDrawing.Visible then
+                    pcall(function() CatDrawing.Visible = true end)
+                end
             end)
         end
         local dragging, moved, dragLast, movedDist = false, false, nil, 0
