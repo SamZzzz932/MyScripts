@@ -1043,6 +1043,10 @@ end
 if type(_G.WebhookUsername) ~= "string" or _G.WebhookUsername == "" or _G.WebhookUsername == "Abyss" then
     _G.WebhookUsername = "Leviatan"
 end
+-- Configs viejas: AutoWebhook necesitaba ademas el toggle de progreso.
+if _G.AutoWebhook == true and _G.WebhookSendProgress ~= true then
+    _G.WebhookSendProgress = true
+end
 pcall(function()
     if collectgarbage then
         collectgarbage("setpause", 100)
@@ -7772,24 +7776,6 @@ local function CraftStep(quality)
         CraftQualityList.StopReason = full
         return full
     end
-    if not NearCraftNPC(80) then
-        if _G.AutoLeviathanFull or _G.SoloSeaFarm then
-            return TranslateStatus("Deten el farmeo y ve al Dragon Talon Sage (Tiki) para craftear")
-        end
-        if NavigationOwner and NavigationOwner ~= "craft-npc" then
-            return TranslateStatus("Navegacion ocupada; ve al Dragon Talon Sage para craftear")
-        end
-        NavigationOwner = "craft-npc"
-        pcall(function()
-            _tp(CRAFT_NPC_POS, function()
-                return NavigationOwner ~= "craft-npc"
-            end, true)
-        end)
-        if NavigationOwner == "craft-npc" then
-            NavigationOwner = nil
-        end
-        return TranslateStatus("Yendo al Dragon Talon Sage para craftear...")
-    end
     local craftKey, chainError, detail, current, required =
         CraftQualityList.GetNextUnlockKey(Recipes, Prog, Etc, targetKey)
     if not craftKey then
@@ -7953,27 +7939,6 @@ function AutoUnlockMythicalStep()
                 return
             end
         end
-    end
-    if not NearCraftNPC(80) then
-        if _G.AutoLeviathanFull or _G.SoloSeaFarm then
-            CraftStatus = TranslateStatus("Deten el farmeo y ve al Dragon Talon Sage (Tiki) para craftear")
-            return
-        end
-        if NavigationOwner and NavigationOwner ~= "craft-npc" then
-            CraftStatus = TranslateStatus("Navegacion ocupada; ve al Dragon Talon Sage para craftear")
-            return
-        end
-        NavigationOwner = "craft-npc"
-        pcall(function()
-            _tp(CRAFT_NPC_POS, function()
-                return NavigationOwner ~= "craft-npc"
-            end, true)
-        end)
-        if NavigationOwner == "craft-npc" then
-            NavigationOwner = nil
-        end
-        CraftStatus = TranslateStatus("Yendo al Dragon Talon Sage para craftear...")
-        return
     end
     local unlockTarget = AutoUnlockTargetKey()
     local unlockCount = CraftQualityList.GetInventoryCount(Etc, unlockTarget)
@@ -9295,10 +9260,6 @@ do
     local GoCraftButton = Tabs.Extra:AddButton({
         Title = T("craft.go.npc"),
         Callback = function()
-            if _G.AutoLeviathanFull or _G.SoloSeaFarm then
-                SendNotify(T("notify.title"), T("craft.npc.farm"))
-                return
-            end
             if NavigationOwner and NavigationOwner ~= "craft-npc" then
                 SendNotify(T("notify.title"), T("craft.npc.busy"))
                 return
@@ -9708,6 +9669,7 @@ do
 end
 do
     local WebhookSendLock = false
+    local WebhookSendStarted = 0
     local AvatarCache = {}
     local function TrimWebhookText(value)
         return tostring(value or ""):match("^%s*(.-)%s*$") or ""
@@ -9754,16 +9716,18 @@ do
             return false, message
         end
         if WebhookSendLock then
-            if onDone then onDone(false) end
-            return false
+            -- Si el executor nunca respondio, se libera el cerrojo para no
+            -- dejar el webhook bloqueado para siempre.
+            if os.clock() - WebhookSendStarted < 15 then
+                if onDone then onDone(false) end
+                return false
+            end
+            WebhookSendLock = false
         end
         local req = (syn and syn.request) or (http and http.request) or http_request or request
         local httpPost = http and http.post
-        if not req and not httpPost then
-            if onDone then onDone(false) end
-            return false, "no request api"
-        end
         WebhookSendLock = true
+        WebhookSendStarted = os.clock()
         task.spawn(function()
             local ok = false
             local errText
@@ -9850,23 +9814,50 @@ do
                     end
                 end
                 local resp
-                if httpPost and not req then
-                    resp = httpPost(webhookUrl, HttpServiceLocal:JSONEncode(payload), headers)
-                else
-                    resp = req({
+                local encoded = HttpServiceLocal:JSONEncode(payload)
+                local postErr
+                if req then
+                    local okReq, reqResp = pcall(req, {
                         Url = webhookUrl,
                         Method = "POST",
                         Headers = headers,
-                        Body = HttpServiceLocal:JSONEncode(payload)
+                        Body = encoded
                     })
+                    if okReq then
+                        resp = reqResp
+                    else
+                        postErr = tostring(reqResp)
+                    end
                 end
-                local code = tonumber(resp and (resp.StatusCode or resp.statusCode or resp.Status or resp.status))
+                if resp == nil and httpPost then
+                    local okPost, postResp = pcall(httpPost, webhookUrl, encoded, headers)
+                    if okPost then
+                        resp = postResp
+                    else
+                        postErr = postErr or tostring(postResp)
+                    end
+                end
+                if resp == nil then
+                    -- Ultimo recurso: HttpService (necesita HttpEnabled).
+                    local okHttp, postResult = pcall(function()
+                        return HttpServiceLocal:PostAsync(webhookUrl, encoded,
+                            Enum.HttpContentType.ApplicationJson)
+                    end)
+                    if okHttp then
+                        resp = { StatusCode = 200, Body = tostring(postResult or "") }
+                    else
+                        errText = "sin API de request: " .. tostring(postErr or postResult)
+                        print("[Abyss] Webhook: " .. tostring(errText))
+                    end
+                end
+                local code = tonumber(resp and (resp.StatusCode or resp.statusCode or resp.status_code
+                    or resp.Status or resp.status or resp.code))
                 if resp == nil then
                     ok = false
-                    errText = "sin respuesta del executor"
+                    errText = errText or "sin respuesta del executor"
                     print("[Abyss] Webhook: " .. tostring(errText))
                 elseif code then
-                    ok = (code == 200 or code == 204)
+                    ok = (code >= 200 and code < 300)
                     if not ok then
                         local rawBody = type(resp) == "table" and (resp.Body or resp.body or resp.Content) or tostring(resp)
                         errText = "HTTP " .. tostring(code) .. " " .. tostring(rawBody or ""):sub(1, 180)
@@ -9904,7 +9895,7 @@ do
                 WebhookStatusPara:SetDesc(T("webhook.sent") .. os.date("%H:%M:%S"))
             else
                 local text = T("wh.sendfailed")
-                if reason and reason ~= "" and not tostring(reason):match("^HTTP ") then
+                if reason and reason ~= "" then
                     text = text .. " (" .. tostring(reason):sub(1, 100) .. ")"
                 end
                 WebhookStatusPara:SetDesc(text)
@@ -9978,7 +9969,7 @@ do
         Description = T("webhook.url.desc"),
         Default = _G.WebhookURL,
         Placeholder = "https://discord.com/api/webhooks/...",
-        Finished = true,
+        Finished = false,
         Callback = function(Text)
             _G.WebhookURL = TrimWebhookText(Text)
             SaveConfig()
@@ -9989,21 +9980,31 @@ do
         Description = T("webhook.username.desc"),
         Default = _G.WebhookUsername,
         Placeholder = "Leviatan",
-        Finished = true,
+        Finished = false,
         Callback = function(Text)
             _G.WebhookUsername = TrimWebhookText(Text)
             SaveConfig()
         end,
     })
-    Tabs.Webhook:AddToggle("webhook.auto", {
+    local AutoWebhookToggle = Tabs.Webhook:AddToggle("webhook.auto", {
         Title = T("webhook.auto"),
         Description = T("webhook.auto.desc"),
         Default = _G.AutoWebhook,
         Callback = function(State)
             _G.AutoWebhook = State
+            if State then
+                -- Con AutoWebhook basta para recibir el progreso periodico.
+                _G.WebhookSendProgress = true
+                if _G.Abyss_WebhookProgressToggle then
+                    pcall(function()
+                        _G.Abyss_WebhookProgressToggle:SetValue(true)
+                    end)
+                end
+            end
             SaveConfig()
         end,
     })
+    _G.Abyss_AutoWebhookToggle = AutoWebhookToggle
     Tabs.Webhook:AddInput("webhook.interval", {
         Title = T("webhook.interval"),
         Description = "",
@@ -10019,7 +10020,7 @@ do
             end
         end,
     })
-    Tabs.Webhook:AddToggle("webhook.send.progress", {
+    local WebhookProgressToggle = Tabs.Webhook:AddToggle("webhook.send.progress", {
         Title = T("webhook.send.progress"),
         Description = T("webhook.send.progress.desc"),
         Default = _G.WebhookSendProgress,
@@ -10028,6 +10029,7 @@ do
             SaveConfig()
         end,
     })
+    _G.Abyss_WebhookProgressToggle = WebhookProgressToggle
     Tabs.Webhook:AddToggle("webhook.send.enchant", {
         Title = T("webhook.send.enchant"),
         Description = "",
