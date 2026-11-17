@@ -248,6 +248,10 @@ T, ModeDisplay = (function()
         ["cruise.return.desc"] = { en = "On: cruises back and forth between points A and B. Off: sails straight ahead without turning around", es = "Activado: va y vuelve entre los puntos A y B. Desactivado: navega en linea recta sin dar la vuelta" },
         ["craft.auto"] = { en = "Auto Craft", es = "Fabricar automáticamente" },
         ["craft.auto.desc"] = { en = "Auto craft scrolls of selected quality", es = "Fabrica pergaminos de la calidad elegida" },
+        ["craft.go.npc"] = { en = "Go to Dragon Talon Sage", es = "Ir al Dragon Talon Sage" },
+        ["craft.npc.busy"] = { en = "Navigation is busy; stop the farm first", es = "La navegacion esta ocupada; deten el farmeo primero" },
+        ["craft.npc.done"] = { en = "Teleport sent", es = "Teletransporte enviado" },
+        ["craft.npc.farm"] = { en = "Stop the auto farm before going to the craft NPC", es = "Deten el auto farmeo antes de ir al NPC de craft" },
         ["craft.miss.item"] = { en = "Missing {k} ({a}/{b})", es = "Falta {k} ({a}/{b})" },
         ["craft.miss.progress"] = { en = "Missing progress {k} ({a}/{b})", es = "Falta progreso {k} ({a}/{b})" },
         ["craft.quality"] = { en = "Scroll Quality", es = "Calidad del pergamino" },
@@ -379,7 +383,7 @@ T, ModeDisplay = (function()
         ["enchant.weapon"] = { en = "Weapon", es = "Arma" },
         ["enchant.refresh"] = { en = "Refresh Weapon List", es = "Actualizar lista de armas" },
         ["enchant.wanted"] = { en = "Wanted enchants", es = "Encantamientos deseados" },
-        ["enchant.wanted.desc"] = { en = "Pick the curses and uniques you want. Reaper is always selected; the stop rule is chosen below", es = "Marca los curses y uniques que quieres. Reaper queda siempre seleccionado; la regla de parada se elige abajo" },
+        ["enchant.wanted.desc"] = { en = "Pick the curses and uniques you want; the stop rule is chosen below", es = "Marca los curses y uniques que quieres; la regla de parada se elige abajo" },
         ["enchant.stopmode"] = { en = "Stop rule", es = "Modo de parada" },
         ["enchant.stopmode.desc"] = { en = "Choose when the auto enchant stops rolling", es = "Elige cuándo deja de girar el auto enchant" },
         ["enchant.stop.all"] = { en = "Curse + unique together", es = "Curse + unique juntos" },
@@ -896,6 +900,7 @@ local ConfigKeys = {
     "EnchantWeaponName",
     "EnchantWanted",
     "EnchantStopMode",
+    "Abyss_ReaperManual",
     "AutoRandomFruit",
     "AutoStoreFruits",
     "WebhookSendFruit",
@@ -1013,6 +1018,27 @@ end
 LoadConfig()
 -- FPS Boost is always enabled when the script starts (still toggleable in the UI).
 _G.FPSBoost = true
+-- Reaper deja de seleccionarse solo: se quita una vez de las configs viejas.
+-- Despues el usuario puede marcarlo o desmarcarlo como cualquier otro enchant.
+if _G.Abyss_ReaperManual ~= true then
+    local wanted = {}
+    if type(_G.EnchantWanted) == "table" then
+        for _, name in ipairs(_G.EnchantWanted) do
+            if type(name) == "string" and name ~= "Reaper" then
+                wanted[#wanted + 1] = name
+            end
+        end
+        for name, enabled in pairs(_G.EnchantWanted) do
+            if type(name) == "string" and enabled == true and name ~= "Reaper"
+                and not table.find(wanted, name) then
+                wanted[#wanted + 1] = name
+            end
+        end
+    end
+    _G.EnchantWanted = wanted
+    _G.Abyss_ReaperManual = true
+    SaveConfig()
+end
 -- Previous builds saved the old default name; keep custom names but migrate that default.
 if type(_G.WebhookUsername) ~= "string" or _G.WebhookUsername == "" or _G.WebhookUsername == "Abyss" then
     _G.WebhookUsername = "Leviatan"
@@ -7409,37 +7435,157 @@ function CraftQualityList.GetProgressView(Prog, Etc)
     end
     return view
 end
-function CraftQualityList.GetNextUnlockKey(Recipes, Prog, Key, Depth)
+local function NormalizeKey(value)
+    return (tostring(value or ""):lower():gsub("[%s_%-]", ""))
+end
+-- Busca una cantidad tolerando diferencias de nombre entre las tablas del juego
+-- ("LegendaryScroll", "Legendary Scroll", "legendary_scroll", etc.).
+local function LookupCount(source, key)
+    if type(source) ~= "table" then
+        return nil
+    end
+    local value = CountValue(source[key])
+    if value ~= nil then
+        return value
+    end
+    local canonical = CraftQualityList.GetKey(key)
+    if canonical then
+        value = CraftQualityList.Lookup(source, canonical)
+        if value ~= nil then
+            return value
+        end
+    end
+    local wanted = NormalizeKey(key)
+    for sourceKey, rawValue in pairs(source) do
+        if NormalizeKey(sourceKey) == wanted then
+            local count = CountValue(rawValue)
+            if count ~= nil then
+                return count
+            end
+        end
+    end
+    return nil
+end
+local function GetProgressCount(Prog, Etc, key)
+    local value = LookupCount(Prog, key)
+    -- Los pergaminos tambien cuentan si estan en el inventario: la progresion del
+    -- juego no siempre registra los misticos y bloqueaba los legendarios.
+    if CraftQualityList.GetKey(key) then
+        local stock = LookupCount(Etc, key)
+        if stock ~= nil and (value == nil or stock > value) then
+            value = stock
+        end
+    end
+    if value == nil then
+        value = LookupCount(Etc, key)
+    end
+    return value or 0
+end
+local function AsRecipeTable(value)
+    if type(value) == "table" then
+        return value
+    end
+    return nil
+end
+local function GetRecipeProgress(recipe)
+    return AsRecipeTable(recipe.ProgressionRequirement)
+        or AsRecipeTable(recipe.ProgressionRequirements)
+        or AsRecipeTable(recipe.ProgressRequirement)
+        or {}
+end
+local function GetRecipeIngredients(recipe)
+    return AsRecipeTable(recipe.Ingredients)
+        or AsRecipeTable(recipe.Materials)
+        or AsRecipeTable(recipe.Items)
+        or AsRecipeTable(recipe.Cost)
+        or {}
+end
+local function FindRecipe(Recipes, key)
+    if type(Recipes) ~= "table" then
+        return nil, key
+    end
+    if type(Recipes[key]) == "table" then
+        return Recipes[key], key, key
+    end
+    local canonical = CraftQualityList.GetKey(key)
+    if canonical and canonical ~= key and type(Recipes[canonical]) == "table" then
+        return Recipes[canonical], canonical, canonical
+    end
+    local wanted = NormalizeKey(key)
+    for recipeKey, recipe in pairs(Recipes) do
+        if type(recipe) == "table" then
+            local candidates = { recipeKey, recipe.Key, recipe.Id, recipe.Name, recipe.Quality }
+            for _, candidate in ipairs(candidates) do
+                if candidate ~= nil and NormalizeKey(candidate) == wanted then
+                    return recipe, (CraftQualityList.GetKey(candidate) or canonical or key), recipeKey
+                end
+            end
+        end
+    end
+    return nil, key
+end
+function CraftQualityList.GetNextUnlockKey(Recipes, Prog, Etc, Key, Depth, Seen)
     Depth = Depth or 0
-    if Depth > #CraftQualityList then
+    Seen = Seen or {}
+    if Depth > #CraftQualityList + 2 then
         return nil, "depth"
     end
     local canonical = CraftQualityList.GetKey(Key) or Key
-    local recipe = Recipes[canonical]
+    if Seen[canonical] then
+        -- Cadena circular (por ejemplo Legendary <-> Mythical): no se puede
+        -- resolver sola, el llamador intenta la receta destino y muestra
+        -- exactamente que requisito falta.
+        return nil, "cycle", canonical
+    end
+    Seen[canonical] = true
+    local recipe = FindRecipe(Recipes, canonical)
     if not recipe then
+        Seen[canonical] = nil
         return nil, "recipe", canonical
     end
-    for progressKey, required in pairs(recipe.ProgressionRequirement or {}) do
+    for progressKey, required in pairs(GetRecipeProgress(recipe)) do
         local dependency = CraftQualityList.GetKey(progressKey)
-        local current = CraftQualityList.Lookup(Prog, progressKey) or 0
+        local current = GetProgressCount(Prog, Etc, progressKey)
         local needed = tonumber(required) or 0
         if current < needed then
             if not dependency then
+                Seen[canonical] = nil
                 return nil, "progress", progressKey, current, needed
             end
-            return CraftQualityList.GetNextUnlockKey(Recipes, Prog, dependency, Depth + 1)
+            local stepKey, stepError, stepDetail, stepCurrent, stepRequired =
+                CraftQualityList.GetNextUnlockKey(Recipes, Prog, Etc, dependency, Depth + 1, Seen)
+            if stepKey then
+                Seen[canonical] = nil
+                return stepKey, stepError, stepDetail, stepCurrent, stepRequired
+            end
+            if stepError ~= "cycle" then
+                Seen[canonical] = nil
+                return nil, stepError, stepDetail, stepCurrent, stepRequired
+            end
+            -- Ciclo con este requisito: se prueba con el siguiente.
         end
     end
-    for ingredientKey, required in pairs(recipe.Ingredients or {}) do
+    for ingredientKey, required in pairs(GetRecipeIngredients(recipe)) do
         if type(ingredientKey) == "string" then
             local dependency = CraftQualityList.GetKey(ingredientKey)
-            local current = dependency and (CraftQualityList.Lookup(Prog, dependency) or 0) or nil
+            local current = dependency and (LookupCount(Etc, dependency) or 0) or nil
             local needed = tonumber(required) or 0
             if dependency and current < needed then
-                return CraftQualityList.GetNextUnlockKey(Recipes, Prog, dependency, Depth + 1)
+                local stepKey, stepError, stepDetail, stepCurrent, stepRequired =
+                    CraftQualityList.GetNextUnlockKey(Recipes, Prog, Etc, dependency, Depth + 1, Seen)
+                if stepKey then
+                    Seen[canonical] = nil
+                    return stepKey, stepError, stepDetail, stepCurrent, stepRequired
+                end
+                if stepError ~= "cycle" then
+                    Seen[canonical] = nil
+                    return nil, stepError, stepDetail, stepCurrent, stepRequired
+                end
+                -- Ciclo con este ingrediente: se prueba con el siguiente.
             end
         end
     end
+    Seen[canonical] = nil
     return canonical
 end
 local CraftRecipesCache = nil
@@ -7467,48 +7613,235 @@ local function GetCraftData()
     end
     return nil, nil
 end
-local function CheckCraftRecipe(r, Etc, Prog, UseScrollLookup)
-    if UseScrollLookup then
-        for k, v in pairs(r.ProgressionRequirement or {}) do
-            local current = CraftQualityList.Lookup(Prog, k) or 0
+local function CheckCraftRecipe(r, Etc, Prog)
+    for k, v in pairs(GetRecipeProgress(r)) do
+        local current = GetProgressCount(Prog, Etc, k)
+        local required = tonumber(v) or 0
+        if current < required then
+            return false, TranslateStatus("Falta progreso " .. tostring(k) .. " (" .. current .. "/" .. required .. ")")
+        end
+    end
+    for k, v in pairs(GetRecipeIngredients(r)) do
+        if type(k) == "string" then
+            local current = LookupCount(Etc, k) or 0
             local required = tonumber(v) or 0
             if current < required then
-                return false, TranslateStatus("Falta progreso " .. tostring(k) .. " (" .. current .. "/" .. required .. ")")
-            end
-        end
-        for k, v in pairs(r.Ingredients or {}) do
-            if type(k) == "string" then
-                local current = CountValue(Etc and Etc[k]) or 0
-                local required = tonumber(v) or 0
-                if current < required then
-                    return false, TranslateStatus("Falta " .. k .. " (" .. current .. "/" .. required .. ")")
-                end
-            end
-        end
-        return true
-    end
-    for k, v in pairs(r.ProgressionRequirement or {}) do
-        if (Prog[k] or 0) < v then
-            return false, TranslateStatus("Falta progreso " .. k .. " (" .. (Prog[k] or 0) .. "/" .. v .. ")")
-        end
-    end
-    for k, v in pairs(r.Ingredients or {}) do
-        if type(k) == "string" then
-            if (Etc[k] or 0) < v then
-                return false, TranslateStatus("Falta " .. k .. " (" .. (Etc[k] or 0) .. "/" .. v .. ")")
+                return false, TranslateStatus("Falta " .. k .. " (" .. current .. "/" .. required .. ")")
             end
         end
     end
     return true
 end
-function TryCraft(key)
+local CRAFT_NPC_POS = Vector3.new(-15906.6494, 483.391998, 945.215027)
+local function NearCraftNPC(range)
+    local _, hrp = GetCharacterParts()
+    if not hrp then
+        return false
+    end
+    return (hrp.Position - CRAFT_NPC_POS).Magnitude <= (range or 80)
+end
+
+local function TotalEtcCount(Etc)
+    local total = 0
+    if type(Etc) ~= "table" then
+        return total
+    end
+    for _, value in pairs(Etc) do
+        local count = CountValue(value)
+        if count then
+            total = total + count
+        end
+    end
+    return total
+end
+
+-- The game remote signature changed between updates. Try one signature per
+-- attempt and verify the inventory; never report a craft that did not happen.
+local CRAFT_SIGNATURES = {
+    { "Craft", "__KEY__", 1, {} },
+    { "__KEY__", 1, {} },
+    { "Craft", "__KEY__", 1 },
+    { "__KEY__", 1 },
+    { "Craft", "__KEY__" },
+    { "__KEY__" },
+    { { Recipe = "__KEY__", Amount = 1 } },
+    { "Craft", { Recipe = "__KEY__", Amount = 1 } },
+    { "__KEY__", { Amount = 1 } },
+    { "Craft", "__KEY__", { Amount = 1 } },
+}
+local function ReplaceCraftKey(value, key)
+    if type(value) == "table" then
+        local out = {}
+        for k, v in pairs(value) do
+            out[k] = ReplaceCraftKey(v, key)
+        end
+        return out
+    end
+    if value == "__KEY__" then
+        return key
+    end
+    return value
+end
+local function BuildCraftArgs(signature, key)
+    local args = {}
+    for i, value in ipairs(signature) do
+        args[i] = ReplaceCraftKey(value, key)
+    end
+    return args
+end
+function TryCraft(key, targetKey)
     local RF = RS.Modules and RS.Modules:FindFirstChild("Net") and RS.Modules.Net:FindFirstChild("RF/Craft")
     if not RF then
-        return
+        return "noremote"
     end
-    pcall(function()
-        RF:InvokeServer("Craft", key, 1, {})
+    local beforeEtc, beforeProg = GetCraftData()
+    if type(beforeEtc) ~= "table" then
+        return "nodata"
+    end
+    local checkKey = targetKey or key
+    local beforeInv = CraftQualityList.GetInventoryCount(beforeEtc, key)
+    local beforeTarget = CraftQualityList.GetInventoryCount(beforeEtc, checkKey)
+    local beforeProgress = CraftQualityList.GetCount(beforeProg, beforeEtc, key)
+    local beforeTotal = TotalEtcCount(beforeEtc)
+
+    local sigIndex = tonumber(_G.Abyss_CraftSignature) or 1
+    if sigIndex < 1 or sigIndex > #CRAFT_SIGNATURES then
+        sigIndex = 1
+    end
+    local args = BuildCraftArgs(CRAFT_SIGNATURES[sigIndex], key)
+    local ok, result = pcall(function()
+        return RF:InvokeServer(unpack(args))
     end)
+    if ok then
+        task.wait(1.0)
+        local afterEtc, afterProg = GetCraftData()
+        if type(afterEtc) == "table" then
+            local afterInv = CraftQualityList.GetInventoryCount(afterEtc, key)
+            local afterTarget = CraftQualityList.GetInventoryCount(afterEtc, checkKey)
+            local afterProgress = CraftQualityList.GetCount(afterProg, afterEtc, key)
+            local afterTotal = TotalEtcCount(afterEtc)
+            if afterInv > beforeInv or afterTarget > beforeTarget then
+                _G.Abyss_CraftSignature = sigIndex
+                return "ok", sigIndex
+            end
+            if afterProgress > beforeProgress then
+                _G.Abyss_CraftSignature = sigIndex
+                return "progress", sigIndex
+            end
+            if afterTotal < beforeTotal then
+                _G.Abyss_CraftSignature = sigIndex
+                return "consumed", sigIndex
+            end
+        end
+        if result ~= nil and result ~= false then
+            _G.Abyss_CraftSignature = sigIndex
+            return "accepted", sigIndex
+        end
+    end
+    -- No inventory/progression change: try the next signature next time.
+    _G.Abyss_CraftSignature = (sigIndex % #CRAFT_SIGNATURES) + 1
+    return "rejected", sigIndex
+end
+-- Fabrica un paso hacia la calidad elegida. Si la receta destino todavia no se
+-- puede fabricar (por ejemplo Legendary necesita Mythical), fabrica primero el
+-- requisito que falta en lugar de quedarse bloqueado.
+local function CraftStep(quality)
+    local Etc, Prog = GetCraftData()
+    local Recipes = GetCraftRecipes()
+    if not Etc or not Prog or not Recipes then
+        return T("craft.status.error")
+    end
+    local targetKey = CraftQualityList.GetKey(quality) or quality
+    local targetLabel = CraftQualityList.GetLabel(targetKey) or tostring(quality)
+    local cap = 0
+    if targetKey == "LegendaryScroll" then
+        cap = 20
+    elseif targetKey == "MythicalScroll" then
+        cap = 10
+    end
+    if cap > 0 and CraftQualityList.GetInventoryCount(Etc, targetKey) >= cap then
+        local full = TranslateStatus(targetLabel .. ": stacks full (" .. cap .. ")")
+        -- Pila llena: apaga Auto Craft en vez de reintentar cada 5 segundos.
+        _G.AutoCraftScrolls = false
+        SaveConfig()
+        if _G.Abyss_AutoCraftScrollsToggle then
+            pcall(function()
+                _G.Abyss_AutoCraftScrollsToggle:SetValue(false)
+            end)
+        end
+        CraftQualityList.StopReason = full
+        return full
+    end
+    if not NearCraftNPC(80) then
+        if _G.AutoLeviathanFull or _G.SoloSeaFarm then
+            return TranslateStatus("Deten el farmeo y ve al Dragon Talon Sage (Tiki) para craftear")
+        end
+        if NavigationOwner and NavigationOwner ~= "craft-npc" then
+            return TranslateStatus("Navegacion ocupada; ve al Dragon Talon Sage para craftear")
+        end
+        NavigationOwner = "craft-npc"
+        pcall(function()
+            _tp(CRAFT_NPC_POS, function()
+                return NavigationOwner ~= "craft-npc"
+            end, true)
+        end)
+        if NavigationOwner == "craft-npc" then
+            NavigationOwner = nil
+        end
+        return TranslateStatus("Yendo al Dragon Talon Sage para craftear...")
+    end
+    local craftKey, chainError, detail, current, required =
+        CraftQualityList.GetNextUnlockKey(Recipes, Prog, Etc, targetKey)
+    if not craftKey then
+        if chainError == "cycle" then
+            -- Dependencias cruzadas: se intenta la receta destino y
+            -- CheckCraftRecipe indica el requisito que falta.
+            craftKey = targetKey
+        elseif chainError == "progress" then
+            return TranslateStatus("Falta progreso " .. tostring(detail) .. " (" .. tostring(current) .. "/" .. tostring(required) .. ")")
+        elseif chainError == "recipe" then
+            return TranslateStatus("Receta no encontrada: " .. tostring(detail))
+        else
+            return T("craft.status.error")
+        end
+    end
+    local recipe, recipeKey, recipeTableKey = FindRecipe(Recipes, craftKey)
+    if not recipe then
+        return TranslateStatus("Receta no encontrada: " .. tostring(craftKey))
+    end
+    local label = CraftQualityList.GetLabel(craftKey) or CraftQualityList.GetLabel(recipeKey) or tostring(craftKey)
+    local canCraft, missing = CheckCraftRecipe(recipe, Etc, Prog)
+    if not canCraft then
+        return TranslateStatus(label .. ": " .. missing)
+    end
+    local actualKey = recipeTableKey or CraftQualityList.GetKey(recipeKey) or craftKey
+    local result, detail = TryCraft(actualKey, targetKey)
+    if result == "ok" then
+        return TranslateStatus(label .. ": fabricado (confirmado)")
+    elseif result == "progress" or result == "consumed" or result == "accepted" then
+        _G.AutoCraftScrolls = false
+        SaveConfig()
+        if _G.Abyss_AutoCraftScrollsToggle then
+            pcall(function()
+                _G.Abyss_AutoCraftScrollsToggle:SetValue(false)
+            end)
+        end
+        local reason
+        if result == "progress" then
+            reason = "progreso aumentado"
+        elseif result == "consumed" then
+            reason = "materiales consumidos"
+        else
+            reason = "el servidor acepto el craft"
+        end
+        CraftQualityList.StopReason = TranslateStatus(label .. ": " .. reason .. ", pero el pergamino no aparecio en el inventario; auto craft detenido")
+        return CraftQualityList.StopReason
+    elseif result == "noremote" then
+        return TranslateStatus("No se encontro el remote RF/Craft")
+    elseif result == "nodata" then
+        return TranslateStatus("No se pudo leer el inventario antes del craft")
+    end
+    return TranslateStatus(label .. ": sin confirmar; probando otra firma del remote (" .. tostring(detail or "?") .. ")")
 end
 task.spawn(function()
     while true do
@@ -7516,68 +7849,31 @@ task.spawn(function()
         local Q = _G.CraftQuality
         if not _G.AutoUnlockMythical then
             if not _G.AutoCraftScrolls or Q == nil or Q == "None" then
-                if CraftStatus ~= T("craft.status.none") then
+                if CraftQualityList.StopReason then
+                    CraftStatus = CraftQualityList.StopReason
+                elseif CraftStatus ~= T("craft.status.none") then
                     CraftStatus = T("craft.status.none")
                 end
             else
-                pcall(function()
-                    local Etc, Prog = GetCraftData()
-                    local Recipes = GetCraftRecipes()
-                    if not Etc or not Prog or not Recipes then
-                        CraftStatus = T("craft.status.error")
-                        return
-                    end
-                    local targets = {}
-                    if Q == AUTO_CRAFT_BOTH_LABEL then
-                        local byKey = {}
-                        for _, c in ipairs(CraftQualityList) do
-                            byKey[c.Key] = c
-                        end
-                        local mythic = byKey.MythicalScroll
-                        local legendary = byKey.LegendaryScroll
-                        local mythicCount = CraftQualityList.GetInventoryCount(Etc, "MythicalScroll")
-                        local legendaryCount = CraftQualityList.GetInventoryCount(Etc, "LegendaryScroll")
-                        local mythicFull = mythicCount >= 10
-                        local legendaryFull = legendaryCount >= 20
-                        if mythicFull and legendaryFull then
-                            CraftStatus = TranslateStatus(AUTO_CRAFT_BOTH_LABEL .. ": stacks full")
-                            return
-                        end
-                        if not mythicFull then
-                            targets[1] = mythic
-                        elseif not legendaryFull then
-                            targets[1] = legendary
-                        end
-                    else
-                        for _, c in ipairs(CraftQualityList) do
-                            if c.Label == Q then
-                                targets[1] = c
-                                break
-                            end
-                        end
-                    end
-                    if #targets == 0 then
-                        return
-                    end
-                    local firstMiss
-                    for _, target in ipairs(targets) do
-                        local r = Recipes[target.Key]
-                        if not r then
-                            firstMiss = firstMiss or TranslateStatus("Receta no encontrada: " .. target.Key)
+                CraftQualityList.StopReason = nil
+                local ok, status = pcall(function()
+                    local quality = Q
+                    if quality == AUTO_CRAFT_BOTH_LABEL then
+                        local Etc = GetCraftData()
+                        if type(Etc) == "table"
+                            and CraftQualityList.GetInventoryCount(Etc, "MythicalScroll") < 10 then
+                            quality = "Mythical Scroll"
                         else
-                            local okC, miss = CheckCraftRecipe(r, Etc, Prog)
-                            if okC then
-                                TryCraft(target.Key)
-                                CraftStatus = TranslateStatus(target.Label .. ": fabricado")
-                                return
-                            end
-                            firstMiss = firstMiss or TranslateStatus(target.Label .. ": " .. miss)
+                            quality = "Legendary Scroll"
                         end
                     end
-                    if firstMiss then
-                        CraftStatus = firstMiss
-                    end
+                    return CraftStep(quality)
                 end)
+                if ok and type(status) == "string" then
+                    CraftStatus = status
+                elseif not ok then
+                    CraftStatus = T("craft.status.error")
+                end
             end
         end
     end
@@ -7658,6 +7954,27 @@ function AutoUnlockMythicalStep()
             end
         end
     end
+    if not NearCraftNPC(80) then
+        if _G.AutoLeviathanFull or _G.SoloSeaFarm then
+            CraftStatus = TranslateStatus("Deten el farmeo y ve al Dragon Talon Sage (Tiki) para craftear")
+            return
+        end
+        if NavigationOwner and NavigationOwner ~= "craft-npc" then
+            CraftStatus = TranslateStatus("Navegacion ocupada; ve al Dragon Talon Sage para craftear")
+            return
+        end
+        NavigationOwner = "craft-npc"
+        pcall(function()
+            _tp(CRAFT_NPC_POS, function()
+                return NavigationOwner ~= "craft-npc"
+            end, true)
+        end)
+        if NavigationOwner == "craft-npc" then
+            NavigationOwner = nil
+        end
+        CraftStatus = TranslateStatus("Yendo al Dragon Talon Sage para craftear...")
+        return
+    end
     local unlockTarget = AutoUnlockTargetKey()
     local unlockCount = CraftQualityList.GetInventoryCount(Etc, unlockTarget)
     local unlockCap = (unlockTarget == "LegendaryScroll") and 20 or 10
@@ -7670,9 +7987,12 @@ function AutoUnlockMythicalStep()
         return
     end
     local craftKey, unlockError, detail, current, required =
-        CraftQualityList.GetNextUnlockKey(Recipes, CraftQualityList.GetProgressView(Prog, Etc), unlockTarget)
+        CraftQualityList.GetNextUnlockKey(Recipes, Prog, Etc, unlockTarget)
     if not craftKey then
-        if unlockError == "progress" then
+        if unlockError == "cycle" then
+            -- Dependencias cruzadas: se intenta el pergamino objetivo.
+            craftKey = unlockTarget
+        elseif unlockError == "progress" then
             CraftStatus = TranslateStatus(
                 "Falta progreso " .. tostring(detail) .. " (" .. tostring(current) .. "/" .. tostring(required) .. ")"
             )
@@ -7685,42 +8005,50 @@ function AutoUnlockMythicalStep()
         end
         return
     end
-    local recipe = Recipes[craftKey]
+    local recipe, recipeKey, recipeTableKey = FindRecipe(Recipes, craftKey)
     if not recipe then
         CraftStatus = TranslateStatus("Receta no encontrada: " .. craftKey)
         return
     end
-    local canCraft, missing = CheckCraftRecipe(recipe, Etc, CraftQualityList.GetProgressView(Prog, Etc), true)
+    local canCraft, missing = CheckCraftRecipe(recipe, Etc, Prog)
     if not canCraft then
         CraftStatus = T("craft.unlock") .. ": " .. missing
         return
     end
-    local RF = RS.Modules
-        and RS.Modules:FindFirstChild("Net")
-        and RS.Modules.Net:FindFirstChild("RF/Craft")
     local label = CraftQualityList.GetLabel(craftKey) or craftKey
-    if not RF then
-        CraftStatus = T("craft.unlock.retry") .. ": " .. label
-        return
-    end
-    local ok, result = pcall(function()
-        return RF:InvokeServer("Craft", craftKey, 1, {})
-    end)
-    if ok then
+    local beforeCount = CraftQualityList.GetCount(Prog, Etc, craftKey)
+    local result, detail = TryCraft(recipeTableKey or CraftQualityList.GetKey(recipeKey) or craftKey, unlockTarget)
+    if result == "ok" then
         CraftQualityList.Pending = {
             Key = craftKey,
-            Before = CraftQualityList.GetCount(Prog, Etc, craftKey),
+            Before = beforeCount,
             At = os.clock(),
             Label = label,
-            Accepted = result ~= nil and result ~= false,
+            Accepted = true,
         }
-        if result == false or result == nil then
-            CraftStatus = T("craft.unlock.retry") .. ": " .. label
-        else
-            CraftStatus = T("craft.unlock") .. ": " .. label
+        CraftStatus = T("craft.unlock") .. ": " .. label
+    elseif result == "progress" or result == "consumed" or result == "accepted" then
+        _G.AutoUnlockMythical = false
+        CraftQualityList.UnlockStage = nil
+        CraftQualityList.Pending = nil
+        SaveConfig()
+        if _G.Abyss_AutoUnlockMythicalToggle then
+            pcall(function()
+                _G.Abyss_AutoUnlockMythicalToggle:SetValue(false)
+            end)
         end
+        local reason
+        if result == "progress" then
+            reason = "progreso aumentado"
+        elseif result == "consumed" then
+            reason = "materiales consumidos"
+        else
+            reason = "el servidor acepto el craft"
+        end
+        CraftStatus = TranslateStatus(label .. ": " .. reason .. ", pero el pergamino no aparecio en el inventario; auto unlock detenido")
+        CraftQualityList.StopReason = CraftStatus
     else
-        CraftStatus = T("craft.unlock.retry") .. ": " .. label
+        CraftStatus = T("craft.unlock.retry") .. ": " .. label .. " (firma " .. tostring(detail or "?") .. ")"
     end
 end
 task.spawn(function()
@@ -8964,6 +9292,32 @@ do
         end,
     })
     _G.Abyss_AutoUnlockMythicalToggle = AutoUnlockToggle
+    local GoCraftButton = Tabs.Extra:AddButton({
+        Title = T("craft.go.npc"),
+        Callback = function()
+            if _G.AutoLeviathanFull or _G.SoloSeaFarm then
+                SendNotify(T("notify.title"), T("craft.npc.farm"))
+                return
+            end
+            if NavigationOwner and NavigationOwner ~= "craft-npc" then
+                SendNotify(T("notify.title"), T("craft.npc.busy"))
+                return
+            end
+            NavigationOwner = "craft-npc"
+            task.spawn(function()
+                local ok = pcall(function()
+                    _tp(CRAFT_NPC_POS, function()
+                        return NavigationOwner ~= "craft-npc"
+                    end, true)
+                end)
+                if NavigationOwner == "craft-npc" then
+                    NavigationOwner = nil
+                end
+                SendNotify(T("notify.title"), ok and T("craft.npc.done") or T("craft.npc.busy"))
+            end)
+        end,
+    })
+    ButtonKeys[#ButtonKeys + 1] = { element = GoCraftButton, key = "craft.go.npc" }
     local ResetButton = Tabs.Extra:AddButton({
         Title = T("reset.data"),
         Callback = function()
@@ -9110,10 +9464,6 @@ do
             "Rot", "Burning", "Frozen", "Storm", "Reaper", "Thief",
             "Masterpiece", "Rage", "Sharpshooter", "Strong Grip", "Unbreakable", "Unreal",
         }
-        if not table.find(_G.EnchantWanted, "Reaper") then
-            table.insert(_G.EnchantWanted, "Reaper")
-        end
-        local restoringReaper = false
         local WantedDropdown = Tabs.Enchant:AddDropdown("enchant.wanted", {
             Title = T("enchant.wanted"),
             Description = T("enchant.wanted.desc"),
@@ -9122,17 +9472,10 @@ do
             Multi = true,
         })
         WantedDropdown:OnChanged(function(Value)
-            if restoringReaper then return end
-            if type(Value) == "table" and Value.Reaper ~= true then
-                Value.Reaper = true
-                restoringReaper = true
-                pcall(function() WantedDropdown:SetValue(Value) end)
-                restoringReaper = false
-            end
-            local selected = { "Reaper" }
+            local selected = {}
             if type(Value) == "table" then
                 for _, name in ipairs(ENCHANT_WANTED_CHOICES) do
-                    if name ~= "Reaper" and Value[name] == true then table.insert(selected, name) end
+                    if Value[name] == true then table.insert(selected, name) end
                 end
             end
             table.sort(selected)
@@ -10012,8 +10355,6 @@ do
         end
         local function WantedEnchantLookup()
             local wanted = EnchantSelectedKeys()
-            wanted[EnchantNameKey("reaper")] = true
-            wanted[EnchantNameKey("curse of the reaper")] = true
             local thiefKey = EnchantNameKey("thief")
             local thiefCurseKey = EnchantNameKey("curse of the thief")
             if wanted[thiefKey] or wanted[thiefCurseKey] then
@@ -10024,27 +10365,11 @@ do
         end
         local function EnchantSelectionGroups()
             local groups = { curse = {}, blessing = {}, unique = {} }
-            local reaperKey = EnchantNameKey("reaper")
-            local reaperCurseKey = EnchantNameKey("curse of the reaper")
-            local hasNonReaper = false
             for key in pairs(EnchantSelectedKeys()) do
-                if key ~= reaperKey and key ~= reaperCurseKey then
-                    hasNonReaper = true
-                end
                 local group = ENCHANT_NAME_GROUPS[key]
                 if group then
                     groups[group][key] = true
                 end
-            end
-            -- Reaper is always present in the selector, but it must only be a hard
-            -- requirement when it is the only target. Otherwise it would block
-            -- stopping on a unique/blessing the user actually picked.
-            if hasNonReaper then
-                groups.curse[reaperKey] = nil
-                groups.curse[reaperCurseKey] = nil
-            else
-                groups.curse[reaperKey] = true
-                groups.curse[reaperCurseKey] = true
             end
             local thiefKey = EnchantNameKey("thief")
             local thiefCurseKey = EnchantNameKey("curse of the thief")
