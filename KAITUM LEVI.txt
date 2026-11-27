@@ -1216,6 +1216,30 @@ local TWEEN_PART_NAME = "OptimizedTweenPart"
 local HoldCFrame = nil
 local LiveHoldFn = nil
 local TpActive = false
+local TpSerial = 0
+WATER_TRIGGER_Y = 3
+WATER_MIN_Y = 15
+WATER_HOLD_Y = 60
+function AboveWater(cf)
+    if cf and cf.Position.Y < WATER_MIN_Y then
+        return cf + Vector3.new(0, WATER_MIN_Y - cf.Position.Y, 0)
+    end
+    return cf
+end
+function ReleaseFightHold(standFn)
+    if standFn and LiveHoldFn ~= standFn and AttackStandFn ~= standFn then
+        return
+    end
+    AttackModel, AttackStandFn, FightTarget = nil, nil, nil
+    LiveHoldFn = nil
+    local _, hrp = GetCharacterParts()
+    if hrp then
+        HoldCFrame = CFrame.new(hrp.Position.X, math.max(hrp.Position.Y, WATER_HOLD_Y), hrp.Position.Z)
+            * (hrp.CFrame - hrp.CFrame.Position)
+    else
+        HoldCFrame = nil
+    end
+end
 function GetTweenPart()
     local part = workspace:FindFirstChild(TWEEN_PART_NAME)
     if part and part:IsA("BasePart") then
@@ -1233,6 +1257,22 @@ function GetTweenPart()
     part.Transparency = 1
     part.Parent = workspace
     return part
+end
+function SeatAttached(hum, hrp)
+    local seat = hum and hum.SeatPart
+    if not seat or not seat.Parent then
+        return false
+    end
+    local char = hum.Parent
+    local Weld = seat:FindFirstChild("SeatWeld")
+    local p1 = Weld and Weld.Part1
+    if p1 and char and p1:IsDescendantOf(char) then
+        return true
+    end
+    if not hrp and char then
+        hrp = char:FindFirstChild("HumanoidRootPart")
+    end
+    return hrp ~= nil and (hrp.Position - seat.Position).Magnitude <= 5
 end
 local function StandUpFromSeat(seat, hum, hrp)
     local char = LocalPlayer.Character
@@ -1297,7 +1337,14 @@ local function StandUpFromSeat(seat, hum, hrp)
             hrp.Anchored = false
             hrp.AssemblyLinearVelocity = Vector3.zero
             hrp.AssemblyAngularVelocity = Vector3.zero
-            hrp.CFrame = hrp.CFrame + Vector3.new(0, 25, 0)
+            local lifted = hrp.CFrame + Vector3.new(0, 25, 0)
+            if lifted.Position.Y < WATER_HOLD_Y then
+                lifted = lifted + Vector3.new(0, WATER_HOLD_Y - lifted.Position.Y, 0)
+            end
+            hrp.CFrame = lifted
+            if _G.AutoLeviathanFull then
+                HoldCFrame = lifted
+            end
         end)
     end
     return true
@@ -1336,6 +1383,8 @@ local function _tp(targetPos, abortCheck, allowNavigationOwner)
     end
     HoldCFrame = nil
     LiveHoldFn = nil
+    TpSerial = TpSerial + 1
+    local mySerial = TpSerial
     if not liveTarget then
         local h2 = select(2, GetCharacterParts())
         if not h2 then
@@ -1360,13 +1409,14 @@ local function _tp(targetPos, abortCheck, allowNavigationOwner)
         return (seat.Position - tgt.Position).Magnitude <= 40
     end
     local _, _, humPre = GetCharacterParts()
-    if humPre and humPre.SeatPart and SeatNearTarget(humPre.SeatPart) then
+    if humPre and humPre.SeatPart and SeatAttached(humPre) and SeatNearTarget(humPre.SeatPart) then
         return true
     end
     local _, _, humS = GetCharacterParts()
-    if humS and (humS.Sit or humS.SeatPart ~= nil) then
+    if humS and (humS.Sit or SeatAttached(humS)) then
         StandUpFromSeat(humS.SeatPart, humS, myHRP)
         task.wait(0.2)
+        HoldCFrame = nil
     end
     local part = GetTweenPart()
     part.CFrame = myHRP.CFrame
@@ -1397,9 +1447,10 @@ local function _tp(targetPos, abortCheck, allowNavigationOwner)
     local connection
     connection = RunService.Stepped:Connect(function(_, deltaTime)
         local dt = deltaTime or (1 / 60)
-        if NavigationOwner and not allowNavigationOwner then
+        if (NavigationOwner and not allowNavigationOwner) or TpSerial ~= mySerial or _G.StopTween then
             aborted = true
             if tween then tween:Cancel() end
+            return
         end
         local curChar = LocalPlayer.Character
         local curHum = curChar and curChar:FindFirstChildOfClass("Humanoid")
@@ -1410,7 +1461,7 @@ local function _tp(targetPos, abortCheck, allowNavigationOwner)
                 tween:Cancel()
             end
         else
-            if not seatedStop and curHum.SeatPart ~= nil then
+            if not seatedStop and SeatAttached(curHum, curHRP) then
                 seatedStop = true
                 arrived = true
                 if tween then
@@ -1419,7 +1470,10 @@ local function _tp(targetPos, abortCheck, allowNavigationOwner)
             end
             if not seatedStop then
                 if liveTarget then
-                    local tgt = liveTarget()
+                    local okT, tgt = pcall(liveTarget)
+                    if not okT then
+                        tgt = nil
+                    end
                     if tgt and tgt.Position.Y < 0 then
                         aborted = true
                         if tween then
@@ -1440,15 +1494,7 @@ local function _tp(targetPos, abortCheck, allowNavigationOwner)
                 if not aborted then
                     curHRP.CFrame = part.CFrame
                     curHRP.AssemblyLinearVelocity = Vector3.zero
-                    local collideNow = os.clock()
-                    if collideNow >= nextCollideAt then
-                        nextCollideAt = collideNow + 0.1
-                        for _, p in ipairs(curChar:GetDescendants()) do
-                            if p:IsA("BasePart") then
-                                p.CanCollide = false
-                            end
-                        end
-                    end
+                    SetCharCollide(curChar, false)
                 end
             end
         end
@@ -1489,8 +1535,15 @@ local function _tp(targetPos, abortCheck, allowNavigationOwner)
     if tween and CurrentTween == tween then
         CurrentTween = nil
     end
-    Tweening = false
-    TpActive = false
+    if tween and not seatedStop and tween.PlaybackState ~= Enum.PlaybackState.Completed then
+        aborted = true
+    end
+    if TpSerial ~= mySerial then
+        aborted = true
+    else
+        Tweening = false
+        TpActive = false
+    end
     if not aborted and not seatedStop then
         if liveTarget then
             LiveHoldFn = liveTarget
@@ -1509,19 +1562,19 @@ local function ClearHover()
     HoldCFrame = nil
     LiveHoldFn = nil
 end
+_G.Abyss_ClearHover = ClearHover
+_G.Abyss_HoverState = function()
+    return HoldCFrame, LiveHoldFn ~= nil, AttackModel, TpActive
+end
 RunService.Heartbeat:Connect(function(dt)
     if _G.StopTween or NavigationOwner == "set-spawn" or NavigationOwner == "home-return" then
-        return
-    end
-    -- Nothing to hover: skip the per-frame character lookup entirely.
-    if not AttackModel and not LiveHoldFn and not HoldCFrame then
         return
     end
     local _, hrp, hum = GetCharacterParts()
     if not hrp then
         return
     end
-    if hum and hum.SeatPart ~= nil then
+    if hum and SeatAttached(hum, hrp) then
         return
     end
     if TpActive then
@@ -1531,39 +1584,40 @@ RunService.Heartbeat:Connect(function(dt)
         return
     end
     local goal = nil
+    local hadSource = false
     if AttackModel then
         if not AttackModel.Parent then
             AttackModel, AttackStandFn = nil, nil
         else
+            hadSource = true
             local ok, cf = pcall(AttackStandFn)
-            if ok and cf and cf.Position.Y < 0 then
-                cf = nil
-                AttackModel, AttackStandFn = nil, nil
-            end
             if ok and cf then
-                goal = cf
+                goal = AboveWater(cf)
                 if FightTarget then
-                    FightTarget.CF = cf
+                    FightTarget.CF = goal
                     FightTarget.At = os.clock()
                 end
             end
         end
     end
     if not goal and LiveHoldFn then
+        hadSource = true
         local ok, cf = pcall(LiveHoldFn)
         if ok and cf then
-            if cf.Position.Y < 0 then
-                ClearHover()
-                return
-            end
-            goal = cf
+            goal = AboveWater(cf)
         end
     end
-    if not goal then
-        goal = HoldCFrame
-        if goal and goal.Position.Y < 0 then
-            ClearHover()
-            return
+    if not goal and HoldCFrame then
+        goal = AboveWater(HoldCFrame)
+    end
+    if not goal and _G.AutoLeviathanFull and hum and hum.Health > 0 then
+        local y = hrp.Position.Y
+        local inWater = hum:GetState() == Enum.HumanoidStateType.Swimming
+            or (y < WATER_TRIGGER_Y and hum.FloorMaterial == Enum.Material.Air)
+        if inWater or hadSource then
+            local holdY = inWater and math.max(y, WATER_HOLD_Y) or y
+            goal = CFrame.new(hrp.Position.X, holdY, hrp.Position.Z) * (hrp.CFrame - hrp.CFrame.Position)
+            HoldCFrame = goal
         end
     end
     if not goal then
@@ -1574,14 +1628,7 @@ RunService.Heartbeat:Connect(function(dt)
     end
     hrp.AssemblyLinearVelocity = Vector3.zero
     hrp.AssemblyAngularVelocity = Vector3.zero
-    local char = LocalPlayer.Character
-    if char then
-        for _, p in ipairs(char:GetDescendants()) do
-            if p:IsA("BasePart") then
-                p.CanCollide = false
-            end
-        end
-    end
+    SetCharCollide(LocalPlayer.Character, false)
     local dist = (goal.Position - hrp.Position).Magnitude
     if dist <= 3 then
         hrp.CFrame = goal
@@ -1590,8 +1637,43 @@ RunService.Heartbeat:Connect(function(dt)
         hrp.CFrame = hrp.CFrame:Lerp(goal, step / dist)
     end
 end)
+do
+    local WaterPad = nil
+    local WATER_SURFACE_Y = 0
+    RunService.Heartbeat:Connect(function()
+        local _, hrp, hum = GetCharacterParts()
+        if not _G.AutoLeviathanFull or not hrp or not hum or hum.Health <= 0 then
+            if WaterPad then
+                WaterPad.CanCollide = false
+            end
+            return
+        end
+        if not WaterPad or not WaterPad.Parent then
+            WaterPad = Instance.new("Part")
+            WaterPad.Name = "Abyss_WaterPad"
+            WaterPad.Size = Vector3.new(30, 2, 30)
+            WaterPad.Anchored = true
+            WaterPad.CanTouch = false
+            WaterPad.CastShadow = false
+            WaterPad.Transparency = 1
+            WaterPad.Parent = workspace
+        end
+        local pos = hrp.Position
+        local seated = SeatAttached(hum, hrp)
+        WaterPad.CFrame = CFrame.new(pos.X, WATER_SURFACE_Y - 1, pos.Z)
+        WaterPad.CanCollide = (not seated) and pos.Y <= WATER_SURFACE_Y + WATER_MIN_Y
+        if not seated and not TpActive and pos.Y < WATER_SURFACE_Y - 3 then
+            hrp.AssemblyLinearVelocity = Vector3.zero
+            hrp.CFrame = CFrame.new(pos.X, WATER_MIN_Y, pos.Z) * (hrp.CFrame - hrp.CFrame.Position)
+            if not HoldCFrame and not LiveHoldFn and not AttackModel then
+                HoldCFrame = hrp.CFrame
+            end
+        end
+    end)
+end
 local function StopTweenAll()
     _G.StopTween = true
+    TpSerial = TpSerial + 1
     if CurrentTween then
         pcall(function()
             CurrentTween:Cancel()
@@ -1676,7 +1758,7 @@ _G.Abyss_BreakPhantomSeat = function(seat)
     end
     task.wait(0.15)
     local _, _, hum2 = GetCharacterParts()
-    return hum2 == nil or (not hum2.Sit and hum2.SeatPart == nil)
+    return hum2 == nil or not SeatAttached(hum2)
 end
 end
 local function CheckItem(Item, Mode)
@@ -1756,22 +1838,112 @@ function HasDragonstormEquipped()
     return tool ~= nil and tool.Name == "Dragonstorm"
 end
 local Abyss_AimBegin, Abyss_AimEndSoon
-function Skill_Auto(Key)
-    local code = Enum.KeyCode[tostring(Key):upper()]
-    if not code then return end
-    if Abyss_AimBegin then Abyss_AimBegin(AttackModel) end
-    local ok, err = pcall(function()
-        VirtualInputManager:SendKeyEvent(true, code, false, game)
-        task.wait(0.3)
+CombatAPI.SkillKeyHold = 0.1
+CombatAPI.DirectKeys = { Z = true, X = true, C = true, V = true, F = true }
+function CombatAPI.GameGlobal()
+    if CombatAPI.GlobalMod then
+        return CombatAPI.GlobalMod
+    end
+    local mod = RS:FindFirstChild("Global")
+    if not mod then
+        return nil
+    end
+    local ok, g = pcall(require, mod)
+    if ok and type(g) == "table" then
+        CombatAPI.GlobalMod = g
+        return g
+    end
+    return nil
+end
+function CombatAPI.CastDirect(key, hold)
+    local name = typeof(key) == "EnumItem" and key.Name or (type(key) == "string" and key:upper())
+    if not name or not CombatAPI.DirectKeys[name] then
+        return false
+    end
+    local char = LocalPlayer.Character
+    local tool = char and char:FindFirstChildOfClass("Tool")
+    if not tool or type(debug) ~= "table" or type(debug.getupvalue) ~= "function" then
+        return false
+    end
+    local g = CombatAPI.GameGlobal()
+    local casFunc = g and g.casFunc
+    if type(casFunc) ~= "function" then
+        return false
+    end
+    local checked, owner = pcall(debug.getupvalue, casFunc, 1)
+    if not checked or owner ~= tool then
+        return false
+    end
+    local code = Enum.KeyCode[name]
+    if not code then
+        return false
+    end
+    local changed = Instance.new("BindableEvent")
+    local input = {
+        KeyCode = code,
+        UserInputState = Enum.UserInputState.Begin,
+        Changed = changed.Event,
+        Position = Vector2.zero,
+    }
+    local failed = false
+    task.spawn(function()
+        if not pcall(casFunc, "DevilFruit", Enum.UserInputState.Begin, input, code) then
+            failed = true
+        end
+        changed:Destroy()
     end)
-    pcall(function() VirtualInputManager:SendKeyEvent(false, code, false, game) end)
-    if Abyss_AimEndSoon then Abyss_AimEndSoon(0.6) end
-    if not ok then error(err) end
+    task.wait(tonumber(hold) or CombatAPI.SkillKeyHold)
+    input.UserInputState = Enum.UserInputState.End
+    changed:Fire("UserInputState")
+    return not failed
+end
+function CombatAPI.SendKey(key, hold)
+    local valid, code = pcall(function()
+        return typeof(key) == "EnumItem" and key or Enum.KeyCode[tostring(key):upper()]
+    end)
+    if not valid or not code then
+        return false
+    end
+    pcall(function()
+        local focused = game:GetService("UserInputService"):GetFocusedTextBox()
+        if focused then
+            focused:ReleaseFocus(false)
+        end
+    end)
+    local ok = pcall(function()
+        VirtualInputManager:SendKeyEvent(true, code, false, game)
+        task.wait(tonumber(hold) or CombatAPI.SkillKeyHold)
+    end)
+    pcall(function()
+        VirtualInputManager:SendKeyEvent(false, code, false, game)
+    end)
+    return ok
+end
+function CombatAPI.StillCasting()
+    local g = CombatAPI.GameGlobal()
+    return g ~= nil and g.busy and true or false
+end
+function CombatAPI.Cast(key, target, hold)
+    if Abyss_AimBegin then
+        Abyss_AimBegin(target or AttackModel)
+    end
+    if not CombatAPI.CastDirect(key, hold or CombatAPI.SkillKeyHold) then
+        CombatAPI.SendKey(key, hold or CombatAPI.SkillKeyHold)
+    end
+    if Abyss_AimEndSoon then
+        Abyss_AimEndSoon(0.6, true)
+    end
+end
+function Skill_Auto(Key)
+    CombatAPI.Cast(Key, AttackModel)
 end
 do
     local SkillOrder = {"Melee", "Sword", "Blox Fruit", "Gun"}
     local SkillVars = {Melee="SkillMelee", Sword="SkillSword", ["Blox Fruit"]="SkillFruit", Gun="SkillGun"}
     local lastFruitAt = 0
+    local SkillNodeCache = setmetatable({}, { __mode = "k" })
+    local SkillCastAt = {}
+    local LastSkillScan, LastAllWeapon = 0, 0
     local function ToolOf(tip)
         local function scan(container)
             if not container then return nil end
@@ -1797,41 +1969,123 @@ do
         end
         return false
     end
-    local function SkillFrameReady(frame)
-        local title = frame:FindFirstChild("Title")
-        local cd = frame:FindFirstChild("Cooldown")
-        if not title or not cd then return false end
-        local white = title.TextColor3 == Color3.new(1, 1, 1)
-        local empty = cd.Size == UDim2.new(0, 0, 1, -1) or cd.Size == UDim2.new(1, 0, 1, -1)
-        return white and empty
-    end
-    local function FindReadySkill(tip)
-        local tool = ToolOf(tip)
-        if not tool then return nil end
-        local pg = LocalPlayer:FindFirstChild("PlayerGui")
-        local main = pg and pg:FindFirstChild("Main")
-        local ui = main and main:FindFirstChild("Skills")
-        if not ui then return nil end
-        local holder = ui:FindFirstChild(tool.Name)
-        if not holder then
-            local _, _, hum = GetCharacterParts()
-            if hum and not hum.Sit then hum:EquipTool(tool); return "prep", tool end
-            return nil
+    local function CoolReady(cooldown)
+        local ok, scale = pcall(function()
+            return cooldown.Size.X.Scale
+        end)
+        if not ok or scale == nil then
+            return false
         end
-        for _, frame in ipairs(holder:GetChildren()) do
-            if frame:IsA("Frame") and frame.Name ~= "Template" then
-                local title = frame:FindFirstChild("Title")
-                local transformed = title and string.find(title.Text, "Transformation")
-                if not transformed and not string.find(frame.Name, "Transformation")
-                    and Allowed(tip, frame.Name) and SkillFrameReady(frame) then
-                    return frame.Name, tool
+        if scale == 0 then
+            return true
+        end
+        if scale <= 0.4 then
+            local data = LocalPlayer:FindFirstChild("Data")
+            local race = data and data:FindFirstChild("Race")
+            if race and race.Value == "Ghoul" then
+                local ok2, left = pcall(function()
+                    local hud = LocalPlayer.PlayerGui.Main.BottomHUDList.UniversalContextButtons
+                    return tonumber(hud.BoundActionRaceAbility.CooldownLabel.Text)
+                end)
+                if ok2 and left and left >= 22 then
+                    return true
                 end
             end
         end
+        return false
+    end
+    local function SkillNodes(btn)
+        local nodes = SkillNodeCache[btn]
+        if nodes and nodes.cooldown and nodes.cooldown.Parent then
+            return nodes
+        end
+        local cd = btn:FindFirstChild("Cooldown", true)
+        local lv = btn:FindFirstChild("Level")
+        nodes = (cd and lv) and { cooldown = cd, level = lv } or nil
+        SkillNodeCache[btn] = nodes
+        return nodes
+    end
+    local function ReadySkill(container, char, backpack, now)
+        local item = char:FindFirstChild(container.Name)
+            or (backpack and backpack:FindFirstChild(container.Name))
+        if not item or not item:IsA("Tool") then
+            return nil
+        end
+        local tip = item.ToolTip
+        if not HasSkills(tip) then
+            return nil
+        end
+        for _, btn in ipairs(container:GetChildren()) do
+            if btn:IsA("GuiObject") and Allowed(tip, btn.Name) then
+                local lastCast = SkillCastAt[container.Name .. btn.Name] or 0
+                if now - lastCast >= 0.15 then
+                    local nodes = SkillNodes(btn)
+                    if nodes and CoolReady(nodes.cooldown) then
+                        local lvlOk = true
+                        local levelText = nodes.level.Text
+                        if levelText ~= "" then
+                            local num = tonumber(levelText:match("%d+"))
+                            local itemLevel = item:FindFirstChild("Level")
+                            lvlOk = num ~= nil and itemLevel ~= nil and num <= itemLevel.Value
+                        end
+                        if lvlOk then
+                            return btn.Name
+                        end
+                    end
+                end
+            end
+        end
+        return nil
+    end
+    local function WaitEquipped(tool, timeout)
+        local deadline = os.clock() + (timeout or 0.4)
+        local stableSince = nil
+        repeat
+            local char = LocalPlayer.Character
+            local equipped = char and char:FindFirstChildOfClass("Tool")
+            if equipped == tool then
+                stableSince = stableSince or os.clock()
+                if os.clock() - stableSince >= 0.1 then
+                    return true
+                end
+            else
+                stableSince = nil
+            end
+            task.wait()
+        until os.clock() >= deadline
+        local char = LocalPlayer.Character
+        return char ~= nil and char:FindFirstChildOfClass("Tool") == tool
+    end
+    local function CastOn(containerName, key, target)
+        if target and target.Name == "Terrorshark" then
+            return
+        end
+        local char = LocalPlayer.Character
+        if not char then
+            return
+        end
+        local tool = char:FindFirstChild(containerName)
+        if not tool then
+            local backpack = LocalPlayer:FindFirstChild("Backpack")
+            tool = backpack and backpack:FindFirstChild(containerName)
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            if tool and hum and not SeatAttached(hum) then
+                pcall(function()
+                    hum:EquipTool(tool)
+                end)
+            end
+        end
+        if not tool or not WaitEquipped(tool, 0.4) then
+            return
+        end
+        if not _G.AutoLeviathanFull or NavigationOwner or AttackModel ~= target or not target.Parent then
+            return
+        end
+        CombatAPI.Cast(key, target)
     end
     CombatAPI.TargetPart = function(model, root)
         if not model or not model.Parent then return nil end
-        for _, name in ipairs({"Leviathan Segment", "Hitbox", "Engine"}) do
+        for _, name in ipairs({"Hitbox11", "Leviathan Segment", "Hitbox", "Engine"}) do
             local part = model:FindFirstChild(name)
             if part and part:IsA("BasePart") then return part end
         end
@@ -1839,32 +2093,61 @@ do
             or model.PrimaryPart or model:FindFirstChild("Head")
     end
     CombatAPI.Skills = function()
-        if SkillCoolDown or NavigationOwner or not _G.AutoLeviathanFull then return end
+        if SkillCoolDown then return end
+        if NavigationOwner then return end
+        if not _G.AutoLeviathanFull then return end
         local target = AttackModel
-        if not target or not target.Parent then return end
-        SkillCoolDown = true
-        local ok, err = pcall(function()
-            for _, tip in ipairs(SkillOrder) do
-                if HasSkills(tip) then
-                    local key, tool = FindReadySkill(tip)
-                    if key == "prep" then return end
-                    if key then
-                        local char, _, hum = GetCharacterParts()
-                        if tool and hum and not hum.Sit then
-                            if tool.Parent ~= char then hum:EquipTool(tool); task.wait(0.05) end
-                            if not _G.AutoLeviathanFull or NavigationOwner or AttackModel ~= target or not target.Parent then return end
-                            char = LocalPlayer.Character
-                            if char and char:FindFirstChildOfClass("Tool") == tool and Allowed(tip, key) then
-                                Skill_Auto(key)
-                                return
-                            end
+        if not target or not target.Parent or target.Name == "Terrorshark" then return end
+        local now = os.clock()
+        if now - LastSkillScan < 0.06 then return end
+        LastSkillScan = now
+        local pg = LocalPlayer:FindFirstChild("PlayerGui")
+        local mainGui = pg and pg:FindFirstChild("Main")
+        local skills = mainGui and mainGui:FindFirstChild("Skills")
+        if not skills then return end
+        local char, _, hum = GetCharacterParts()
+        if not char or not hum then return end
+        if SeatAttached(hum) then return end
+        local backpack = LocalPlayer:FindFirstChild("Backpack")
+        local equipped = char:FindFirstChildOfClass("Tool")
+        local pickName, pickKey = nil, nil
+        for _, container in ipairs(skills:GetChildren()) do
+            local key = ReadySkill(container, char, backpack, now)
+            if key then
+                if equipped and container.Name == equipped.Name then
+                    pickName, pickKey = container.Name, key
+                    break
+                elseif not pickName then
+                    pickName, pickKey = container.Name, key
+                end
+            end
+        end
+        if not pickName then
+            if now - LastAllWeapon >= 10 then
+                LastAllWeapon = now
+                for _, tip in ipairs(SkillOrder) do
+                    if HasSkills(tip) then
+                        local tool = ToolOf(tip)
+                        if tool and tool.Parent ~= char then
+                            pcall(function()
+                                hum:EquipTool(tool)
+                            end)
+                            task.wait()
                         end
                     end
                 end
             end
+            return
+        end
+        SkillCastAt[pickName .. pickKey] = now
+        SkillCoolDown = true
+        task.spawn(function()
+            local ok, err = pcall(CastOn, pickName, pickKey, target)
+            SkillCoolDown = false
+            if not ok then
+                warn("[Abyss] skill cast: " .. tostring(err))
+            end
         end)
-        SkillCoolDown = false
-        if not ok then error(err) end
     end
     CombatAPI.FruitM1 = function()
         if not _G.FruitM1 or not _G.AutoLeviathanFull or NavigationOwner or SkillCoolDown then return end
@@ -1872,7 +2155,7 @@ do
         if now - lastFruitAt < 0.05 then return end
         local model = AttackModel
         local _, root, hum = GetCharacterParts()
-        if not model or not model.Parent or not root or not hum or hum.Health <= 0 or hum.Sit or hum.SeatPart then return end
+        if not model or not model.Parent or not root or not hum or hum.Health <= 0 or SeatAttached(hum, root) then return end
         local target = CombatAPI.TargetPart(model)
         if not target or not target.Parent then return end
         local delta = target.Position - root.Position
@@ -2697,7 +2980,7 @@ local function IsSittingOn(seat)
     if not hum or not seat or not seat.Parent then
         return false
     end
-    return hum.SeatPart == seat
+    return hum.SeatPart == seat and SeatAttached(hum)
 end
 local function IsOnBoat()
     local _, _, hum = GetCharacterParts()
@@ -2712,16 +2995,46 @@ local function Unseat()
     AttackModel = nil
     AttackStandFn = nil
     FightTarget = nil
+    do
+        local _, hrp0, hum0 = GetCharacterParts()
+        if hum0 and SeatAttached(hum0, hrp0) then
+            pcall(function()
+                VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
+                task.wait()
+                VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
+            end)
+            local JumpStart = os.clock()
+            while os.clock() - JumpStart < 2 and hum0.SeatPart ~= nil do
+                pcall(function()
+                    hum0.Jump = true
+                end)
+                task.wait(0.1)
+            end
+            if hum0.SeatPart == nil then
+                local _, hrpJ = GetCharacterParts()
+                if hrpJ and _G.AutoLeviathanFull then
+                    HoldCFrame = CFrame.new(hrpJ.Position.X, math.max(hrpJ.Position.Y + 5, WATER_HOLD_Y), hrpJ.Position.Z)
+                        * (hrpJ.CFrame - hrpJ.CFrame.Position)
+                end
+                return true
+            end
+        end
+    end
     for _ = 1, 3 do
         local _, hrp, hum = GetCharacterParts()
-        if not hum or (not hum.Sit and hum.SeatPart == nil) then
+        if not hum or not SeatAttached(hum, hrp) then
+            if hum and hum.Sit then
+                pcall(function()
+                    hum.Sit = false
+                end)
+            end
             return true
         end
         StandUpFromSeat(hum.SeatPart, hum, hrp)
         local UnseatStart = os.clock()
         while os.clock() - UnseatStart < 2 do
             local _, _, hum2 = GetCharacterParts()
-            if hum2 and (hum2.Sit or hum2.SeatPart ~= nil) then
+            if hum2 and SeatAttached(hum2) then
                 pcall(function()
                     hum2.Sit = false
                     hum2.PlatformStand = false
@@ -2754,7 +3067,7 @@ local function BoardSeat(seat, timeout)
             return false
         end
         local _, hrp, hum = GetCharacterParts()
-        if hum and hum.SeatPart == seat then
+        if hum and hum.SeatPart == seat and SeatAttached(hum, hrp) then
             ClearHover()
             _G.Abyss_BoardStall = nil
             return true
@@ -2764,7 +3077,7 @@ local function BoardSeat(seat, timeout)
             _G.Abyss_BoardStall = nil
             return false, true
         end
-        if hum and (hum.Sit or hum.SeatPart ~= nil) then
+        if hum and SeatAttached(hum, hrp) then
             Unseat()
             task.wait(0.3)
         end
@@ -2792,7 +3105,7 @@ local function BoardSeat(seat, timeout)
                         return true
                     end
                     local _, _, humNow = GetCharacterParts()
-                    if humNow ~= nil and humNow.SeatPart ~= nil then
+                    if humNow ~= nil and SeatAttached(humNow) then
                         return true
                     end
                     return SeatHeldByOtherPlayer(seat, humNow)
@@ -2815,15 +3128,18 @@ end
 local function ForceUnseat(Seconds)
     local Deadline = os.clock() + (Seconds or 10)
     while _G.AutoLeviathanFull and os.clock() < Deadline do
-        local _, _, hum = GetCharacterParts()
-        if not hum or (not hum.Sit and hum.SeatPart == nil) then
+        local _, hrp, hum = GetCharacterParts()
+        if not hum or not SeatAttached(hum, hrp) then
+            if hum and hum.Sit then
+                pcall(function() hum.Sit = false end)
+            end
             return true
         end
         Unseat()
         task.wait(0.3)
     end
-    local _, _, hum = GetCharacterParts()
-    return hum == nil or (not hum.Sit and hum.SeatPart == nil)
+    local _, hrp, hum = GetCharacterParts()
+    return hum == nil or not SeatAttached(hum, hrp)
 end
 local function BoardSeatRetry(seat, timeout, attempts)
     attempts = attempts or 3
@@ -2879,7 +3195,7 @@ local function BuyOwnBoat(Message)
     end
     SetStatus(Message or "El barco desapareció: vuelo a comprar otro")
     local _, _, humB = GetCharacterParts()
-    if humB and (humB.Sit or humB.SeatPart ~= nil) then
+    if humB and SeatAttached(humB) then
         if not Unseat() then
             SetStatus("No pude bajarme antes de comprar: voy igual al vendedor")
         end
@@ -3007,18 +3323,20 @@ local CruiseToB = true
 local function SailBoatStream(seat, speed)
     speed = speed or _G.BoatSpeed or 150
     if not seat or not seat.Parent then
+        task.wait()
         return false
     end
     if NavigationOwner then
         pcall(function() seat.Throttle, seat.ThrottleFloat = 0, 0 end)
+        task.wait(0.1)
         return true
     end
     LastSailAt = os.clock()
+    local dt = RunService.Heartbeat:Wait() or (1 / 60)
     local _, hrp = GetCharacterParts()
-    if not hrp then
+    if not hrp or not seat.Parent then
         return false
     end
-    local dt = RunService.Heartbeat:Wait() or (1 / 60)
     if (seat.Position or hrp.Position).Y < 0 then
         SetStatus("Barco hundido (Y<0): lo abandono y compro otro")
         pcall(function()
@@ -3084,18 +3402,27 @@ local function SailBoatStream(seat, speed)
     return true
 end
 function SailBoatTurn(seat, targetPos, speed, FixedY)
+    if not seat or not seat.Parent then
+        task.wait()
+        return
+    end
     if NavigationOwner then
         pcall(function() seat.Throttle, seat.ThrottleFloat = 0, 0 end)
+        task.wait(0.1)
         return
     end
     speed = speed or _G.BoatSpeed or 250
     local pos = seat.Position
     local flat = Vector3.new(targetPos.X - pos.X, 0, targetPos.Z - pos.Z)
     if flat.Magnitude < 0.5 then
+        task.wait()
         return
     end
     LastSailAt = os.clock()
     local dt = RunService.Heartbeat:Wait() or 1 / 60
+    if not seat.Parent then
+        return
+    end
     local yaw = math.atan2(flat.X, flat.Z) + math.pi
     local move = flat.Unit * speed * dt
     local newPos = seat.Position + move
@@ -3478,7 +3805,7 @@ local function getClosestSeaTarget()
         for _, e in ipairs(seaBeasts:GetChildren()) do
             local hrp = e:FindFirstChild("HumanoidRootPart")
             local hp = e:FindFirstChild("Health")
-            if hrp and hp and hp:IsA("ValueBase") and hp.Value > 0 then
+            if hrp and hp and hp:IsA("ValueBase") and hp.Value > 0 and hrp.Position.Y > -500 then
                 local segment = e:FindFirstChild("Leviathan Segment")
                 if segment then
                     local dist = (segment.Position - myHRP.Position).Magnitude
@@ -3549,9 +3876,26 @@ local function StartDragonAttack()
                 if not ShootGunEvent or not Validator2 then
                     return
                 end
+                if not _G.AutoLeviathanFull then
+                    return
+                end
+                if not _G.DragonGunLeviathan and AttackModel and AttackModel.Parent
+                    and (AttackModel.Name == "Leviathan Segment" or AttackModel.Name == "Leviathan") then
+                    return
+                end
                 local target = getClosestSeaTarget()
                 if not target then
                     return
+                end
+                local owner = target:FindFirstAncestorWhichIsA("Model")
+                if owner and (owner.Name == "Leviathan Segment" or owner.Name == "Leviathan") then
+                    if not _G.DragonGunLeviathan then
+                        return
+                    end
+                    local seen = _G.Abyss_LevSeenAt
+                    if not seen or os.clock() - seen < 10 then
+                        return
+                    end
                 end
                 local char = LocalPlayer.Character
                 if not char then
@@ -3573,6 +3917,9 @@ end
 local function FightSeaEvent(Mob, Root, Skill, ShouldBreak)
     local start = os.clock()
     local function CurrentStand()
+        if not Sea_MobStillAlive(Mob) then
+            return nil
+        end
         local r = Sea_EventRoot(Mob)
         if not r then
             return nil
@@ -3601,7 +3948,7 @@ local function FightSeaEvent(Mob, Root, Skill, ShouldBreak)
         AttackModel = Mob
         AttackStandFn = CurrentStand
         local _, _, humSE = GetCharacterParts()
-        if humSE and (humSE.Sit or humSE.SeatPart ~= nil) then
+        if humSE and SeatAttached(humSE) then
             SetStatus("Farmeo marino: comprobando salir del asiento")
             ForceUnseat(5)
         end
@@ -3637,6 +3984,7 @@ local function FightSeaEvent(Mob, Root, Skill, ShouldBreak)
         Haki_Auto()
         task.wait(0.05)
     end
+    ReleaseFightHold(CurrentStand)
     AttackModel = nil
     AttackStandFn = nil
     FightTarget = nil
@@ -3736,9 +4084,11 @@ task.spawn(function()
             if not LeviathanPartsAt then
                 LeviathanPartsAt = LastSeenAt
             end
+            _G.Abyss_LevSeenAt = LeviathanPartsAt
         elseif os.clock() - LastSeenAt > 15 then
             LeviathanWaitDone = false
             LeviathanPartsAt = nil
+            _G.Abyss_LevSeenAt = nil
         end
     end
 end)
@@ -3780,7 +4130,7 @@ local function FightLeviathan(ShouldBreak, WaitSec)
             break
         end
         local _, _, humNow = GetCharacterParts()
-        if humNow and (humNow.Sit or humNow.SeatPart ~= nil) then
+        if humNow and SeatAttached(humNow) then
             SetStatus("Pelea a pie: comprobando salir del asiento")
             if not ForceUnseat(20) then
                 SetStatus("No consigo bajarme: salgo de este combate")
@@ -3812,10 +4162,18 @@ local function FightLeviathan(ShouldBreak, WaitSec)
             task.wait(0.2)
         else
             local MyHP = HD and HD.Health
-            if MyHP and MyHP < 3000 then
+            local MaxHP = (HD and HD.MaxHealth) or 0
+            local LowHP = math.min(3000, MaxHP * 0.3)
+            local SafeHP = math.min(5000, MaxHP * 0.7)
+            if MyHP and MyHP < LowHP then
                 SetStatus("Vida baja: subo a evadir (" .. string.format("%.0f", MyHP) .. ")")
                 local _, hrp = GetCharacterParts()
-                local FleeY = hrp and (hrp.Position.Y + 1050) or nil
+                local FleeY = hrp and (math.max(hrp.Position.Y, WATER_HOLD_Y) + 1050) or nil
+                AttackModel, AttackStandFn, FightTarget = nil, nil, nil
+                ClearHover()
+                if hrp and FleeY then
+                    HoldCFrame = CFrame.new(hrp.Position.X, FleeY, hrp.Position.Z)
+                end
                 local EscStart = os.clock()
                 while _G.AutoLeviathanFull and NavigationOwner ~= "set-spawn" and os.clock() - EscStart < 600 do
                     if ShouldBreak and ShouldBreak() then
@@ -3829,17 +4187,19 @@ local function FightLeviathan(ShouldBreak, WaitSec)
                         break
                     end
                     local H = HD and HD.Health
-                    if H and H >= 5000 then
+                    if H and H >= SafeHP then
                         SetStatus("Vida recuperada: sigo atacando")
                         break
                     end
                     local _, hrp2 = GetCharacterParts()
                     local _, _, hum2 = GetCharacterParts()
-                    if hum2 and (hum2.Sit or hum2.SeatPart ~= nil) then
+                    if hum2 and SeatAttached(hum2, hrp2) then
                         StandUpFromSeat(hum2.SeatPart, hum2, hrp2)
                     end
                     if hrp2 and FleeY then
-                        hrp2.CFrame = CFrame.new(hrp2.Position.X, FleeY, hrp2.Position.Z)
+                        AttackModel, AttackStandFn = nil, nil
+                        LiveHoldFn = nil
+                        HoldCFrame = CFrame.new(hrp2.Position.X, FleeY, hrp2.Position.Z)
                     end
                     task.wait(0.2)
                 end
@@ -3847,7 +4207,7 @@ local function FightLeviathan(ShouldBreak, WaitSec)
             end
             if model then
                 local _, _, humPre = GetCharacterParts()
-                if humPre and (humPre.Sit or humPre.SeatPart ~= nil) then
+                if humPre and SeatAttached(humPre) then
                     SetStatus("Sigo sentado antes de atacar: me bajo a la fuerza")
                     ForceUnseat(5)
                 end
@@ -3895,6 +4255,7 @@ local function FightLeviathan(ShouldBreak, WaitSec)
         end
         task.wait(0.05)
     end
+    ReleaseFightHold()
     AttackModel = nil
     AttackStandFn = nil
     FightTarget = nil
@@ -4204,9 +4565,10 @@ local function RecoverPositionLock(reason)
     RecoverLock.running = true
     task.spawn(function()
         local ok = pcall(function()
-        local _, _, humNow = GetCharacterParts()
-        local Phantom = humNow ~= nil and humNow.SeatPart ~= nil
-            and not _G.Abyss_SeatConfirmed(humNow.SeatPart)
+        local _, hrpNow, humNow = GetCharacterParts()
+        local Phantom = (humNow ~= nil and humNow.SeatPart ~= nil
+            and not _G.Abyss_SeatConfirmed(humNow.SeatPart))
+            or (hrpNow ~= nil and hrpNow.Position.Y < -2)
         if os.clock() - RecoverLock.since > 180 then
             RecoverLock.tries = 0
             RecoverLock.since = os.clock()
@@ -4232,7 +4594,7 @@ local function RecoverPositionLock(reason)
                 Freed = true
                 break
             end
-            if not hum.Sit and hum.SeatPart == nil then
+            if not SeatAttached(hum) then
                 Freed = true
                 break
             end
@@ -4254,13 +4616,16 @@ local function RecoverPositionLock(reason)
                     hrpF.Anchored = false
                     hrpF.AssemblyLinearVelocity = Vector3.zero
                     hrpF.AssemblyAngularVelocity = Vector3.zero
-                    hrpF.CFrame = CFrame.new(hrpF.Position.X, math.max(hrpF.Position.Y, 60) + 80, hrpF.Position.Z)
+                    local forced = CFrame.new(hrpF.Position.X,
+                        math.max(hrpF.Position.Y, WATER_HOLD_Y) + 80, hrpF.Position.Z)
+                    hrpF.CFrame = forced
+                    HoldCFrame = forced
                 end
             end)
             local ForceAt = os.clock() + 2
             while os.clock() < ForceAt do
                 local _, _, humF2 = GetCharacterParts()
-                if not humF2 or (not humF2.Sit and humF2.SeatPart == nil) then
+                if not humF2 or not SeatAttached(humF2) then
                     Freed = true
                     break
                 end
@@ -4756,21 +5121,43 @@ local function SailToCF(seat, TargetCF, Speed, HeartCheck)
     local TargetPos = TargetCF.Position
     local boat = (seat and seat.Parent and seat.Parent:IsA("Model")) and seat.Parent or nil
     local prim = boat and boat.PrimaryPart or nil
+    if prim == seat then
+        prim = nil
+    end
+    local Gyro = seat:FindFirstChildOfClass("BodyGyro")
+    local OrigGyroTorque = Gyro and Gyro.MaxTorque
     local OrigMaxSpeed = seat.MaxSpeed
     local OrigTurnSpeed = seat.TurnSpeed
     local OrigTorque = seat.Torque
+    local function SetThrottle(value)
+        pcall(function()
+            seat.Throttle = value
+            seat.ThrottleFloat = value
+        end)
+        if prim then
+            pcall(function()
+                prim.ThrottleFloat = value
+                prim.Throttle = value
+            end)
+        end
+    end
     local start = os.clock()
     local LastCheckPos = seat.Position
     local LastCheckAt = os.clock()
     local LastHeartCheckAt = 0
     local Arrived = false
     local SailStalls = 0
+    local NearStillSince = nil
+    local LastFrame = os.clock()
     while _G.AutoLeviathanFull and os.clock() - start < 900 do
+        local now = os.clock()
+        local dt = math.clamp(now - LastFrame, 0, 0.1)
+        LastFrame = now
         if NavigationOwner then
-            pcall(function() seat.Throttle, seat.ThrottleFloat = 0, 0 end)
-            return false
+            SetThrottle(0)
+            break
         end
-        LastSailAt = os.clock()
+        LastSailAt = now
         if not seat or not seat.Parent or not IsSittingOn(seat) then
             break
         end
@@ -4827,71 +5214,61 @@ local function SailToCF(seat, TargetCF, Speed, HeartCheck)
         SetStatus("Volviendo a Tiki (dist " .. math.floor(distance) .. ", navegando " .. math.floor(os.clock() - start) .. " s)")
         if distance <= 40 then
             Arrived = true
-            pcall(function()
-                seat.Throttle = 0
-                seat.ThrottleFloat = 0
-            end)
-            if prim then
-                pcall(function()
-                    prim.ThrottleFloat = 0
-                    prim.Throttle = 0
-                end)
-            end
+            SetThrottle(0)
             break
         end
+        if distance <= 150 then
+            local horiz = (seat.AssemblyLinearVelocity * Vector3.new(1, 0, 1)).Magnitude
+            if horiz < 5 then
+                NearStillSince = NearStillSince or now
+                if now - NearStillSince >= 1.5 then
+                    Arrived = true
+                    SetThrottle(0)
+                    break
+                end
+            else
+                NearStillSince = nil
+            end
+        else
+            NearStillSince = nil
+        end
+        if Gyro and Gyro.Parent and Gyro.MaxTorque.Magnitude > 0 then
+            pcall(function()
+                Gyro.MaxTorque = Vector3.zero
+            end)
+        end
+        local steerAngle = ComputeSteerAngle(seat, TargetPos)
+        local stepDeg = math.clamp(steerAngle, -120 * dt, 120 * dt)
         pcall(function()
             seat.MaxSpeed = Speed
             seat.TurnSpeed = Speed
+            local look = seat.CFrame.LookVector * Vector3.new(1, 0, 1)
+            local cur = math.atan2(-look.X, -look.Z)
+            seat.CFrame = CFrame.new(seat.Position) * CFrame.Angles(0, cur + math.rad(stepDeg), 0)
         end)
-        local steerAngle = ComputeSteerAngle(seat, TargetPos)
-        if math.abs(steerAngle) <= 5 then
+        if prim then
             pcall(function()
-                seat.Throttle = 1
-                seat.ThrottleFloat = 1
+                TurnBoatPrimTowards(prim, TargetPos)
             end)
-            if prim then
-                pcall(function()
-                    prim.ThrottleFloat = 1
-                    prim.Throttle = 1
-                end)
-            end
-        else
-            pcall(function() TurnBoatTowards(seat, TargetPos) end)
-            if prim then
-                pcall(function()
-                    TurnBoatPrimTowards(prim, TargetPos)
-                end)
-            end
-            pcall(function()
-                seat.Throttle = 0
-                seat.ThrottleFloat = 0
-            end)
-            if prim then
-                pcall(function()
-                    prim.ThrottleFloat = 0
-                    prim.Throttle = 0
-                end)
-            end
         end
-        task.wait()
+        SetThrottle(1)
+        RunService.Heartbeat:Wait()
     end
+    SetThrottle(0)
     pcall(function()
-        seat.Throttle = 0
-        seat.ThrottleFloat = 0
         seat.MaxSpeed = OrigMaxSpeed
         seat.TurnSpeed = OrigTurnSpeed
         seat.Torque = OrigTorque
     end)
-    if prim then
+    if Gyro and Gyro.Parent and OrigGyroTorque then
         pcall(function()
-            prim.ThrottleFloat = 0
-            prim.Throttle = 0
+            Gyro.MaxTorque = OrigGyroTorque
         end)
     end
     return Arrived
 end
 function ReturnTiki(Speed)
-    Speed = Speed or 200
+    Speed = Speed or _G.BoatSpeed or 180
     local boat = GetOwnBoat()
     if not boat then
         print("[ReturnTiki] sin barco")
@@ -4909,7 +5286,7 @@ function ReturnTiki(Speed)
     if _G.LeviathanDestination == "Hydra" then
         SetStatus("Navegando la ruta fija de Hydra")
         for _, point in ipairs(HydraReturnRoute) do
-            if not SailToCF(DriverSeat, CFrame.new(point), Speed or 300) then
+            if not SailToCF(DriverSeat, CFrame.new(point), Speed) then
                 return false
             end
         end
@@ -5184,8 +5561,8 @@ local function CaptainFarmPhase()
     local LastMobCheck = 0
     local LastSlowCheck = 0
     local Fought = {}
-    local Mob, Root = nil, nil
-    while _G.AutoLeviathanFull and not FarmDone do
+    local Mob, Root, Skill = nil, nil, false
+    while _G.AutoLeviathanFull and _G.Mode == "Capitán" and not FarmDone do
         if EnchantHandoff.Park("captain") then continue end
         if os.clock() - LastSlowCheck >= 0.4 then
             LastSlowCheck = os.clock()
@@ -5230,7 +5607,7 @@ local function CaptainFarmPhase()
         end
         if os.clock() - LastMobCheck >= 0.2 then
             LastMobCheck = os.clock()
-            Mob, Root = SoloFarmSeaMob(SeaAPI.SearchRange, Fought)
+            Mob, Root, Skill = SoloFarmSeaMob(SeaAPI.SearchRange, Fought)
         end
         if Mob and Root then
             SetStatus("Farmeo marino: peleando a pie")
@@ -5358,7 +5735,7 @@ local function HeartFinishPhase()
         while _G.AutoLeviathanFull and os.clock() - PostBoardStart < 2 do
             task.wait(0.25)
         end
-        Returned = ReturnTiki(300)
+        Returned = ReturnTiki()
     end
     local HeartLockDone = false
     if Returned then
@@ -5505,7 +5882,7 @@ local function CaptainHuntPhase()
     local LastHuntCheck = 0
     local LastTeamCheck2 = 0
     local LastMobCheck = 0
-    while _G.AutoLeviathanFull and not _G.SoloSeaFarm and not HuntSuccess do
+    while _G.AutoLeviathanFull and _G.Mode == "Capitán" and not _G.SoloSeaFarm and not HuntSuccess do
         if EnchantHandoff.Park("captain") then continue end
         if not boat or not boat.Parent or _G.Abyss_AbandonedBoats[boat] then
             SetStatus("El barco desapareció durante la caza: vuelvo al bucle principal")
@@ -5685,7 +6062,7 @@ local LastLeviathanSeen = 0
 local FollowSeatsFull = false
 local function IsOnCaptainBoat(boat)
     local _, _, hum = GetCharacterParts()
-    if not hum or not hum.SeatPart then
+    if not hum or not hum.SeatPart or not SeatAttached(hum) then
         return false
     end
     return hum.SeatPart:IsDescendantOf(boat)
@@ -5768,7 +6145,7 @@ local function FollowerBoardSeat(boat)
             end
             tried[seat] = true
             local _, _, humTried = GetCharacterParts()
-            if humTried and (humTried.Sit or humTried.SeatPart ~= nil) then
+            if humTried and SeatAttached(humTried) then
                 Unseat()
             end
         end
@@ -6081,6 +6458,7 @@ function GetTargetStatus()
 end
 local InfoUIFrame = nil
 local InfoUIText = nil
+local InfoUIConns = {}
 local function BuildInfoUIContent()
     if not _G.ShowInfoUI then
         return ""
@@ -6179,19 +6557,21 @@ local function CreateInfoUI()
     local dragging = false
     local dragOffset = Vector2.zero
     local UIS = game:GetService("UserInputService")
-    InfoUIFrame.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+    InfoUIConns[#InfoUIConns + 1] = InfoUIFrame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+            or input.UserInputType == Enum.UserInputType.Touch then
             dragging = true
             local mp = Vector2.new(input.Position.X, input.Position.Y)
             dragOffset = mp - InfoUIFrame.AbsolutePosition
         end
     end)
-    UIS.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+    InfoUIConns[#InfoUIConns + 1] = UIS.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+            or input.UserInputType == Enum.UserInputType.Touch then
             dragging = false
         end
     end)
-    UIS.InputChanged:Connect(function(input)
+    InfoUIConns[#InfoUIConns + 1] = UIS.InputChanged:Connect(function(input)
         if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
             local mp = Vector2.new(input.Position.X, input.Position.Y)
             local newPos = mp - dragOffset
@@ -6208,10 +6588,13 @@ local function CreateInfoUI()
     InfoUIFrame.Size = UDim2.new(0, 320, 0, math.max(40, initLines * 22 + 18))
 end
 local function UpdateInfoUI()
-    if not InfoUIFrame then
+    if not InfoUIFrame or not InfoUIFrame.Parent then
         return
     end
-    local content = BuildInfoUIContent()
+    local ok, content = pcall(BuildInfoUIContent)
+    if not ok or not content then
+        return
+    end
     if content == InfoUIFrame:GetAttribute("LastText") then
         return
     end
@@ -6226,6 +6609,12 @@ local function UpdateInfoUI()
     InfoUIFrame:SetAttribute("LastText", content)
 end
 local function DestroyInfoUI()
+    for _, conn in ipairs(InfoUIConns) do
+        pcall(function()
+            conn:Disconnect()
+        end)
+    end
+    InfoUIConns = {}
     if InfoUIFrame then
         local parent = InfoUIFrame.Parent
         if parent then
@@ -6242,9 +6631,13 @@ task.spawn(function()
         task.wait(0.5)
         if _G.ShowInfoUI then
             if not InfoUIFrame then
-                CreateInfoUI()
+                local okCreate, errCreate = pcall(CreateInfoUI)
+                if not okCreate then
+                    print("[Abyss] InfoUI: " .. tostring(errCreate))
+                    DestroyInfoUI()
+                end
             end
-            UpdateInfoUI()
+            pcall(UpdateInfoUI)
         else
             if InfoUIFrame then
                 DestroyInfoUI()
@@ -6258,7 +6651,7 @@ RunService.Heartbeat:Connect(function()
     end
     if _G.AutoLeviathanFull and (_G.FastAttack or _G.FruitM1) then
         local _, _, hum = GetCharacterParts()
-        if hum and hum.SeatPart == nil and not hum.Sit then
+        if hum and not SeatAttached(hum) then
             if _G.FastAttack then pcall(Attack_Auto) end
             if _G.FruitM1 then pcall(CombatAPI.FruitM1) end
         end
@@ -7158,10 +7551,12 @@ task.spawn(function()
 end)
 do
 local Abyss_AimPos, Abyss_AimTargetPart = nil, nil
+local Abyss_AimOn, Abyss_AimLastAt = false, 0
 local Abyss_AimToken, Abyss_AimRewrites = 0, 0
-local Abyss_AimHookReady, Abyss_AimHookMT, Abyss_AimHookOld = false, nil, nil
+local Abyss_AimHookReady, Abyss_AimHookFailed, Abyss_AimHookMT, Abyss_AimHookOld = false, false, nil, nil
 local Abyss_MouseHookReady, Abyss_MouseMT, Abyss_MouseStore = false, nil, nil
 local Abyss_MouseOldIndex, Abyss_MouseOldNewIndex, Abyss_MouseMod = nil, nil, nil
+local Abyss_InstallAimHook, Abyss_InstallMouseHook
 local function Abyss_AimGate()
     return _G.AutoLeviathanFull and _G.SilentAim and not NavigationOwner
 end
@@ -7205,10 +7600,14 @@ local Abyss_FindAimTarget = function()
     end
     return nil, nil
 end
-local function Abyss_SetAim(target)
-    if not target then
-        return nil
+local function Abyss_LiveAimPoint()
+    if Abyss_AimTargetPart and Abyss_AimTargetPart.Parent then
+        return Abyss_AimTargetPart.Position
     end
+    return Abyss_AimPos and Abyss_AimPos.Position or nil
+end
+local function Abyss_SetAim(target)
+    Abyss_AimPos, Abyss_AimTargetPart = nil, nil
     local pos, part
     local kind = typeof(target)
     if kind == "Instance" then
@@ -7219,17 +7618,29 @@ local function Abyss_SetAim(target)
         pos = target.Position
     end
     if not pos then
+        Abyss_AimOn = false
         return nil
     end
     Abyss_AimPos = CFrame.new(pos)
     Abyss_AimTargetPart = part
+    Abyss_AimOn = Abyss_AimGate() and true or false
+    if Abyss_AimOn then
+        Abyss_AimLastAt = os.clock()
+        if not Abyss_AimHookReady and not Abyss_AimHookFailed then
+            Abyss_InstallAimHook()
+        end
+        if not Abyss_MouseHookReady then
+            Abyss_InstallMouseHook()
+        end
+    end
     return Abyss_AimPos
 end
 Abyss_AimBegin = function(target)
+    Abyss_AimToken = Abyss_AimToken + 1
     if not Abyss_AimGate() then
+        Abyss_AimOn = false
         return nil
     end
-    Abyss_AimToken = Abyss_AimToken + 1
     if target and Abyss_SetAim(target) then
         return Abyss_AimToken
     end
@@ -7237,84 +7648,97 @@ Abyss_AimBegin = function(target)
     if not pos then
         Abyss_AimPos = nil
         Abyss_AimTargetPart = nil
+        Abyss_AimOn = false
         return nil
     end
     Abyss_AimPos = CFrame.new(pos)
     Abyss_AimTargetPart = part
+    Abyss_AimOn = true
+    Abyss_AimLastAt = os.clock()
+    if not Abyss_AimHookReady and not Abyss_AimHookFailed then
+        Abyss_InstallAimHook()
+    end
+    if not Abyss_MouseHookReady then
+        Abyss_InstallMouseHook()
+    end
     return Abyss_AimToken
 end
-Abyss_AimEndSoon = function(delay)
+Abyss_AimEndSoon = function(delay, waitCasting)
     local token = Abyss_AimToken
     task.delay(delay or 0.6, function()
+        if waitCasting then
+            local deadline = os.clock() + 6
+            while Abyss_AimToken == token and os.clock() < deadline and CombatAPI.StillCasting() do
+                task.wait(0.05)
+            end
+        end
         if Abyss_AimToken == token then
-            Abyss_AimPos = nil
-            Abyss_AimTargetPart = nil
+            Abyss_AimPos, Abyss_AimTargetPart = nil, nil
+            Abyss_AimOn = false
         end
     end)
 end
-local function Abyss_InstallAimHook()
+Abyss_InstallAimHook = function()
     if Abyss_AimHookReady then
         return true
     end
-    if type(getrawmetatable) ~= "function" or type(newcclosure) ~= "function" then
+    if Abyss_AimHookFailed then
         return false
     end
+    if type(getrawmetatable) ~= "function" or type(newcclosure) ~= "function" then
+        Abyss_AimHookFailed = true
+        return false
+    end
+    local GetMethod = getnamecallmethod
+    local CheckCaller = (type(checkcaller) == "function") and checkcaller or nil
+    local TypeOf = typeof
     local ok = pcall(function()
         local mt = getrawmetatable(game)
         local oldNamecall = mt.__namecall
         setreadonly(mt, false)
         mt.__namecall = newcclosure(function(self, ...)
-            if not (Abyss_AimPos and Abyss_AimGate()) then
+            if not Abyss_AimOn or not Abyss_AimGate() then
                 return oldNamecall(self, ...)
             end
-            local method = getnamecallmethod()
-            if method ~= "FireServer" and method ~= "InvokeServer" then
+            if GetMethod() ~= "FireServer" then
                 return oldNamecall(self, ...)
             end
-            if type(checkcaller) == "function" and checkcaller() then
+            if CheckCaller and CheckCaller() then
                 return oldNamecall(self, ...)
             end
-            local nm = self.Name
-            if nm ~= "RemoteEvent" and nm ~= "RemoteFunction" and nm ~= "CommE" then
+            if self.Name ~= "RemoteEvent" or select("#", ...) ~= 1 then
                 return oldNamecall(self, ...)
             end
-            local n = select("#", ...)
-            if n == 0 then
+            local first = ...
+            local kind = TypeOf(first)
+            if kind ~= "Vector3" and kind ~= "CFrame" then
                 return oldNamecall(self, ...)
             end
-            local args = table.pack(...)
-            if typeof(args[1]) == "boolean" then
+            local pos = Abyss_LiveAimPoint()
+            if not pos or pos.X ~= pos.X or pos.Y < -500 then
                 return oldNamecall(self, ...)
             end
-            local pos = Abyss_AimPos.Position
-            if tostring(pos.X) == "nan" then
-                return oldNamecall(self, ...)
-            end
-            local limit = math.min(8, n)
-            for i = 1, limit do
-                local v = args[i]
-                if typeof(v) == "CFrame" then
-                    args[i] = CFrame.new(v.Position, pos)
-                    Abyss_AimRewrites = Abyss_AimRewrites + 1
-                    return oldNamecall(self, table.unpack(args, 1, n))
-                elseif typeof(v) == "Vector3" then
-                    args[i] = pos
-                    Abyss_AimRewrites = Abyss_AimRewrites + 1
-                    return oldNamecall(self, table.unpack(args, 1, n))
-                end
-            end
-            return oldNamecall(self, ...)
+            local replaced = (kind == "Vector3") and pos or CFrame.new(pos)
+            Abyss_AimRewrites = Abyss_AimRewrites + 1
+            return oldNamecall(self, replaced)
         end)
         setreadonly(mt, true)
         Abyss_AimHookMT = mt
         Abyss_AimHookOld = oldNamecall
+        Abyss_AimHookReady = true
     end)
-    Abyss_AimHookReady = ok
-    return ok
+    if not ok then
+        Abyss_AimHookFailed = true
+        return false
+    end
+    return true
 end
-local function Abyss_InstallMouseHook()
+Abyss_InstallMouseHook = function()
     if Abyss_MouseHookReady then
         return true
+    end
+    if Abyss_AimHookFailed then
+        return false
     end
     local mod = RS:FindFirstChild("Mouse")
     if not mod then
@@ -7337,19 +7761,30 @@ local function Abyss_InstallMouseHook()
         rawset(MouseMod, "Target", nil)
         local oldIndex = mt.__index
         local oldNewIndex = mt.__newindex
+        local oldIndexIsFn = type(oldIndex) == "function"
+        local oldIndexIsTable = type(oldIndex) == "table"
+        local oldNewIndexIsFn = type(oldNewIndex) == "function"
         mt.__index = function(self, key)
-            if Abyss_AimPos and Abyss_AimGate() and (key == "Hit" or key == "Target") then
-                if key == "Hit" then
-                    return Abyss_AimPos
+            if key == "Hit" or key == "Target" then
+                if Abyss_AimOn and Abyss_AimGate() then
+                    if key == "Hit" then
+                        local pos = Abyss_LiveAimPoint()
+                        if pos then
+                            return CFrame.new(pos)
+                        end
+                    elseif Abyss_AimTargetPart then
+                        return Abyss_AimTargetPart
+                    end
                 end
-                if Abyss_AimTargetPart then
-                    return Abyss_AimTargetPart
+                local real = store[key]
+                if real ~= nil then
+                    return real
                 end
             end
-            if type(oldIndex) == "function" then
+            if oldIndexIsFn then
                 return oldIndex(self, key)
             end
-            if type(oldIndex) == "table" then
+            if oldIndexIsTable then
                 return oldIndex[key]
             end
             return store[key]
@@ -7357,7 +7792,7 @@ local function Abyss_InstallMouseHook()
         mt.__newindex = function(self, key, value)
             if key == "Hit" or key == "Target" then
                 store[key] = value
-            elseif type(oldNewIndex) == "function" then
+            elseif oldNewIndexIsFn then
                 oldNewIndex(self, key, value)
             else
                 rawset(self, key, value)
@@ -7383,9 +7818,11 @@ local function Abyss_UninstallMouseHook()
         mt.__index = Abyss_MouseOldIndex
         mt.__newindex = Abyss_MouseOldNewIndex
         setreadonly(mt, true)
-        if Abyss_MouseMod and Abyss_MouseStore then
-            rawset(Abyss_MouseMod, "Hit", Abyss_MouseStore.Hit)
-            rawset(Abyss_MouseMod, "Target", Abyss_MouseStore.Target)
+        local mod = RS:FindFirstChild("Mouse")
+        local loaded, MouseMod = pcall(require, mod)
+        if loaded and type(MouseMod) == "table" and Abyss_MouseStore then
+            rawset(MouseMod, "Hit", Abyss_MouseStore.Hit)
+            rawset(MouseMod, "Target", Abyss_MouseStore.Target)
         end
     end)
     Abyss_MouseHookReady = false
@@ -7407,6 +7844,7 @@ local function Abyss_UninstallAimHook()
     Abyss_AimHookOld = nil
 end
 _G.Abyss_AimInstall = function()
+    Abyss_AimHookFailed = false
     local eventOk = Abyss_InstallAimHook()
     local mouseOk = Abyss_InstallMouseHook()
     if not eventOk then
@@ -7416,14 +7854,21 @@ _G.Abyss_AimInstall = function()
 end
 _G.Abyss_AimUninstall = Abyss_UninstallAimHook
 _G.Abyss_AimStats = function()
-    print(string.format("[Aim] remotes reescritos: %d | objetivo: %s | ventana: %s",
+    print(string.format("[Aim] remotes reescritos: %d | objetivo: %s | ventana: %s | hook: %s",
         Abyss_AimRewrites,
         Abyss_AimTargetPart and Abyss_AimTargetPart.Name or "ninguno",
-        Abyss_AimPos and "abierta" or "cerrada"))
+        Abyss_AimOn and "abierta" or "cerrada",
+        Abyss_AimHookReady and "on" or "off"))
 end
 task.spawn(function()
     if _G.SilentAim then
         _G.Abyss_AimInstall()
+    end
+    while task.wait(1) do
+        if (Abyss_AimHookReady or Abyss_MouseHookReady) and not Abyss_AimOn
+            and os.clock() - Abyss_AimLastAt > 3 then
+            Abyss_UninstallAimHook()
+        end
     end
 end)
 end
@@ -8840,24 +9285,119 @@ MainSection:AddToggle("ignite.lantern", {
         SaveConfig()
     end,
 })
-task.spawn(function()
-    while true do
-        if _G.IgniteLantern then
-            pcall(function()
-                local origin = workspace:FindFirstChild("_WorldOrigin")
-                local locations = origin and origin:FindFirstChild("Locations")
-                if locations and locations:FindFirstChild("Freezing Hydra Island") then
-                    local client = workspace:FindFirstChild("HydraIslandClient")
-                    local remote = client and client:FindFirstChild("RemoteFunction")
-                    if remote then remote:InvokeServer("Interacted") end
-                end
-            end)
-            task.wait(2)
-        else
-            task.wait(1)
+do
+    local function releaseLantern()
+        if NavigationOwner == "lantern" then
+            NavigationOwner = nil
+            ClearHover()
         end
     end
-end)
+    local function lanternEvent()
+        local origin = workspace:FindFirstChild("_WorldOrigin")
+        local locations = origin and origin:FindFirstChild("Locations")
+        return locations and locations:FindFirstChild("Freezing Hydra Island")
+    end
+    local function findUnlitLantern()
+        local map = workspace:FindFirstChild("Map")
+        local waterfall = map and map:FindFirstChild("Waterfall")
+        local island = waterfall and waterfall:FindFirstChild("IslandModel")
+        local dojo = island and island:FindFirstChild("DojoAddition")
+        local names = { Green = "RelicGreen", Red = "RelicRed", Yellow = "RelicYellow" }
+        for _, lantern in ipairs(dojo and dojo:GetChildren() or {}) do
+            local relic = names[lantern.Name] and lantern:FindFirstChild(names[lantern.Name])
+            local fire = relic and relic:FindFirstChild("RelicFire")
+            local attachment = fire and fire:FindFirstChild("Attachment")
+            local particle = attachment and attachment:FindFirstChild("Particle_1")
+            if particle and not particle.Enabled then
+                local prompt = lantern:FindFirstChildWhichIsA("ProximityPrompt", true)
+                local part = lantern.PrimaryPart or lantern:FindFirstChildWhichIsA("BasePart", true)
+                if prompt and part then return prompt, part end
+            end
+        end
+    end
+    local function lanternStep()
+        if not _G.IgniteLantern or not lanternEvent() or EnchantHandoff.requested then
+            releaseLantern()
+            return
+        end
+        if NavigationOwner and NavigationOwner ~= "lantern" then
+            return
+        end
+        local client = workspace:FindFirstChild("HydraIslandClient")
+        local remote = client and client:FindFirstChild("RemoteFunction")
+        if not remote then
+            return
+        end
+        local complete = remote:InvokeServer("Interacted")
+        if not _G.IgniteLantern or not lanternEvent() or EnchantHandoff.requested then
+            releaseLantern()
+            return
+        end
+        if NavigationOwner and NavigationOwner ~= "lantern" then
+            return
+        end
+        if complete then
+            releaseLantern()
+            return
+        end
+        local _, root, hum = GetCharacterParts()
+        if not root or not hum or hum.Health <= 0 then
+            releaseLantern()
+            return
+        end
+        if NavigationOwner ~= "lantern" then
+            NavigationOwner = "lantern"
+            if CurrentTween then
+                pcall(function() CurrentTween:Cancel() end)
+            end
+            ClearHover()
+            task.wait(0.2)
+        end
+        local function cancelled()
+            return not _G.IgniteLantern or not lanternEvent() or EnchantHandoff.requested
+                or NavigationOwner ~= "lantern"
+        end
+        if cancelled() then
+            releaseLantern()
+            return
+        end
+        local destination = CFrame.new(5623.16259765625, 1207.139404296875, 913.849609375)
+        if (root.Position - destination.Position).Magnitude > 300 then
+            _tp(destination, cancelled, true)
+            return
+        end
+        local prompt, part = findUnlitLantern()
+        if not prompt then
+            pcall(function()
+                LocalPlayer:RequestStreamAroundAsync(destination.Position, 2)
+            end)
+            return
+        end
+        if (root.Position - part.Position).Magnitude > 8 then
+            _tp(part.CFrame, function() return cancelled() or not part.Parent end, true)
+            return
+        end
+        if cancelled() or not prompt.Parent or not prompt.Enabled then
+            return
+        end
+        if fireproximityprompt then
+            fireproximityprompt(prompt)
+        else
+            prompt:InputHoldBegin()
+            task.wait(math.max(prompt.HoldDuration, 0) + 0.1)
+            prompt:InputHoldEnd()
+        end
+    end
+    task.spawn(function()
+        while true do
+            local ok = pcall(lanternStep)
+            if not ok then
+                releaseLantern()
+            end
+            task.wait(_G.IgniteLantern and 0.5 or 1)
+        end
+    end)
+end
 _G.Abyss_AutoFullToggle = {
     Lock = function()
         abyssAutoFullLocked = true
@@ -8940,14 +9480,21 @@ MainSection:AddToggle("solo.seafarm", {
                 _G.Abyss_StartBoatDeadMonitor()
             end
         else
+            local WasRunning = _G.AutoLeviathanFull
             StopTweenAll()
             _G.AutoLeviathanFull = false
+            NavigationOwner = nil
             _G.Abyss_ResetMapNoclipState()
             StatusPrefix = ""
             StatusText = T("status.stopped")
             if _G.Abyss_AutoFullToggle and _G.Abyss_AutoFullToggle.Unlock then
                 pcall(function()
                     _G.Abyss_AutoFullToggle:Unlock()
+                end)
+            end
+            if WasRunning then
+                pcall(function()
+                    AutoFullToggle:SetValue(false)
                 end)
             end
         end
@@ -9001,18 +9548,28 @@ local StopButton = MainSection:AddButton({
     Callback = function()
         StopTweenAll()
         _G.AutoLeviathanFull = false
+        NavigationOwner = nil
         _G.Abyss_ResetMapNoclipState()
         StatusPrefix = ""
         StatusText = T("status.stopped")
         if _G.SoloSeaFarm then
             _G.SoloSeaFarm = false
             SaveConfig()
+            pcall(function()
+                local SoloOpt = Fluent.Options and Fluent.Options["solo.seafarm"]
+                if SoloOpt and SoloOpt.Value then
+                    SoloOpt:SetValue(false)
+                end
+            end)
         end
         if _G.Abyss_AutoFullToggle and _G.Abyss_AutoFullToggle.Unlock then
             pcall(function()
                 _G.Abyss_AutoFullToggle:Unlock()
             end)
         end
+        pcall(function()
+            AutoFullToggle:SetValue(false)
+        end)
         SendNotify(T("stop.btn"), T("status.stopped"))
     end,
 })
@@ -11860,6 +12417,17 @@ ApplyLanguage = function()
     pcall(function()
         if _G.Abyss_RefreshStatus then
             _G.Abyss_RefreshStatus()
+        end
+    end)
+    pcall(function()
+        local V = _G.Abyss_EnchantViewer
+        if V then
+            if _G.Abyss_EnchantStatusPara and V.Status and V.Status ~= "" then
+                _G.Abyss_EnchantStatusPara:SetDesc(V.Status)
+            end
+            if V.Refresh then
+                V.Refresh()
+            end
         end
     end)
 end
