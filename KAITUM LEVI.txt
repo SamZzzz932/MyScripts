@@ -1,11 +1,40 @@
--- Paleta de la interfaz: amarillo platano con texto cafe oscuro.
--- Cambia estos tres valores si quieres otro tono de amarillo.
-local AbyssAccentRGB = { 255, 210, 40 }    -- amarillo principal (fondos)
-local AbyssInkRGB = { 52, 36, 0 }          -- cafe oscuro (texto)
-local AbyssAmberRGB = { 150, 100, 0 }      -- ambar oscuro (bordes y acentos)
+if _G.AutoLeviathanFull_Loaded then
+    local env = (getgenv and getgenv()) or _G
+    if not env.ForceReload then
+        print("[Abyss] Ya hay una instancia cargada. Para recargar: ejecuta  getgenv().ForceReload = true  y vuelve a ejecutar el script.")
+        return
+    end
+    env.ForceReload = false
+    print("[Abyss] Recarga forzada: la instancia anterior (menu y bucles) puede seguir activa.")
+end
+_G.AutoLeviathanFull_Loaded = true
+
+-- Unico color de acento: indigo del logo DevAbyss-X (79, 59, 205).
+-- El resto de la interfaz usa el gris comun del script; cambia AbyssBaseRGB para cambiar el acento.
+local AbyssBaseRGB = { 79, 59, 205 }
+local function AbyssGray(v) return { v, v, v } end
+local AbyssAccentRGB = AbyssBaseRGB                  -- acento (unico color)
+local AbyssInkRGB = AbyssGray(240)                   -- texto gris claro
+local AbyssAmberRGB = AbyssGray(90)                  -- bordes grises
+local AbyssPanelRGB = AbyssGray(40)                  -- paneles
+local AbyssPanelSoftRGB = AbyssGray(60)              -- elementos
+local AbyssPanelDeepRGB = AbyssGray(30)              -- dropdowns / dialogos
+local AbyssElementRGB = AbyssGray(70)                -- inputs
+local AbyssPanelLightRGB = AbyssGray(120)            -- foco / hover
+local AbyssLineRGB = AbyssGray(150)                  -- lineas
+local AbyssMutedRGB = AbyssGray(170)                 -- texto secundario
+local AbyssDarkRGB = AbyssGray(20)                   -- error
 local AbyssAccent = Color3.fromRGB(AbyssAccentRGB[1], AbyssAccentRGB[2], AbyssAccentRGB[3])
 local AbyssInk = Color3.fromRGB(AbyssInkRGB[1], AbyssInkRGB[2], AbyssInkRGB[3])
 local AbyssAmber = Color3.fromRGB(AbyssAmberRGB[1], AbyssAmberRGB[2], AbyssAmberRGB[3])
+local AbyssPanel = Color3.fromRGB(AbyssPanelRGB[1], AbyssPanelRGB[2], AbyssPanelRGB[3])
+local AbyssPanelSoft = Color3.fromRGB(AbyssPanelSoftRGB[1], AbyssPanelSoftRGB[2], AbyssPanelSoftRGB[3])
+local AbyssPanelDeep = Color3.fromRGB(AbyssPanelDeepRGB[1], AbyssPanelDeepRGB[2], AbyssPanelDeepRGB[3])
+local AbyssElement = Color3.fromRGB(AbyssElementRGB[1], AbyssElementRGB[2], AbyssElementRGB[3])
+local AbyssPanelLight = Color3.fromRGB(AbyssPanelLightRGB[1], AbyssPanelLightRGB[2], AbyssPanelLightRGB[3])
+local AbyssLine = Color3.fromRGB(AbyssLineRGB[1], AbyssLineRGB[2], AbyssLineRGB[3])
+local AbyssMuted = Color3.fromRGB(AbyssMutedRGB[1], AbyssMutedRGB[2], AbyssMutedRGB[3])
+local AbyssDark = Color3.fromRGB(AbyssDarkRGB[1], AbyssDarkRGB[2], AbyssDarkRGB[3])
 
 local function AbyssFatal(err)
     local msg = "[Abyss] Error fatal: " .. tostring(err)
@@ -31,14 +60,14 @@ local function AbyssFatal(err)
         frame.AnchorPoint = Vector2.new(0.5, 0.5)
         frame.Position = UDim2.fromScale(0.5, 0.5)
         frame.Size = UDim2.fromOffset(560, 190)
-        frame.BackgroundColor3 = AbyssAccent
+        frame.BackgroundColor3 = AbyssPanel
         frame.BorderSizePixel = 0
         frame.Parent = gui
         local corner = Instance.new("UICorner")
         corner.CornerRadius = UDim.new(0, 12)
         corner.Parent = frame
         local stroke = Instance.new("UIStroke")
-        stroke.Color = Color3.fromRGB(176, 24, 24)
+        stroke.Color = AbyssDark
         stroke.Thickness = 2
         stroke.Parent = frame
         local title = Instance.new("TextLabel")
@@ -47,7 +76,7 @@ local function AbyssFatal(err)
         title.Size = UDim2.new(1, -36, 0, 28)
         title.Font = Enum.Font.GothamBold
         title.TextSize = 18
-        title.TextColor3 = Color3.fromRGB(150, 20, 20)
+        title.TextColor3 = AbyssDark
         title.TextXAlignment = Enum.TextXAlignment.Left
         title.Text = "Abyss | Error de ejecucion"
         title.Parent = frame
@@ -66,11 +95,11 @@ local function AbyssFatal(err)
         local close = Instance.new("TextButton")
         close.Position = UDim2.new(1, -100, 1, -42)
         close.Size = UDim2.fromOffset(82, 28)
-        close.BackgroundColor3 = Color3.fromRGB(176, 24, 24)
+        close.BackgroundColor3 = AbyssDark
         close.BorderSizePixel = 0
         close.Font = Enum.Font.GothamBold
         close.TextSize = 13
-        close.TextColor3 = Color3.new(1, 1, 1)
+        close.TextColor3 = AbyssPanelLight
         close.Text = "Cerrar"
         close.Parent = frame
         local closeCorner = Instance.new("UICorner")
@@ -98,7 +127,7 @@ local function AbyssShowLoading()
         frame.AnchorPoint = Vector2.new(0.5, 0)
         frame.Position = UDim2.new(0.5, 0, 0, 18)
         frame.Size = UDim2.fromOffset(280, 38)
-        frame.BackgroundColor3 = AbyssAccent
+        frame.BackgroundColor3 = AbyssPanel
         frame.BorderSizePixel = 0
         frame.Parent = screen
         local corner = Instance.new("UICorner")
@@ -562,7 +591,9 @@ local EnchantHandoff = { requested = false, parked = {}, claimed = false }
 function EnchantHandoff.Park(role)
     if not EnchantHandoff.requested then return false end
     EnchantHandoff.parked[role] = true
-    while EnchantHandoff.requested and _G.AutoLeviathanFull do
+    -- Tope de espera: un handoff colgado no debe congelar todas las cuentas.
+    local deadline = os.clock() + 12
+    while EnchantHandoff.requested and _G.AutoLeviathanFull and os.clock() < deadline do
         task.wait(0.1)
     end
     EnchantHandoff.parked[role] = nil
@@ -1139,6 +1170,29 @@ local function GetCharacterParts()
     end
     return char, char:FindFirstChild("HumanoidRootPart"), char:FindFirstChildOfClass("Humanoid")
 end
+local CharPartCache = setmetatable({}, { __mode = "k" })
+local function SetCharCollide(char, on)
+    if not char then
+        return
+    end
+    local entry = CharPartCache[char]
+    local now = os.clock()
+    if not entry or now - entry.at > 1 then
+        local list = {}
+        for _, p in ipairs(char:GetDescendants()) do
+            if p:IsA("BasePart") then
+                list[#list + 1] = p
+            end
+        end
+        entry = { at = now, list = list }
+        CharPartCache[char] = entry
+    end
+    for _, p in ipairs(entry.list) do
+        if p.CanCollide ~= on and p.Parent then
+            p.CanCollide = on
+        end
+    end
+end
 local NoclipOn = false
 local LastNoclipApply = 0
 local function NoClip(v)
@@ -1151,18 +1205,10 @@ local function NoClip(v)
         end
         NoclipOn = true
         LastNoclipApply = os.clock()
-        for _, part in pairs(Character:GetDescendants()) do
-            if part:IsA("BasePart") then
-                part.CanCollide = false
-            end
-        end
+        SetCharCollide(Character, false)
     else
         NoclipOn = false
-        for _, part in pairs(Character:GetDescendants()) do
-            if part:IsA("BasePart") then
-                part.CanCollide = true
-            end
-        end
+        SetCharCollide(Character, true)
     end
 end
 local Tweening = false
@@ -2925,6 +2971,36 @@ end
 local LastSailAt = 0
 local CruiseCheckPos = nil
 local function __AbyssPart3()
+-- Isla Mirage: elevar el barco por encima de la isla/barrera al pasar.
+local MIRAGE_HIGH_Y = 520
+_G.Abyss_FindMirageIsland = function()
+    local map = workspace:FindFirstChild("Map")
+    local candidates = {
+        workspace:FindFirstChild("Mirage Island"),
+        workspace:FindFirstChild("MirageIsland"),
+    }
+    if map then
+        candidates[#candidates + 1] = map:FindFirstChild("Mirage Island")
+        candidates[#candidates + 1] = map:FindFirstChild("MirageIsland")
+    end
+    for _, inst in ipairs(candidates) do
+        if inst then return inst end
+    end
+    return nil
+end
+_G.Abyss_MirageSailY = function(pos, baseY)
+    baseY = baseY or (_G.BoatHeight or 150)
+    local island = _G.Abyss_FindMirageIsland()
+    if not island then return baseY end
+    local part = (island:IsA("BasePart") and island)
+        or island:FindFirstChildWhichIsA("BasePart", true)
+    local p = part and part.Position or nil
+    if not p then return baseY end
+    local flat = pos and Vector3.new(pos.X - p.X, 0, pos.Z - p.Z).Magnitude or math.huge
+    if flat > 700 then return baseY end
+    local half = (part:IsA("BasePart") and part.Size) and (part.Size.Y * 0.5) or 0
+    return math.max(baseY, p.Y + half + 120, MIRAGE_HIGH_Y)
+end
 local CruiseCheckAt = 0
 local CruiseStalls = 0
 local CruiseToB = true
@@ -2999,7 +3075,7 @@ local function SailBoatStream(seat, speed)
     local dir = flat.Unit
     local step = math.min(dist, speed * dt)
     local np = pos + dir * step
-    local lockY = _G.BoatHeight or 150
+    local lockY = _G.Abyss_MirageSailY(pos, _G.BoatHeight or 150)
     pcall(function()
         hrp.CFrame = CFrame.lookAt(Vector3.new(np.X, lockY, np.Z),
             Vector3.new(np.X, lockY, np.Z - 1), Vector3.new(0, 1, 0))
@@ -3023,7 +3099,8 @@ function SailBoatTurn(seat, targetPos, speed, FixedY)
     local yaw = math.atan2(flat.X, flat.Z) + math.pi
     local move = flat.Unit * speed * dt
     local newPos = seat.Position + move
-    seat.CFrame = CFrame.new(newPos.X, FixedY or seat.Position.Y, newPos.Z) * CFrame.Angles(0, yaw, 0)
+    local sailY = _G.Abyss_MirageSailY(newPos, FixedY or seat.Position.Y)
+    seat.CFrame = CFrame.new(newPos.X, sailY, newPos.Z) * CFrame.Angles(0, yaw, 0)
 end
 local SeaAPI = { SearchRange = 4000 }
 do
@@ -4736,6 +4813,15 @@ local function SailToCF(seat, TargetCF, Speed, HeartCheck)
             end
         end
         local pos = seat.Position
+        -- Al pasar por Isla Mirage, subir el barco por encima de la barrera.
+        local mirageY = _G.Abyss_MirageSailY(pos, _G.BoatHeight or 150)
+        if mirageY > pos.Y + 5 then
+            pcall(function()
+                seat.CFrame = CFrame.new(pos.X, mirageY, pos.Z)
+                    * (seat.CFrame - seat.CFrame.Position)
+            end)
+            pos = seat.Position
+        end
         local flat = Vector3.new(TargetPos.X - pos.X, 0, TargetPos.Z - pos.Z)
         local distance = flat.Magnitude
         SetStatus("Volviendo a Tiki (dist " .. math.floor(distance) .. ", navegando " .. math.floor(os.clock() - start) .. " s)")
@@ -4915,6 +5001,11 @@ end
 local function WaitForTeammates(boat, DriverSeat, ShouldStop, FightEvents, NoRebuy, MaxWait, FarImmediate)
     if FightEvents == nil then
         FightEvents = true
+    end
+    -- Sin limite, esperar companeros podia dejar la cuenta quieta para siempre
+    -- al arrancar. Siempre hay un tope y el bucle principal continua despues.
+    if not MaxWait or MaxWait <= 0 then
+        MaxWait = 120
     end
     local FarStart = nil
     local WaitStart = os.clock()
@@ -6051,7 +6142,7 @@ local function CreateInfoUI()
     ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
     InfoUIFrame = Instance.new("Frame")
     InfoUIFrame.Name = "Main"
-    InfoUIFrame.BackgroundColor3 = AbyssAccent
+    InfoUIFrame.BackgroundColor3 = AbyssPanel
     InfoUIFrame.BackgroundTransparency = 0.05
     InfoUIFrame.BorderSizePixel = 0
     InfoUIFrame.Position = UDim2.new(0.5, -160, 0, 12)
@@ -7854,10 +7945,16 @@ task.spawn(function()
                     local quality = Q
                     if quality == AUTO_CRAFT_BOTH_LABEL then
                         local Etc = GetCraftData()
-                        if type(Etc) == "table"
-                            and CraftQualityList.GetInventoryCount(Etc, "MythicalScroll") < 10 then
+                        local mythic = (type(Etc) == "table")
+                            and CraftQualityList.GetInventoryCount(Etc, "MythicalScroll") or 0
+                        -- Etapa persistente: se llena Mythical una vez y despues
+                        -- se apunta siempre a Legendary. CraftStep ya fabrica los
+                        -- requisitos (Mythical) cuando faltan, asi el bucle no
+                        -- salta entre calidades y se queda sin avanzar.
+                        if CraftQualityList.BothStage ~= "Legendary" and mythic < 10 then
                             quality = "Mythical Scroll"
                         else
+                            CraftQualityList.BothStage = "Legendary"
                             quality = "Legendary Scroll"
                         end
                     end
@@ -7914,6 +8011,7 @@ function AutoUnlockMythicalStep()
                 if bothSelected and pending.Key == "MythicalScroll"
                     and CraftQualityList.UnlockStage ~= "Legendary" then
                     CraftQualityList.UnlockStage = "Legendary"
+                    CraftQualityList.BothStage = "Legendary"
                     CraftStatus = TranslateStatus(pendingLabel .. ": fabricado; continuando con Legendary Scroll")
                     return
                 end
@@ -7940,6 +8038,7 @@ function AutoUnlockMythicalStep()
                 if bothSelected and pending.Key == "MythicalScroll"
                     and CraftQualityList.UnlockStage ~= "Legendary" then
                     CraftQualityList.UnlockStage = "Legendary"
+                    CraftQualityList.BothStage = "Legendary"
                     CraftStatus = TranslateStatus("Mythical Scroll not confirmed; continuing with Legendary Scroll")
                     return
                 end
@@ -7954,6 +8053,7 @@ function AutoUnlockMythicalStep()
     if unlockCount >= unlockCap then
         if _G.CraftQuality == AUTO_CRAFT_BOTH_LABEL and unlockTarget == "MythicalScroll" then
             CraftQualityList.UnlockStage = "Legendary"
+            CraftQualityList.BothStage = "Legendary"
             return
         end
         StopAutoUnlockMythical("craft.unlock.done")
@@ -8111,10 +8211,9 @@ do
         _G.Mode = "Seguidor"
     end
 end
--- Fluent trae el tema "Dark" con grises fijos y el acento azul escrito dentro de
--- la libreria. Antes de compilarla se reemplaza la tabla completa del tema por
--- una amarilla, asi toda la interfaz (fondo, paneles, pestanas, toggles, sliders,
--- dropdowns, inputs, dialogos y notificaciones) queda en amarillo.
+-- Fluent trae varios temas. Se dejan solo dos, en este orden:
+-- "Dark" (gris comun con acento del logo) y "Abyss Original" (todos los tonos
+-- derivados de la imagen). "Dark" queda por defecto.
 local function PatchFluentTheme(source)
     if type(source) ~= "string" then
         return source
@@ -8124,55 +8223,150 @@ local function PatchFluentTheme(source)
     end
     local theme = table.concat({
         "Name='Dark'",
-        "Accent=" .. rgb(AbyssAmberRGB),
-        "AcrylicMain=" .. rgb(AbyssAccentRGB),
+        "Accent=" .. rgb(AbyssBaseRGB),
+        "AcrylicMain=" .. rgb(AbyssPanelRGB),
         "AcrylicBorder=" .. rgb(AbyssAmberRGB),
-        "AcrylicGradient=ColorSequence.new(" .. rgb({ 255, 226, 90 }) .. "," .. rgb({ 245, 190, 20 }) .. ")",
+        "AcrylicGradient=ColorSequence.new(" .. rgb(AbyssPanelDeepRGB) .. "," .. rgb(AbyssAmberRGB) .. ")",
         "AcrylicNoise=0.9",
-        "TitleBarLine=" .. rgb({ 190, 133, 0 }),
-        "Tab=" .. rgb({ 255, 243, 175 }),
-        "Element=" .. rgb({ 255, 246, 190 }),
+        "TitleBarLine=" .. rgb(AbyssAmberRGB),
+        "Tab=" .. rgb(AbyssPanelSoftRGB),
+        "Element=" .. rgb(AbyssElementRGB),
         "ElementBorder=" .. rgb(AbyssAmberRGB),
-        "InElementBorder=" .. rgb({ 185, 128, 0 }),
+        "InElementBorder=" .. rgb(AbyssAmberRGB),
         "ElementTransparency=0.72",
-        "ToggleSlider=" .. rgb({ 205, 150, 0 }),
-        "ToggleToggled=" .. rgb({ 255, 248, 210 }),
-        "SliderRail=" .. rgb({ 225, 170, 15 }),
-        "DropdownFrame=" .. rgb({ 255, 233, 120 }),
-        "DropdownHolder=" .. rgb({ 255, 240, 155 }),
+        "ToggleSlider=" .. rgb(AbyssPanelLightRGB),
+        "ToggleToggled=" .. rgb(AbyssLineRGB),
+        "SliderRail=" .. rgb(AbyssAmberRGB),
+        "DropdownFrame=" .. rgb(AbyssPanelRGB),
+        "DropdownHolder=" .. rgb(AbyssPanelSoftRGB),
         "DropdownBorder=" .. rgb(AbyssAmberRGB),
-        "DropdownOption=" .. rgb({ 255, 226, 90 }),
-        "Keybind=" .. rgb({ 255, 233, 120 }),
-        "Input=" .. rgb({ 255, 244, 175 }),
-        "InputFocused=" .. rgb({ 255, 250, 215 }),
+        "DropdownOption=" .. rgb(AbyssPanelDeepRGB),
+        "Keybind=" .. rgb(AbyssPanelRGB),
+        "Input=" .. rgb(AbyssElementRGB),
+        "InputFocused=" .. rgb(AbyssPanelSoftRGB),
         "InputIndicator=" .. rgb(AbyssAmberRGB),
-        "Dialog=" .. rgb({ 255, 224, 90 }),
-        "DialogHolder=" .. rgb({ 255, 240, 155 }),
-        "DialogHolderLine=" .. rgb({ 235, 190, 30 }),
-        "DialogButton=" .. rgb({ 255, 230, 110 }),
+        "Dialog=" .. rgb(AbyssPanelDeepRGB),
+        "DialogHolder=" .. rgb(AbyssPanelSoftRGB),
+        "DialogHolderLine=" .. rgb(AbyssAmberRGB),
+        "DialogButton=" .. rgb(AbyssPanelRGB),
         "DialogButtonBorder=" .. rgb(AbyssAmberRGB),
         "DialogBorder=" .. rgb(AbyssAmberRGB),
-        "DialogInput=" .. rgb({ 255, 246, 185 }),
+        "DialogInput=" .. rgb(AbyssElementRGB),
         "DialogInputLine=" .. rgb(AbyssAmberRGB),
         "Text=" .. rgb(AbyssInkRGB),
-        "SubText=" .. rgb({ 105, 72, 0 }),
-        "Hover=" .. rgb({ 255, 255, 255 }),
+        "SubText=" .. rgb(AbyssMutedRGB),
+        "Hover=" .. rgb(AbyssGray(255)),
         "HoverChange=0.12}",
     }, ",")
+
+    -- Tonos del tema anterior, calculados desde el mismo color del logo.
+    local function logoShade(f)
+        return {
+            math.clamp(math.floor(AbyssBaseRGB[1] * f + 0.5), 0, 255),
+            math.clamp(math.floor(AbyssBaseRGB[2] * f + 0.5), 0, 255),
+            math.clamp(math.floor(AbyssBaseRGB[3] * f + 0.5), 0, 255),
+        }
+    end
+    local function logoTint(a)
+        return {
+            math.clamp(math.floor(AbyssBaseRGB[1] + (255 - AbyssBaseRGB[1]) * a + 0.5), 0, 255),
+            math.clamp(math.floor(AbyssBaseRGB[2] + (255 - AbyssBaseRGB[2]) * a + 0.5), 0, 255),
+            math.clamp(math.floor(AbyssBaseRGB[3] + (255 - AbyssBaseRGB[3]) * a + 0.5), 0, 255),
+        }
+    end
+    local LAccent = AbyssBaseRGB
+    local LInk = logoShade(0.18)
+    local LAmber = logoShade(0.55)
+    local LPanel = logoTint(0.72)
+    local LPanelSoft = logoTint(0.82)
+    local LPanelDeep = logoTint(0.62)
+    local LElement = logoTint(0.85)
+    local LPanelLight = logoTint(0.88)
+    local LLine = logoShade(0.75)
+    local LMuted = logoShade(0.45)
+    local logoTheme = table.concat({
+        "Name='Abyss Original'",
+        "Accent=" .. rgb(LAmber),
+        "AcrylicMain=" .. rgb(LAccent),
+        "AcrylicBorder=" .. rgb(LAmber),
+        "AcrylicGradient=ColorSequence.new(" .. rgb(LPanelSoft) .. "," .. rgb(LPanelDeep) .. ")",
+        "AcrylicNoise=0.9",
+        "TitleBarLine=" .. rgb(LLine),
+        "Tab=" .. rgb(LPanelSoft),
+        "Element=" .. rgb(LElement),
+        "ElementBorder=" .. rgb(LAmber),
+        "InElementBorder=" .. rgb(LLine),
+        "ElementTransparency=0.72",
+        "ToggleSlider=" .. rgb(LAccent),
+        "ToggleToggled=" .. rgb(LPanelLight),
+        "SliderRail=" .. rgb(LLine),
+        "DropdownFrame=" .. rgb(LPanel),
+        "DropdownHolder=" .. rgb(LPanelSoft),
+        "DropdownBorder=" .. rgb(LAmber),
+        "DropdownOption=" .. rgb(LPanelDeep),
+        "Keybind=" .. rgb(LPanel),
+        "Input=" .. rgb(LElement),
+        "InputFocused=" .. rgb(LPanelLight),
+        "InputIndicator=" .. rgb(LAmber),
+        "Dialog=" .. rgb(LPanelDeep),
+        "DialogHolder=" .. rgb(LPanelSoft),
+        "DialogHolderLine=" .. rgb(LLine),
+        "DialogButton=" .. rgb(LPanel),
+        "DialogButtonBorder=" .. rgb(LAmber),
+        "DialogBorder=" .. rgb(LAmber),
+        "DialogInput=" .. rgb(LElement),
+        "DialogInputLine=" .. rgb(LAmber),
+        "Text=" .. rgb(LInk),
+        "SubText=" .. rgb(LMuted),
+        "Hover=" .. rgb(LPanelLight),
+        "HoverChange=0.12}",
+    }, ",")
+
     local patched, count = source:gsub("Name='Dark',.-HoverChange=0%.07}", theme)
     if count ~= 1 then
-        warn("[Abyss] No se pudo aplicar el tema amarillo a Fluent (coincidencias: " .. tostring(count) .. ").")
+        warn("[Abyss] No se pudo aplicar el tema Dark a Fluent (coincidencias: " .. tostring(count) .. ").")
         return source
     end
-    -- La sombra de la ventana es una imagen negra casi opaca que apaga el amarillo.
-    -- Se hace mas transparente para que el panel se vea amarillo limpio.
+    local logoCount
+    patched, logoCount = patched:gsub("Name='Darker',.-DialogInputLine=Color3%.fromRGB%(120,120,120%)%}", logoTheme)
+    local hasLogo = logoCount == 1
+    _G.AbyssHasLogoTheme = hasLogo
+    if not hasLogo then
+        warn("[Abyss] No se pudo aplicar el tema Abyss Original a Fluent (coincidencias: " .. tostring(logoCount) .. "). Se usa solo Dark.")
+    end
+    -- El selector muestra solo los temas que realmente existen, en este orden.
+    local listCount
+    if hasLogo then
+        patched, listCount = patched:gsub("Names={'Dark',.-}", "Names={'Dark','Abyss Original'}", 1)
+    else
+        patched, listCount = patched:gsub("Names={'Dark',.-}", "Names={'Dark'}", 1)
+    end
+    if listCount ~= 1 then
+        warn("[Abyss] No se pudo limitar la lista de temas de Fluent.")
+    end
+    -- La sombra de la ventana es una imagen negra casi opaca que apaga el panel.
+    -- Se hace mas transparente para que el panel gris se vea limpio.
     patched = patched:gsub("ImageColor3=Color3%.fromRGB%(0,0,0%),ImageTransparency=0%.7",
         "ImageColor3=Color3.fromRGB(0,0,0),ImageTransparency=0.9", 1)
     local chunk = loadstring(patched)
     if type(chunk) ~= "function" then
-        warn("[Abyss] El tema amarillo genero un error de sintaxis; se usa el tema original.")
+        warn("[Abyss] Los temas Abyss generaron un error de sintaxis; se usa el tema original.")
         return source
     end
+    return patched
+end
+
+local function PatchInterfaceManager(source)
+    if type(source) ~= "string" then
+        return source
+    end
+    -- El tema por defecto sigue siendo "Dark" (el primero del selector).
+    local patched = source
+    -- Solo se aceptan los temas que existen; un options.json antiguo no puede
+    -- restaurar los eliminados, pero si puede recordar el tema elegido.
+    local extra = _G.AbyssHasLogoTheme and " or v == 'Abyss Original'" or ""
+    patched = patched:gsub("for i, v in next, decoded do%s-InterfaceManager%.Settings%[i%] = v%s-end",
+        "for i, v in next, decoded do if i ~= 'Theme' or v == 'Dark'" .. extra .. " then InterfaceManager.Settings[i] = v end end", 1)
     return patched
 end
 
@@ -8186,7 +8380,21 @@ local function LoadRemote(url, label, tries)
                 error("respuesta vacia o invalida")
             end
             if label == "Fluent" then
-                body = PatchFluentTheme(body)
+                local okPatch, patched = pcall(PatchFluentTheme, body)
+                if okPatch and type(patched) == "string" then
+                    body = patched
+                else
+                    -- Un fallo del parche nunca debe impedir cargar la libreria.
+                    _G.AbyssHasLogoTheme = false
+                    warn("[Abyss] Parche de temas omitido: " .. tostring(patched))
+                end
+            elseif label == "InterfaceManager" then
+                local okPatch, patched = pcall(PatchInterfaceManager, body)
+                if okPatch and type(patched) == "string" then
+                    body = patched
+                else
+                    warn("[Abyss] Parche de InterfaceManager omitido: " .. tostring(patched))
+                end
             end
             local chunk, compileErr = loadstring(body)
             if not chunk then
@@ -8266,126 +8474,6 @@ local Window = Fluent:CreateWindow({
     MinimizeKey = Enum.KeyCode.G,
 })
 __env.AbyssWindow = Window
-do
-    -- Red de seguridad: si Fluent cambia el formato de su tema y el parche no se
-    -- aplica, se recolorea la interfaz ya construida traduciendo los grises y el
-    -- azul viejos a la paleta amarilla.
-    local COLOR_MAP = {
-        { old = Color3.fromRGB(96, 205, 255), new = AbyssAmber },
-        { old = Color3.fromRGB(76, 194, 255), new = AbyssAmber },
-        { old = Color3.fromRGB(90, 200, 255), new = AbyssAmber },
-        { old = Color3.fromRGB(150, 60, 255), new = AbyssAmber },
-        { old = Color3.fromRGB(60, 60, 60), new = AbyssAccent },
-        { old = Color3.fromRGB(40, 40, 40), new = AbyssAccent },
-        { old = Color3.fromRGB(90, 90, 90), new = AbyssAmber },
-        { old = Color3.fromRGB(75, 75, 75), new = AbyssAmber },
-        { old = Color3.fromRGB(120, 120, 120), new = Color3.fromRGB(205, 150, 0) },
-        { old = Color3.fromRGB(35, 35, 35), new = AbyssAmber },
-        { old = Color3.fromRGB(45, 45, 45), new = Color3.fromRGB(255, 235, 140) },
-        { old = Color3.fromRGB(30, 30, 30), new = Color3.fromRGB(235, 190, 30) },
-        { old = Color3.fromRGB(80, 80, 80), new = AbyssAmber },
-        { old = Color3.fromRGB(70, 70, 70), new = AbyssAmber },
-        { old = Color3.fromRGB(55, 55, 55), new = Color3.fromRGB(255, 246, 185) },
-        { old = Color3.fromRGB(160, 160, 160), new = Color3.fromRGB(255, 236, 130) },
-        { old = Color3.fromRGB(150, 150, 150), new = AbyssAmber },
-        { old = Color3.fromRGB(240, 240, 240), new = AbyssInk },
-        { old = Color3.fromRGB(170, 170, 170), new = Color3.fromRGB(105, 72, 0) },
-    }
-    local function mapColor(value)
-        if typeof(value) ~= "Color3" then
-            return nil
-        end
-        for _, entry in ipairs(COLOR_MAP) do
-            if value == entry.old then
-                return entry.new
-            end
-        end
-        return nil
-    end
-    local function mapSequence(sequence)
-        if typeof(sequence) ~= "ColorSequence" then
-            return nil
-        end
-        local points = {}
-        local changed = false
-        for _, point in ipairs(sequence.Keypoints) do
-            local mapped = mapColor(point.Value)
-            if mapped then
-                changed = true
-                points[#points + 1] = ColorSequenceKeypoint.new(point.Time, mapped)
-            else
-                points[#points + 1] = point
-            end
-        end
-        if not changed then
-            return nil
-        end
-        return ColorSequence.new(points)
-    end
-    local function recolor(root)
-        if not root then
-            return
-        end
-        local okList, list = pcall(function()
-            return root:GetDescendants()
-        end)
-        if not okList then
-            return
-        end
-        for _, obj in ipairs(list) do
-            if obj:IsA("GuiObject") then
-                local mapped = mapColor(obj.BackgroundColor3)
-                if mapped then
-                    obj.BackgroundColor3 = mapped
-                end
-            end
-            if obj:IsA("TextLabel") or obj:IsA("TextButton") or obj:IsA("TextBox") then
-                local mapped = mapColor(obj.TextColor3)
-                if mapped then
-                    obj.TextColor3 = mapped
-                end
-            end
-            if obj:IsA("ImageLabel") or obj:IsA("ImageButton") then
-                local mapped = mapColor(obj.ImageColor3)
-                if mapped then
-                    obj.ImageColor3 = mapped
-                end
-            end
-            if obj:IsA("UIStroke") then
-                local mapped = mapColor(obj.Color)
-                if mapped then
-                    obj.Color = mapped
-                end
-            end
-            if obj:IsA("UIGradient") then
-                local mapped = mapSequence(obj.Color)
-                if mapped then
-                    obj.Color = mapped
-                end
-            end
-        end
-    end
-    local function sweep()
-        -- Root.Parent contains Root, so one traversal is enough.
-        local root = Window and Window.Root
-        local container = (root and root.Parent) or root
-        pcall(function()
-            recolor(container)
-        end)
-        local parent = (gethui and gethui()) or game:GetService("CoreGui")
-        for _, name in ipairs({ "AbyssInfo", "Abyss_FloatingBall", "Abyss_EnchantView", "Abyss_Error", "Abyss_Boot" }) do
-            local okFind, found = pcall(function()
-                return parent:FindFirstChild(name)
-            end)
-            if okFind and found then
-                pcall(recolor, found)
-            end
-        end
-    end
-    for _, delay in ipairs({ 0, 0.4, 1.2, 3, 6 }) do
-        task.delay(delay, sweep)
-    end
-end
 if __bootGui then pcall(function() __bootGui:Destroy() end) end
 print("[Abyss] Interfaz creada correctamente.")
 local InputService = game:GetService("UserInputService")
@@ -9214,6 +9302,10 @@ do
         Default = _G.AutoCraftScrolls,
         Callback = function(State)
             _G.AutoCraftScrolls = State
+            if not State then
+                CraftQualityList.BothStage = nil
+                CraftQualityList.StopReason = nil
+            end
             SaveConfig()
         end,
     })
@@ -9226,6 +9318,8 @@ do
         Multi = false,
         Callback = function(Value)
             _G.CraftQuality = Value or "None"
+            CraftQualityList.BothStage = nil
+            CraftQualityList.StopReason = nil
             SaveConfig()
         end,
     })
@@ -9678,6 +9772,17 @@ end
 do
     local WebhookSendLock = false
     local WebhookSendStarted = 0
+    local WebhookLastSentAt = 0
+    local WebhookLastErrorPrint = 0
+    local WebhookRecent = {}
+    local WEBHOOK_MIN_INTERVAL = 1.5
+    local WEBHOOK_DEDUP_WINDOW = 30
+    local WEBHOOK_LOCK_TIMEOUT = 15
+    local function PrintWebhookError(text)
+        if os.clock() - WebhookLastErrorPrint < 30 then return end
+        WebhookLastErrorPrint = os.clock()
+        print("[Abyss] Webhook: " .. tostring(text))
+    end
     local AvatarCache = {}
     local function TrimWebhookText(value)
         return tostring(value or ""):match("^%s*(.-)%s*$") or ""
@@ -9723,10 +9828,17 @@ do
             if onDone then onDone(false, message) end
             return false, message
         end
+        -- Anti-spam: el mismo aviso no se reenvia durante 30 segundos.
+        local nowClock = os.clock()
+        local dedupKey = webhookUrl .. "\n" .. tostring(title or "") .. "\n" .. tostring(content or "")
+        if WebhookRecent[dedupKey] and nowClock - WebhookRecent[dedupKey] < WEBHOOK_DEDUP_WINDOW then
+            if onDone then onDone(true) end
+            return true
+        end
         if WebhookSendLock then
             -- Si el executor nunca respondio, se libera el cerrojo para no
             -- dejar el webhook bloqueado para siempre.
-            if os.clock() - WebhookSendStarted < 15 then
+            if nowClock - WebhookSendStarted < WEBHOOK_LOCK_TIMEOUT then
                 if onDone then onDone(false) end
                 return false
             end
@@ -9735,10 +9847,26 @@ do
         local req = (syn and syn.request) or (http and http.request) or http_request or request
         local httpPost = http and http.post
         WebhookSendLock = true
-        WebhookSendStarted = os.clock()
+        WebhookSendStarted = nowClock
+        WebhookRecent[dedupKey] = nowClock
         task.spawn(function()
             local ok = false
             local errText
+            -- Vigilante: si el executor no responde, libera el cerrojo para que
+            -- los bucles de frutas/enchants no esperen para siempre.
+            local startedAt = WebhookSendStarted
+            task.spawn(function()
+                while WebhookSendLock and WebhookSendStarted == startedAt do
+                    if os.clock() - startedAt >= WEBHOOK_LOCK_TIMEOUT then
+                        WebhookSendLock = false
+                        break
+                    end
+                    task.wait(0.5)
+                end
+            end)
+            -- Espacia los envios: nunca mandar una rafaga de mensajes juntos.
+            while os.clock() - WebhookLastSentAt < WEBHOOK_MIN_INTERVAL do task.wait(0.1) end
+            WebhookLastSentAt = os.clock()
             local callOk, callErr = pcall(function()
                 local HttpServiceLocal = game:GetService("HttpService")
                 local payload, headers
@@ -9855,7 +9983,7 @@ do
                         resp = { StatusCode = 200, Body = tostring(postResult or "") }
                     else
                         errText = "sin API de request: " .. tostring(postErr or postResult)
-                        print("[Abyss] Webhook: " .. tostring(errText))
+                        PrintWebhookError(errText)
                     end
                 end
                 local code = tonumber(resp and (resp.StatusCode or resp.statusCode or resp.status_code
@@ -9863,13 +9991,13 @@ do
                 if resp == nil then
                     ok = false
                     errText = errText or "sin respuesta del executor"
-                    print("[Abyss] Webhook: " .. tostring(errText))
+                    PrintWebhookError(errText)
                 elseif code then
                     ok = (code >= 200 and code < 300)
                     if not ok then
                         local rawBody = type(resp) == "table" and (resp.Body or resp.body or resp.Content) or tostring(resp)
                         errText = "HTTP " .. tostring(code) .. " " .. tostring(rawBody or ""):sub(1, 180)
-                        print("[Abyss] Webhook: " .. tostring(errText))
+                        PrintWebhookError(errText)
                     end
                 else
                     ok = true
@@ -9878,7 +10006,7 @@ do
             if not callOk then
                 ok = false
                 errText = tostring(callErr)
-                print("[Abyss] Webhook error: " .. tostring(errText))
+                PrintWebhookError(errText)
             end
             WebhookSendLock = false
             if onDone then
@@ -10164,10 +10292,12 @@ do
                     local item = table.remove(queue, 1)
                     local tier, color = rarity(item.name, item.rarity)
                     if tier and _G.WebhookSendFruit then
-                        while WebhookSendLock do task.wait(0.15) end
+                        local waitStart = os.clock()
+                        while WebhookSendLock and os.clock() - waitStart < WEBHOOK_LOCK_TIMEOUT do task.wait(0.15) end
                         if _G.WebhookSendFruit then
                             SendWebhookUI(item.name .. " (" .. tier .. ")", T("webhook.send.fruit"), false, color)
-                            while WebhookSendLock do task.wait(0.15) end
+                            waitStart = os.clock()
+                            while WebhookSendLock and os.clock() - waitStart < WEBHOOK_LOCK_TIMEOUT do task.wait(0.15) end
                         end
                     end
                 end
@@ -10472,11 +10602,11 @@ do
         			Background = AbyssAccent,
         			Stroke = AbyssAmber,
         			Text = AbyssInk,
-        			Muted = Color3.fromRGB(105, 72, 0),
-        			Curse = Color3.fromRGB(176, 24, 24),
-        			Blessing = Color3.fromRGB(0, 86, 180),
-        			Unique = Color3.fromRGB(140, 90, 0),
-        			Good = Color3.fromRGB(0, 118, 46),
+        			Muted = AbyssMuted,
+        			Curse = AbyssDark,
+        			Blessing = AbyssElement,
+        			Unique = AbyssAmber,
+        			Good = AbyssLine,
         		}
         		local gui, title, subtitle, list, dragConn
 
@@ -11625,6 +11755,7 @@ do
         SaveManager:IgnoreThemeSettings()
         SaveManager:SetIgnoreIndexes({})
         InterfaceManager.Settings.MenuKeybind = "G"
+        InterfaceManager.Settings.Theme = "Dark"
         InterfaceManager:SetFolder("Abyss")
         SaveManager:SetFolder("Abyss/configs")
         InterfaceManager:BuildInterfaceSection(Tabs.Config)
@@ -11861,7 +11992,7 @@ do
         else
             Ball.Position = UDim2.new(0, 16, 0.5, -26)
         end
-        Ball.BackgroundColor3 = AbyssAccent
+        Ball.BackgroundColor3 = AbyssPanel
         Ball.BackgroundTransparency = 0.05
         Ball.AutoButtonColor = false
         Ball.Text = "A"
@@ -11945,13 +12076,13 @@ do
             if IsMenuOpen() then
                 Stroke.Color = AbyssAmber
                 Stroke.Transparency = 0.1
-                Ball.BackgroundColor3 = AbyssAccent
+                Ball.BackgroundColor3 = AbyssPanel
                 Ball.TextColor3 = AbyssInk
             else
                 Stroke.Color = AbyssAmber
                 Stroke.Transparency = 0.5
-                Ball.BackgroundColor3 = Color3.fromRGB(232, 182, 24)
-                Ball.TextColor3 = Color3.fromRGB(70, 48, 0)
+                Ball.BackgroundColor3 = AbyssPanelDeep
+                Ball.TextColor3 = AbyssInk
             end
         end
         local function SetMenuOpen(open)
@@ -12066,6 +12197,19 @@ RefreshPlayerList()
 Window:SelectTab(1)
 ApplyLanguage()
 task.defer(function()
+    -- Si la configuracion trae Auto Leviathan Full activo, el toggle se crea
+    -- encendido pero su Callback no se dispara: arrancamos los bucles aqui para
+    -- que las cuentas no se queden quietas al iniciar.
+    if _G.AutoLeviathanFull then
+        pcall(function() EnchantHandoff.Release() end)
+        NavigationOwner = nil
+        if _G.Mode == "Capitán" then
+            StartCaptain()
+        else
+            StartFollower()
+        end
+        StatusText = T("status.on") .. " (" .. ModeDisplay() .. ")"
+    end
     if _G.SoloSeaFarm and _G.Abyss_AutoFullToggle and _G.Abyss_AutoFullToggle.Lock then
         pcall(function()
             _G.Abyss_AutoFullToggle:Lock()
